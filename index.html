@@ -647,7 +647,7 @@ function renderAdmin(){
 
 // ---------------- dashboard boot ----------------
 $('logoutBtn').addEventListener('click', ()=>{
-  currentBranch = null; stockSummary = []; salesRows = []; stockTotalsMap = new Map(); locationMap = new Map();
+  currentBranch = null; stockSummary = []; salesRows = []; stockTotalsMap = new Map(); locationMap = new Map(); codeOutMem = null;
   switchScreen('screen-login');
 });
 
@@ -684,6 +684,9 @@ async function openDashboard(){
   salesRows = (data && data.sales && data.sales.rows) ? data.sales.rows : [];
   locationMap = (data && data.locations && data.locations.rows) ? new Map(data.locations.rows.map(p=>[p.code, p.location])) : new Map();
   rebuildStockTotalsMap();
+
+  // دمج علامات "طلعت الكود" من السحابة مع المحلية (بحيث لو أول مرة تفتح من جهاز جديد، العلامات القديمة تبقى موجودة)
+  syncCodeOutFromCloud(data && data.codeOut);
 
   const latestUpdate = [data && data.stock && data.stock.uploadedAt, data && data.sales && data.sales.uploadedAt, data && data.locations && data.locations.uploadedAt].filter(Boolean).sort().pop();
   $('lastUpdateLabel').textContent = latestUpdate ? ('آخر تحديث: ' + formatDate(latestUpdate)) : '';
@@ -1006,12 +1009,48 @@ function salesVisibleRows(){
 function codeOutKey(){
   return 'codeOut_' + (currentBranch ? currentBranch.name : '');
 }
-function getCodeOutSet(){
+let codeOutMem = null;
+function rawLocalCodes(){
   try { return new Set(JSON.parse(localStorage.getItem(codeOutKey()) || '[]')); }
   catch(err){ return new Set(); }
 }
-function saveCodeOut(state){
+function getCodeOutSet(){
+  if(!codeOutMem) codeOutMem = rawLocalCodes();
+  return codeOutMem;
+}
+function saveCodeOutLocal(state){
   try { localStorage.setItem(codeOutKey(), JSON.stringify(Array.from(state))); } catch(err){}
+}
+function syncCodeOutFromCloud(cloudSection){
+  const merged = rawLocalCodes();
+  if(cloudSection && Array.isArray(cloudSection.codes)){
+    cloudSection.codes.forEach(c=>merged.add(c));
+  }
+  codeOutMem = merged;
+  saveCodeOutLocal(merged);
+  pushCodeOutCloud();
+}
+let codeOutPushTimer = null;
+function pushCodeOutCloud(){
+  clearTimeout(codeOutPushTimer);
+  codeOutPushTimer = setTimeout(async ()=>{
+    const id = currentBranch ? currentBranch.id : '';
+    if(!id) return;
+    const codes = Array.from(getCodeOutSet());
+    try{
+      await db.collection('branchData').doc(id).set({
+        codeOut: {
+          codes: codes,
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        }
+      }, { merge:true });
+    }catch(e){ console.error(e); }
+  }, 500);
+}
+function saveCodeOut(state){
+  codeOutMem = state;
+  saveCodeOutLocal(state);
+  pushCodeOutCloud();
 }
 document.addEventListener('change', (e)=>{
   if(e.target.classList && e.target.classList.contains('chk-filter')){
