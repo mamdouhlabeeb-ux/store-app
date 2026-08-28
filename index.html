@@ -767,7 +767,7 @@ function handleStockFile(file){
       existing.stock = { uploadedAt: nowIso, summary };
       existing.sales = existing.sales || null;
       const ok = await saveBranchData(currentBranch.id, existing);
-      if(ok) clearCodeOutMarks();
+      clearCodeOutMarks();
       $('lastUpdateLabel').textContent = 'آخر تحديث: ' + formatDate(nowIso);
       setStatus(statusEl, ok ? ('تم ✓ (' + summary.length + ' موديل)') : 'اتعالج لكن حصلت مشكلة في الحفظ.', ok?'ok':'err');
     }catch(err){ console.error(err); setStatus(statusEl, 'حصل خطأ في قراءة الملف.', 'err'); }
@@ -837,7 +837,7 @@ function handleSalesFile(file){
       existing.sales = { uploadedAt: nowIso, rows: rowsOut };
       existing.stock = existing.stock || null;
       const ok = await saveBranchData(currentBranch.id, existing);
-      if(ok) clearCodeOutMarks();
+      clearCodeOutMarks();
       $('lastUpdateLabel').textContent = 'آخر تحديث: ' + formatDate(nowIso);
       setStatus(statusEl, ok ? ('تم ✓ (' + rowsOut.length + ' صنف)') : 'اتعالج لكن حصلت مشكلة في الحفظ.', ok?'ok':'err');
     }catch(err){ console.error(err); setStatus(statusEl, 'حصل خطأ في قراءة الملف.', 'err'); }
@@ -916,7 +916,7 @@ function handleLocFile(file){
       existing.stock = existing.stock || null;
       existing.sales = existing.sales || null;
       const ok = await saveBranchData(currentBranch.id, existing);
-      if(ok) clearCodeOutMarks();
+      clearCodeOutMarks();
       $('lastUpdateLabel').textContent = 'آخر تحديث: ' + formatDate(nowIso);
       setStatus(statusEl, ok ? ('تم ✓ (' + parsed.length + ' كود)') : 'اتعالج لكن حصلت مشكلة في الحفظ.', ok?'ok':'err');
     }catch(err){ console.error(err); setStatus(statusEl, 'حصل خطأ في قراءة الملف.', 'err'); }
@@ -1040,9 +1040,11 @@ function saveCodeOutLocal(state){
   try { localStorage.setItem(codeOutKey(), JSON.stringify(Array.from(state))); } catch(err){}
 }
 function syncCodeOutFromCloud(cloudSection){
-  const merged = rawLocalCodes();
+  let merged;
   if(cloudSection && Array.isArray(cloudSection.codes)){
-    cloudSection.codes.forEach(c=>merged.add(c));
+    merged = new Set(cloudSection.codes);   // السحابة هي المرجع الأساسي
+  } else {
+    merged = rawLocalCodes();               // أول مرة بس: نقل العلامات المحلية القديمة
   }
   codeOutMem = merged;
   saveCodeOutLocal(merged);
@@ -1078,8 +1080,11 @@ function clearCodeOutMarks(){
 }
 document.addEventListener('change', (e)=>{
   if(e.target.classList && e.target.classList.contains('chk-filter')){
-    if(e.target.dataset.scope === 'sales') salesChkFilter = e.target.value;
-    renderSalesTable();
+    if(e.target.dataset.scope === 'sales'){
+      if(e.target.value === 'clear'){ salesChkFilter = 'all'; clearCodeOutMarks(); }
+      else salesChkFilter = e.target.value;
+      renderSalesTable();
+    }
     return;
   }
   if(!e.target.classList || !e.target.classList.contains('code-out-chk')) return;
@@ -1106,6 +1111,7 @@ function renderSalesTable(){
     + '<option value="all"' + (salesChkFilter === 'all' ? ' selected' : '') + '>الكل</option>'
     + '<option value="todo"' + (salesChkFilter === 'todo' ? ' selected' : '') + '>متبقي (مش متأشر)</option>'
     + '<option value="out"' + (salesChkFilter === 'out' ? ' selected' : '') + '>متأشر</option>'
+    + '<option value="clear" style="color:var(--brick);font-weight:700;">— مسح جميع التأشيرات —</option>'
     + '</select></th>'
     + '<th>الصورة</th>'
     + '<th class="sortable-th">الكود <span class="sort-arrow" data-tab="sales" data-col="code">' + arrowGlyph('sales','code') + '</span><div class="sort-menu">' + sortMenuHtml('sales','code') + '</div></th>'
