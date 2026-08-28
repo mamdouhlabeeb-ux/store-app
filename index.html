@@ -659,7 +659,7 @@ $('resetDataBtn').addEventListener('click', async ()=>{
   showLoading('جاري مسح البيانات...');
   try{
     await db.collection('branchData').doc(currentBranch.id).delete();
-    stockSummary = []; salesRows = []; stockTotalsMap = new Map(); locationMap = new Map();
+    stockSummary = []; salesRows = []; stockTotalsMap = new Map(); locationMap = new Map(); codeOutMem = new Set();
     try{ localStorage.removeItem(codeOutKey()); }catch(err){}
     $('lastUpdateLabel').textContent = '';
     $('resultsArea').style.display = 'none';
@@ -767,6 +767,7 @@ function handleStockFile(file){
       existing.stock = { uploadedAt: nowIso, summary };
       existing.sales = existing.sales || null;
       const ok = await saveBranchData(currentBranch.id, existing);
+      if(ok) clearCodeOutMarks();
       $('lastUpdateLabel').textContent = 'آخر تحديث: ' + formatDate(nowIso);
       setStatus(statusEl, ok ? ('تم ✓ (' + summary.length + ' موديل)') : 'اتعالج لكن حصلت مشكلة في الحفظ.', ok?'ok':'err');
     }catch(err){ console.error(err); setStatus(statusEl, 'حصل خطأ في قراءة الملف.', 'err'); }
@@ -836,6 +837,7 @@ function handleSalesFile(file){
       existing.sales = { uploadedAt: nowIso, rows: rowsOut };
       existing.stock = existing.stock || null;
       const ok = await saveBranchData(currentBranch.id, existing);
+      if(ok) clearCodeOutMarks();
       $('lastUpdateLabel').textContent = 'آخر تحديث: ' + formatDate(nowIso);
       setStatus(statusEl, ok ? ('تم ✓ (' + rowsOut.length + ' صنف)') : 'اتعالج لكن حصلت مشكلة في الحفظ.', ok?'ok':'err');
     }catch(err){ console.error(err); setStatus(statusEl, 'حصل خطأ في قراءة الملف.', 'err'); }
@@ -914,6 +916,7 @@ function handleLocFile(file){
       existing.stock = existing.stock || null;
       existing.sales = existing.sales || null;
       const ok = await saveBranchData(currentBranch.id, existing);
+      if(ok) clearCodeOutMarks();
       $('lastUpdateLabel').textContent = 'آخر تحديث: ' + formatDate(nowIso);
       setStatus(statusEl, ok ? ('تم ✓ (' + parsed.length + ' كود)') : 'اتعالج لكن حصلت مشكلة في الحفظ.', ok?'ok':'err');
     }catch(err){ console.error(err); setStatus(statusEl, 'حصل خطأ في قراءة الملف.', 'err'); }
@@ -1066,6 +1069,12 @@ function saveCodeOut(state){
   codeOutMem = state;
   saveCodeOutLocal(state);
   pushCodeOutCloud();
+}
+function clearCodeOutMarks(){
+  codeOutMem = new Set();
+  saveCodeOutLocal(codeOutMem);
+  pushCodeOutCloud();
+  renderSalesTable();
 }
 document.addEventListener('change', (e)=>{
   if(e.target.classList && e.target.classList.contains('chk-filter')){
