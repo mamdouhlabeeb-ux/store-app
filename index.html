@@ -1,0 +1,1438 @@
+﻿<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>نظام متابعة المخزون والمبيعات - الفروع</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=Tajawal:wght@400;500;700&display=swap');
+
+:root{
+  --ink:#1B2231;
+  --ink-soft:#2C3648;
+  --paper:#F4F5F2;
+  --paper-card:#FFFFFF;
+  --amber:#D9A441;
+  --amber-deep:#B9852A;
+  --teal:#2F6F63;
+  --brick:#B8453C;
+  --line:#DDE0D8;
+  --muted:#6C7480;
+}
+
+*{box-sizing:border-box;}
+html,body{margin:0;padding:0;}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:'Tajawal',sans-serif;
+  min-height:100vh;
+}
+h1,h2,h3,.display{
+  font-family:'Cairo',sans-serif;
+  font-weight:800;
+  color:var(--ink);
+  margin:0;
+}
+button{
+  font-family:'Tajawal',sans-serif;
+  cursor:pointer;
+  border:none;
+  border-radius:10px;
+}
+input, select{
+  font-family:'Tajawal',sans-serif;
+}
+
+.screen{ min-height:100vh; display:none; }
+.screen.active{ display:block; }
+
+#screen-login{ display:none; align-items:center; justify-content:center; padding:32px 16px; }
+#screen-login.active{ display:flex; }
+
+.login-wrap{
+  width:100%; max-width:920px; display:grid; grid-template-columns:1fr 1fr;
+  background:var(--paper-card); border-radius:20px; overflow:hidden;
+  box-shadow:0 20px 60px rgba(27,34,49,.12); border:1px solid var(--line);
+}
+@media (max-width:760px){
+  .login-wrap{ grid-template-columns:1fr; }
+  .login-visual{ min-height:180px !important; }
+}
+.login-visual{
+  background:var(--ink); position:relative; overflow:hidden; min-height:460px;
+  display:flex; align-items:center; justify-content:center;
+}
+.login-visual .stripes{ position:absolute; inset:0; background-image:repeating-linear-gradient(115deg, rgba(217,164,65,.08) 0 2px, transparent 2px 26px); }
+.tag-anim{ position:relative; z-index:2; }
+.tag-svg{ width:230px; height:auto; display:block; }
+.tag-code{ animation:driftLeft 3.2s ease-in-out infinite alternate; }
+.tag-size{ animation:driftRight 3.2s ease-in-out infinite alternate; }
+@keyframes driftLeft{ from{ transform:translateX(0);} to{ transform:translateX(-9px);} }
+@keyframes driftRight{ from{ transform:translateX(0);} to{ transform:translateX(9px);} }
+.login-visual .caption{ position:absolute; bottom:28px; right:28px; left:28px; color:#EDE7D8; font-family:'Cairo',sans-serif; font-weight:700; font-size:15px; opacity:.85; z-index:2; }
+
+.login-form{ padding:44px 40px; display:flex; flex-direction:column; gap:18px; }
+.eyebrow{ font-size:12px; letter-spacing:.06em; color:var(--amber-deep); font-weight:700; font-family:'Cairo',sans-serif; }
+.login-form h1{ font-size:26px; margin-top:4px; }
+.login-form p.sub{ color:var(--muted); margin:0; font-size:14px; line-height:1.7; }
+
+.field{ display:flex; flex-direction:column; gap:6px; }
+.field label{ font-size:13px; font-weight:700; color:var(--ink-soft); }
+.field select, .field input{ padding:12px 14px; border:1.5px solid var(--line); border-radius:10px; font-size:15px; background:#FBFBF9; outline:none; transition:border-color .15s; }
+.field select:focus, .field input:focus{ border-color:var(--amber); }
+
+.btn-primary{ background:var(--ink); color:#F4F0E4; padding:13px 18px; border-radius:10px; font-weight:700; font-size:15px; font-family:'Cairo',sans-serif; transition:background .15s, transform .1s; }
+.btn-primary:hover{ background:var(--ink-soft); }
+.btn-primary:active{ transform:scale(.98); }
+.btn-ghost{ background:transparent; color:var(--muted); padding:8px 4px; font-size:13px; text-decoration:underline; text-underline-offset:3px; align-self:flex-start; }
+
+.error-msg{ background:#FBEAE8; color:var(--brick); border:1px solid #F0C6C1; padding:10px 12px; border-radius:8px; font-size:13.5px; display:none; }
+.error-msg.show{ display:block; }
+
+#screen-admin{ padding:28px 20px 60px; max-width:880px; margin:0 auto; }
+.admin-header{ display:flex; align-items:center; justify-content:space-between; margin-bottom:22px; flex-wrap:wrap; gap:10px;}
+.branch-row{ display:flex; align-items:center; gap:10px; background:var(--paper-card); border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin-bottom:8px; }
+.branch-row .name{ font-weight:700; flex:1; }
+.branch-row input{ width:120px; padding:8px 10px; border:1px solid var(--line); border-radius:8px; }
+.branch-row .save-hint{ font-size:12px; color:var(--teal); opacity:0; transition:opacity .3s; }
+.branch-row .save-hint.show{ opacity:1; }
+
+#screen-dashboard{ display:none; }
+#screen-dashboard.active{ display:block; }
+
+.topbar{ background:var(--ink); color:#F4F0E4; padding:16px 28px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px; }
+.topbar .brand{ display:flex; align-items:center; gap:12px; }
+.topbar .brand .dot{ width:10px; height:10px; border-radius:50%; background:var(--amber); }
+.topbar .brand-name{ font-family:'Cairo',sans-serif; font-weight:800; font-size:20px; }
+.topbar .branch-pill{ background:rgba(217,164,65,.16); color:var(--amber); padding:6px 14px; border-radius:999px; font-weight:700; font-size:13.5px; font-family:'Cairo',sans-serif; }
+.topbar-actions{ display:flex; align-items:center; gap:14px; }
+.link-btn{ background:transparent; color:#CFCABB; font-size:13.5px; text-decoration:underline; }
+.link-btn.danger{ color:#FF9C9C; }
+
+.container{ max-width:1180px; margin:0 auto; padding:26px 20px 60px; }
+
+.upload-row{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:22px; }
+@media (max-width:760px){ .upload-row{ grid-template-columns:1fr; } }
+.upload-card{ background:var(--paper-card); border:1.5px dashed var(--line); border-radius:16px; padding:22px; text-align:center; transition:border-color .15s, background .15s; }
+.upload-card.dragover{ border-color:var(--amber); background:#FBF6EA; }
+.upload-card .step-tag{ display:inline-block; background:var(--ink); color:var(--amber); font-family:'Cairo',sans-serif; font-weight:800; font-size:11.5px; padding:3px 10px; border-radius:999px; margin-bottom:10px; }
+.upload-card h3{ font-size:18px; margin-bottom:6px; }
+.upload-card p{ color:var(--muted); font-size:14.5px; margin:0 0 14px; line-height:1.7; }
+.upload-card input[type=file]{ display:none; }
+.upload-btn{ background:var(--amber); color:var(--ink); font-family:'Cairo',sans-serif; font-weight:800; padding:10px 20px; border-radius:10px; font-size:14px; display:inline-block; }
+.upload-status{ margin-top:10px; font-size:12.5px; color:var(--muted); min-height:16px; }
+.upload-status.err{ color:var(--brick); font-weight:700; }
+.upload-status.ok{ color:var(--teal); font-weight:700; }
+
+.tabs{ display:flex; gap:8px; margin-bottom:16px; }
+.tab-btn{ padding:10px 18px; border-radius:10px 10px 0 0; font-weight:700; font-family:'Cairo',sans-serif; font-size:13.5px; background:transparent; color:var(--muted); border-bottom:3px solid transparent; }
+.tab-btn.active{ color:var(--ink); border-bottom:3px solid var(--amber); }
+.tab-panel{ display:none; }
+.tab-panel.active{ display:block; }
+
+.stats-row{ display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:22px; }
+@media (max-width:700px){ .stats-row{ grid-template-columns:repeat(2,1fr);} }
+.stat-card{ background:var(--paper-card); border:1px solid var(--line); border-radius:14px; padding:16px 18px; }
+.stat-card .num{ font-family:'Cairo',sans-serif; font-weight:900; font-size:34px; }
+.stat-card .lbl{ font-size:12.5px; color:var(--muted); margin-top:2px; }
+.stat-card.amber .num{ color:var(--amber-deep); }
+.stat-card.teal .num{ color:var(--teal); }
+
+.panel{ background:var(--paper-card); border:1px solid var(--line); border-radius:16px; padding:20px; margin-bottom:22px; }
+.panel-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:14px; }
+.panel-head h2{ font-size:21px; }
+.panel-tools{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+.search-input{ padding:10px 13px; border:1.5px solid var(--line); border-radius:9px; font-size:14.5px; width:230px; }
+.sort-btn, .export-btn{ padding:10px 15px; border-radius:9px; font-size:13.5px; font-weight:700; border:1.5px solid var(--line); background:#fff; color:var(--ink-soft); }
+.sort-btn.active{ background:var(--ink); color:#F4F0E4; border-color:var(--ink); }
+.export-btn{ background:var(--teal); color:#fff; border-color:var(--teal); font-family:'Cairo',sans-serif; }
+
+table.data-table{ width:100%; border-collapse:collapse; font-size:15.5px; }
+table.data-table th{ text-align:right; padding:12px 14px; color:var(--muted); font-weight:700; border-bottom:2px solid var(--line); font-size:14px; white-space:nowrap; }
+table.data-table td{ padding:12px 14px; border-bottom:1px solid var(--line); vertical-align:middle; }
+table.data-table tr:hover td{ background:#FAFAF7; }
+.code-cell{ font-family:'Cairo',sans-serif; font-weight:800; font-size:16.5px; }
+.qty-cell{ font-weight:800; color:var(--ink-soft); font-size:15.5px; }
+.size-pill{ display:inline-block; background:#EFEDE3; color:var(--ink-soft); padding:3px 12px; border-radius:999px; font-weight:700; font-size:14px; }
+.dept-badge{ display:inline-block; background:#EFF3EE; color:var(--teal); padding:4px 11px; border-radius:999px; font-size:13.5px; font-weight:700; }
+.loc-badge{ display:inline-block; background:#EEF1F7; color:#41527A; padding:4px 11px; border-radius:999px; font-size:13.5px; font-weight:700; }
+.dept-badge.mixed{ background:#FBEAE8; color:var(--brick); }
+.size-toggle{ background:transparent; color:var(--amber-deep); font-size:12.5px; font-weight:700; text-decoration:underline; padding:0; }
+.size-detail{ display:none; margin-top:8px; }
+.size-detail.show{ display:block; }
+.size-chip{ display:inline-block; background:#F4F5F2; border:1px solid var(--line); border-radius:8px; padding:4px 9px; margin:2px; font-size:12px; }
+
+.prod-thumb{ width:80px; height:80px; border-radius:10px; object-fit:cover; background:#F0F1EC; border:1px solid var(--line); display:block; position:relative; transition:transform .18s ease; }
+.prod-thumb:hover{ transform:scale(2.6); z-index:40; box-shadow:0 14px 34px rgba(27,34,49,.35); }
+.prod-thumb-missing{ width:80px; height:80px; border-radius:10px; background:#F0F1EC; border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--muted); text-align:center; line-height:1.4; }
+th.code-out-th{ width:96px; text-align:center; }
+.code-out-chk{ width:20px; height:20px; cursor:pointer; accent-color:#2F6F63; }
+.chk-filter{ width:96px; font-size:11px; padding:3px 4px; border-radius:6px; border:1px solid var(--line); background:#fff; color:var(--ink-soft); cursor:pointer; margin-top:5px; display:block; font-family:'Cairo',sans-serif; }
+
+.no-stock{ color:var(--muted); font-size:12px; }
+
+.empty-state{ text-align:center; padding:40px 10px; color:var(--muted); }
+.empty-state .big{ font-size:34px; margin-bottom:8px; }
+
+.footer-note{ text-align:center; color:var(--muted); font-size:12px; padding:20px; }
+
+#screen-setup{ padding:40px 20px 60px; max-width:760px; margin:0 auto; }
+.setup-card{ background:var(--paper-card); border:1px solid var(--line); border-radius:16px; padding:26px; margin-bottom:16px; }
+.setup-card h3{ font-size:15.5px; margin-bottom:8px; }
+.setup-card p, .setup-card li{ color:var(--ink-soft); font-size:13.5px; line-height:1.9; }
+.setup-card code, .setup-card pre{ background:#F0F1EC; border:1px solid var(--line); border-radius:8px; padding:2px 6px; font-size:12.5px; direction:ltr; display:inline-block; }
+.setup-card pre{ display:block; padding:12px; overflow:auto; white-space:pre; }
+.setup-step-num{ display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; background:var(--amber); color:var(--ink); font-family:'Cairo',sans-serif; font-weight:900; font-size:13px; margin-left:8px; }
+
+.loading-overlay{ position:fixed; inset:0; background:rgba(27,34,49,.55); z-index:50; display:none; align-items:center; justify-content:center; color:#fff; font-family:'Cairo',sans-serif; font-weight:700; }
+.loading-overlay.show{ display:flex; }
+.spinner{ width:18px; height:18px; border-radius:50%; border:3px solid rgba(255,255,255,.35); border-top-color:#fff; animation:spin .8s linear infinite; margin-left:10px; display:inline-block; vertical-align:middle;}
+@keyframes spin{ to{ transform:rotate(360deg);} }
+.modal-overlay{ position:fixed; inset:0; background:rgba(27,34,49,.55); z-index:60; display:none; align-items:center; justify-content:center; padding:20px; }
+.modal-overlay.show{ display:flex; }
+.modal-card{ background:var(--paper-card); border-radius:16px; padding:24px; width:100%; max-width:380px; display:flex; flex-direction:column; gap:14px; box-shadow:0 20px 60px rgba(27,34,49,.25); }
+.modal-card h3{ font-size:17px; }
+.modal-actions{ display:flex; gap:10px; align-items:center; }
+
+.toast{ position:fixed; bottom:22px; right:50%; transform:translateX(50%); background:var(--ink); color:#F4F0E4; padding:13px 20px; border-radius:12px; font-size:14px; font-weight:700; box-shadow:0 10px 30px rgba(27,34,49,.35); z-index:99; max-width:88vw; opacity:0; pointer-events:none; transition:opacity .25s; text-align:center; font-family:'Tajawal',sans-serif; }
+.toast.show{ opacity:1; }
+
+.sortable-th{ position:relative; }
+.sort-arrow{ display:inline-flex; align-items:center; justify-content:center; min-width:20px; height:20px; border-radius:6px; cursor:pointer; font-size:12px; color:var(--teal); margin-inline-start:4px; background:transparent; vertical-align:middle; }
+.sort-arrow:hover{ background:#E8EDE8; }
+.sort-menu{ position:absolute; top:100%; left:0; background:#fff; border:1px solid var(--line); border-radius:10px; box-shadow:0 12px 28px rgba(27,34,49,.22); z-index:25; display:none; min-width:132px; padding:4px; }
+.sort-menu.show{ display:block; }
+.sort-menu button{ display:block; width:100%; background:none; border:none; text-align:right; padding:8px 12px; font-size:13px; cursor:pointer; font-family:'Tajawal',sans-serif; color:var(--ink-soft); border-radius:7px; }
+.sort-menu button:hover{ background:var(--paper); }
+.sort-menu button.sel{ color:var(--teal); font-weight:700; }
+
+@media (max-width:760px){
+  .topbar{ padding:12px 14px; }
+  .topbar .brand-name{ font-size:16px; }
+  .topbar .branch-pill{ padding:5px 10px; font-size:12px; }
+  .topbar-actions{ gap:8px; }
+  .link-btn{ font-size:12.5px; }
+  .container{ padding:16px 10px 50px; }
+  .upload-row{ gap:12px; }
+  .upload-card{ padding:16px 10px; }
+  .upload-card h3{ font-size:16px; }
+  .upload-btn{ padding:9px 15px; font-size:13px; }
+  .panel{ padding:12px 10px; border-radius:12px; }
+  .panel-head h2{ font-size:17px; }
+  .panel-tools{ gap:7px; }
+  .search-input{ width:100%; padding:9px 11px; font-size:13.5px; }
+  .sort-btn, .export-btn{ padding:8px 10px; font-size:12px; }
+  .stat-card{ padding:11px 10px; border-radius:11px; }
+  .stat-card .num{ font-size:25px; }
+  .stat-card .lbl{ font-size:11.5px; }
+  table.data-table{ font-size:12.5px; }
+  table.data-table th{ padding:7px 5px; font-size:11.5px; }
+  table.data-table td{ padding:7px 5px; }
+  .code-cell{ font-size:13.5px; }
+  .qty-cell{ font-size:13px; }
+  .size-pill{ padding:2px 7px; font-size:11.5px; }
+  .dept-badge, .loc-badge{ padding:3px 7px; font-size:11.5px; }
+  .prod-thumb{ width:54px; height:54px; border-radius:8px; }
+  .prod-thumb:hover{ transform:scale(1.6); }
+  .prod-thumb-missing{ width:54px; height:54px; border-radius:8px; font-size:9px; }
+  th.code-out-th{ width:56px; }
+  .code-out-chk{ width:18px; height:18px; }
+  .chk-filter{ width:76px; font-size:10.5px; padding:2px 3px; }
+  .empty-state .big{ font-size:26px; }
+  .tabs{ gap:4px; }
+  .tab-btn{ padding:8px 10px; font-size:12px; }
+}
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="loadingOverlay"><span class="spinner"></span><span id="loadingText">جاري التحميل...</span></div>
+
+<div class="toast" id="toast"></div>
+
+<!-- ================= CHANGE PASSWORD MODAL ================= -->
+<div class="modal-overlay" id="pwModal">
+  <div class="modal-card">
+    <h3>تغيير كلمة المرور</h3>
+    <div class="field"><label>الفرع</label><div id="pwBranchName" style="font-weight:700;"></div></div>
+    <div class="field"><label>كلمة المرور الحالية</label><input type="password" id="pwCurrent" autocomplete="off"></div>
+    <div class="field"><label>كلمة المرور الجديدة</label><input type="password" id="pwNew" autocomplete="new-password"></div>
+    <div class="field"><label>تأكيد كلمة المرور الجديدة</label><input type="password" id="pwConfirm" autocomplete="new-password"></div>
+    <div class="error-msg" id="pwError"></div>
+    <div class="modal-actions">
+      <button class="btn-primary" id="pwSaveBtn">حفظ</button>
+      <button class="btn-ghost" id="pwCancelBtn">إلغاء</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= SETUP (shown only if Firebase config is not filled in) ================= -->
+<div class="screen" id="screen-setup">
+  <h2 style="margin-bottom:6px;">إعداد أول مرة — خطوتين وخلاص</h2>
+  <p style="color:var(--muted);font-size:13.5px;margin-bottom:22px;">الأداة دي محتاجة "مكان تخزين سحابي" مجاني عشان تشتغل من أي جهاز مع كل الفروع. اعمل الخطوات دي مرة واحدة بس، وبعدها ابعت الملف لكل الفروع وهيشتغل عادي.</p>
+
+  <div class="setup-card">
+    <h3><span class="setup-step-num">1</span> اعمل مشروع Firebase مجاني</h3>
+    <p>ادخل على <code>console.firebase.google.com</code> بحساب Google بتاعك → <b>Add project</b> → سمّي المشروع أي اسم (مثلاً raven-branches) → كمّل الخطوات الافتراضية لحد ما يتعمل.</p>
+  </div>
+
+  <div class="setup-card">
+    <h3><span class="setup-step-num">2</span> فعّل قاعدة البيانات (Firestore)</h3>
+    <p>من القائمة الجانبية: <b>Build → Firestore Database → Create database</b> → اختار <b>Start in test mode</b> → اختار أقرب location وكمّل.</p>
+  </div>
+
+  <div class="setup-card">
+    <h3><span class="setup-step-num">3</span> سجّل تطبيق ويب واخد بيانات الاتصال</h3>
+    <p>من الترس ⚙️ جنب "Project Overview" → <b>Project settings</b> → في تبويب General انزل لـ "Your apps" → دوس على أيقونة <code>&lt;/&gt;</code> (Web) → سمّي التطبيق أي اسم → هيديك كائن اسمه <code>firebaseConfig</code> فيه apiKey, authDomain... انسخه كله.</p>
+  </div>
+
+  <div class="setup-card">
+    <h3><span class="setup-step-num">4</span> حط البيانات في الملف</h3>
+    <p>افتح ملف <code>branch_inventory_app.html</code> بأي محرر نصوص (Notepad كفاية)، دور على الجزء ده في أول الكود:</p>
+    <pre>const firebaseConfig = {
+  apiKey: "PASTE_YOUR_API_KEY_HERE",
+  ...
+};</pre>
+    <p>واستبدل القيم كلها بالقيم اللي نسختها من فايربيز، احفظ الملف، وحدّث الصفحة.</p>
+  </div>
+
+  <div class="setup-card">
+    <h3><span class="setup-step-num">5</span> افتح صلاحيات القراءة/الكتابة</h3>
+    <p>من <b>Firestore Database → Rules</b> حط القواعد دي بدل الموجودة واعمل Publish:</p>
+    <pre>rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if true;
+    }
+  }
+}</pre>
+    <p style="color:var(--brick);">ملحوظة أمان: القواعد دي بتخلي أي حد يعرف بيانات المشروع (apiKey) يقدر يوصل للداتا مباشرة — مفيش سيرفر خاص بيتحقق من الباسورد غير باسورد الفرع جوه التطبيق نفسه. متشاركش الملف أو الـ apiKey في أماكن عامة، وده أقصى حماية ممكنة من غير باك إند حقيقي.</p>
+  </div>
+
+  <button class="btn-primary" id="setupRecheckBtn" style="margin-top:6px;">تم — جرب تاني</button>
+</div>
+
+<!-- ================= LOGIN ================= -->
+<div class="screen" id="screen-login">
+  <div class="login-wrap">
+    <div class="login-visual">
+      <div class="stripes"></div>
+      <div class="tag-anim">
+        <svg class="tag-svg" viewBox="0 0 240 160" xmlns="http://www.w3.org/2000/svg">
+          <g class="tag-code">
+            <rect x="10" y="35" width="100" height="90" rx="10" fill="#2C3648" stroke="#D9A441" stroke-width="2"/>
+            <circle cx="30" cy="55" r="5" fill="#D9A441"/>
+            <text x="60" y="80" text-anchor="middle" font-family="Cairo,sans-serif" font-weight="800" font-size="15" fill="#F4F0E4">كود</text>
+            <text x="60" y="102" text-anchor="middle" font-family="Cairo,sans-serif" font-weight="700" font-size="12" fill="#D9A441">1042</text>
+          </g>
+          <g class="tag-size">
+            <rect x="130" y="35" width="100" height="90" rx="10" fill="#D9A441" stroke="#2C3648" stroke-width="2"/>
+            <text x="180" y="80" text-anchor="middle" font-family="Cairo,sans-serif" font-weight="800" font-size="15" fill="#1B2231">مقاس</text>
+            <text x="180" y="102" text-anchor="middle" font-family="Cairo,sans-serif" font-weight="700" font-size="12" fill="#1B2231">42</text>
+          </g>
+          <line x1="120" y1="30" x2="120" y2="130" stroke="#6C7480" stroke-dasharray="4 4" stroke-width="1.5"/>
+        </svg>
+      </div>
+      <div class="caption">مخزون + مبيعات + صورة الموديل، كله في تقرير واحد لكل فرع</div>
+    </div>
+    <div class="login-form">
+      <div>
+        <div class="eyebrow">نظام الفروع</div>
+        <h1>تسجيل الدخول</h1>
+        <p class="sub">اختار الفرع وادخل بالباسورد الخاص بيه عشان ترفع شيت المخزون وشيت المبيعات وتشوف التقرير.</p>
+      </div>
+      <div class="error-msg" id="loginError"></div>
+      <div class="field">
+        <label>الفرع</label>
+        <select id="branchSelect"></select>
+      </div>
+      <div class="field">
+        <label>كلمة المرور</label>
+        <input type="password" id="passwordInput" placeholder="••••••">
+      </div>
+      <button class="btn-primary" id="loginBtn">دخول</button>
+      <button class="btn-ghost" id="adminOpenBtn">لوحة إدارة الفروع (للمدير)</button>
+    </div>
+  </div>
+</div>
+
+<!-- ================= ADMIN ================= -->
+<div class="screen" id="screen-admin">
+  <div class="admin-header">
+    <h2>إدارة الفروع</h2>
+    <button class="btn-ghost" id="adminBackBtn">رجوع لتسجيل الدخول</button>
+  </div>
+  <p style="color:var(--muted);font-size:13.5px;margin-top:-10px;">غيّر اسم أو باسورد أي فرع من الـ 33 هنا. أي تعديل بيتحفظ تلقائي.</p>
+  <div id="branchListWrap" style="margin-top:16px;"></div>
+</div>
+
+<!-- ================= DASHBOARD ================= -->
+<div class="screen" id="screen-dashboard">
+  <div class="topbar">
+    <div class="brand">
+      <span class="dot"></span>
+      <span class="brand-name">نظام متابعة المخزون والمبيعات</span>
+      <span class="branch-pill" id="branchPill"></span>
+    </div>
+    <div class="topbar-actions">
+      <span id="lastUpdateLabel" style="font-size:12.5px;color:#B9BAB0;"></span>
+      <button class="link-btn" id="changePwBtn">تغيير كلمة المرور</button>
+      <button class="link-btn danger" id="resetDataBtn">مسح البيانات</button>
+      <button class="link-btn" id="logoutBtn">تسجيل خروج</button>
+    </div>
+  </div>
+
+  <div class="container">
+    <div class="upload-row">
+      <div class="upload-card" id="uploadCardStock">
+        <div class="step-tag">1 - شيت المخزون</div>
+        <h3>شيت المخزون (السورس)</h3>
+        <p>4 أعمدة بالترتيب: الكود-المقاس، الكمية، الدبارتمنت، اللوكيشن</p>
+        <label class="upload-btn" for="fileInputStock">اختيار ملف</label>
+        <input type="file" id="fileInputStock" accept=".xlsx,.xls,.csv">
+        <div class="upload-status" id="uploadStatusStock"></div>
+      </div>
+      <div class="upload-card" id="uploadCardSales">
+        <div class="step-tag">2 - شيت المبيعات</div>
+        <h3>شيت المبيعات</h3>
+        <p>عمودين بالترتيب: الكود-المقاس، الكمية المباعة</p>
+        <label class="upload-btn" for="fileInputSales">اختيار ملف</label>
+        <input type="file" id="fileInputSales" accept=".xlsx,.xls,.csv">
+        <div class="upload-status" id="uploadStatusSales"></div>
+      </div>
+      <div class="upload-card" id="uploadCardLoc">
+        <div class="step-tag">3 - شيت اللوكيشن</div>
+        <h3>شيت اللوكيشن</h3>
+        <p>عمودين بالترتيب: الكود، اللوكيشن</p>
+        <label class="upload-btn" for="fileInputLoc">اختيار ملف</label>
+        <input type="file" id="fileInputLoc" accept=".xlsx,.xls,.csv">
+        <div class="upload-status" id="uploadStatusLoc"></div>
+      </div>
+    </div>
+
+    <div id="resultsArea" style="display:none;">
+      <div class="tabs">
+        <button class="tab-btn active" id="tabSalesBtn">تقرير المبيعات</button>
+        <button class="tab-btn" id="tabStockBtn">ملخص المخزون</button>
+      </div>
+
+      <!-- ===== SALES TAB ===== -->
+      <div class="tab-panel active" id="panelSales">
+        <div class="stats-row">
+          <div class="stat-card"><div class="num" id="salesStatLines">0</div><div class="lbl">عدد الأصناف المباعة</div></div>
+          <div class="stat-card amber"><div class="num" id="salesStatQty">0</div><div class="lbl">إجمالي القطع المباعة</div></div>
+          <div class="stat-card teal"><div class="num" id="salesStatModels">0</div><div class="lbl">عدد الموديلات المباعة</div></div>
+          <div class="stat-card"><div class="num" id="salesStatMissing">0</div><div class="lbl">أصناف مش موجودة بالمخزون</div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <h2>الكود / المقاس / توتال الموديل / الصورة</h2>
+            <div class="panel-tools">
+              <input class="search-input" id="salesSearchInput" placeholder="دور بالكود...">
+              <button class="export-btn" id="exportSalesBtn">إكسل</button>
+              <button class="export-btn" id="exportSalesCsvBtn">جوجل شيت</button>
+              <button class="export-btn" id="exportSalesPdfBtn">PDF</button>
+            </div>
+          </div>
+          <div id="salesTableWrap"></div>
+        </div>
+      </div>
+
+      <!-- ===== STOCK TAB ===== -->
+      <div class="tab-panel" id="panelStock">
+        <div class="stats-row">
+          <div class="stat-card"><div class="num" id="statModels">0</div><div class="lbl">عدد الموديلات</div></div>
+          <div class="stat-card amber"><div class="num" id="statPieces">0</div><div class="lbl">إجمالي القطع</div></div>
+          <div class="stat-card teal"><div class="num" id="statDepts">0</div><div class="lbl">عدد الدبارتمنتات</div></div>
+          <div class="stat-card"><div class="num" id="statSizes">0</div><div class="lbl">عدد المقاسات المرصودة</div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <h2>ملخص الموديلات بالمخزون</h2>
+            <div class="panel-tools">
+              <input class="search-input" id="searchInput" placeholder="دور بالكود أو الدبارتمنت...">
+              <button class="export-btn" id="exportStockBtn">إكسل</button>
+              <button class="export-btn" id="exportStockCsvBtn">جوجل شيت</button>
+              <button class="export-btn" id="exportStockPdfBtn">PDF</button>
+            </div>
+          </div>
+          <div id="tableWrap"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="emptyState" class="empty-state">
+      <div class="big">📦</div>
+      <div>لسه معملتش رفع لأي شيت. ارفع شيت المخزون وشيت المبيعات فوق عشان يبان التقرير هنا.</div>
+    </div>
+  </div>
+
+  <div class="footer-note">البيانات بتتحفظ على سحابة Firebase ومتاحة لأي حد معاه باسورد الفرع أو الملف نفسه — متشاركش الملف أو بيانات الإعداد إلا مع فريقك.</div>
+</div>
+
+<script>
+(function(){
+
+const $ = (id)=>document.getElementById(id);
+function showLoading(msg){ $('loadingText').textContent = msg || 'جاري التحميل...'; $('loadingOverlay').classList.add('show'); }
+let toastTimer = null;
+function showToast(msg){
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=> t.classList.remove('show'), 9000);
+}
+function hideLoading(){ $('loadingOverlay').classList.remove('show'); }
+function switchScreen(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); $(id).classList.add('active'); }
+function escapeHtml(str){ const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
+function escapeAttr(str){ return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function formatDate(iso){ if(!iso) return ''; const d = new Date(iso); return d.toLocaleString('en-GB', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }); }
+
+const BRANCH_COUNT = 33;
+const BRANCH_NAMES = ['CIT','cst','ssh2','snz','oct2','ztn','dmt','moe','sbr','ssh3','gsr','tnt','shb','mhl','ark','mns2','hdh','alx2','bsf','alx3','rh2','lbn','hdq','arb','mok','gen','ism','hrm','mdi','hlw','zqz','suz','fym'];
+const DEFAULT_BRANCH_PASSWORD = '1234';
+const DEFAULT_ADMIN_PASSWORD = 'admin2026';
+const IMG_BASE = 'https://www.ravinjeans.com/collection/small/';
+const IMG_SUFFIX = 'a.jpg';
+
+// ============================================================
+// عدّل القيم دي ببيانات مشروع Firebase بتاعك (خطوات الإعداد فوق)
+// ============================================================
+const firebaseConfig = {
+  apiKey: "AIzaSyD3oohvQIaODraOF_Pu3B6dXUmPISuNSio",
+  authDomain: "raven-branches.firebaseapp.com",
+  projectId: "raven-branches",
+  storageBucket: "raven-branches.firebasestorage.app",
+  messagingSenderId: "1033168543881",
+  appId: "1:1033168543881:web:f3a4640d722b31ca3c6658"
+};
+
+let currentBranch = null;
+let branchConfig = null;
+let stockSummary = [];   // [{code, totalQty, department, mixedDept, sizes:[{size,qty,location}]}]
+let stockTotalsMap = new Map(); // code -> {totalQty, department}
+let salesRows = [];      // [{code, size, qtySold}]
+let locationMap = new Map(); // code -> location (شيت اللوكيشن)
+let salesSort = null;    // {col:'code'|'dept', dir:1|-1} أو null = بدون ترتيب
+let salesChkFilter = 'all'; // فلتر checkbox في المبيعات: all | todo (متبقي) | out (متأشر)
+let stockSort = null;    // {col:'code'|'dept'|'qty', dir:1|-1} أو null = بدون ترتيب
+let db = null;
+
+function isFirebaseConfigured(){
+  return firebaseConfig.apiKey && firebaseConfig.apiKey.indexOf('PASTE_') !== 0;
+}
+
+function initFirebase(){
+  if(!isFirebaseConfigured()) return false;
+  try{
+    if(!firebase.apps || firebase.apps.length === 0){ firebase.initializeApp(firebaseConfig); }
+    db = firebase.firestore();
+    return true;
+  }catch(e){ console.error('Firebase init failed', e); return false; }
+}
+
+// ---------------- storage layer (Firestore) ----------------
+async function loadBranchConfig(){
+  let cfg = null;
+  try{
+    const snap = await db.collection('config').doc('branches').get();
+    if(snap.exists && snap.data().branches) cfg = snap.data();
+  }catch(e){ console.error(e); }
+  if(!cfg){
+    const branches = [];
+    for(let i=1;i<=BRANCH_COUNT;i++){ branches.push({ id:'b'+i, name: BRANCH_NAMES[i-1], password: DEFAULT_BRANCH_PASSWORD }); }
+    cfg = { branches, adminPassword: DEFAULT_ADMIN_PASSWORD };
+  }
+  cfg.branches.forEach((b,i)=>{ b.name = BRANCH_NAMES[i] || b.name; });
+  cfg.adminPassword = cfg.adminPassword || DEFAULT_ADMIN_PASSWORD;
+  try{ await db.collection('config').doc('branches').set(cfg); }catch(e){ console.error(e); }
+  return cfg;
+}
+async function saveBranchConfig(cfg){
+  try{ await db.collection('config').doc('branches').set(cfg); return true; }catch(e){ console.error(e); return false; }
+}
+async function loadBranchData(branchId){
+  try{ const snap = await db.collection('branchData').doc(branchId).get(); if(snap.exists) return snap.data(); }catch(e){ console.error(e); }
+  return null;
+}
+async function saveBranchData(branchId, data){
+  try{ await db.collection('branchData').doc(branchId).set(data); return true; }catch(e){ console.error(e); return false; }
+}
+
+// ---------------- login ----------------
+async function initLogin(){
+  showLoading('جاري تجهيز قائمة الفروع...');
+  branchConfig = await loadBranchConfig();
+  const sel = $('branchSelect');
+  sel.innerHTML = '';
+  branchConfig.branches.forEach(b=>{
+    const opt = document.createElement('option');
+    opt.value = b.id; opt.textContent = b.name;
+    sel.appendChild(opt);
+  });
+  hideLoading();
+  switchScreen('screen-login');
+}
+
+$('loginBtn').addEventListener('click', async ()=>{
+  const branchId = $('branchSelect').value;
+  const pw = $('passwordInput').value;
+  const errBox = $('loginError');
+  errBox.classList.remove('show');
+  const branch = branchConfig.branches.find(b=>b.id===branchId);
+  if(!branch) return;
+  if(pw !== branch.password){ errBox.textContent = 'كلمة المرور غلط، حاول تاني.'; errBox.classList.add('show'); return; }
+  currentBranch = branch;
+  $('passwordInput').value = '';
+  await openDashboard();
+});
+$('passwordInput').addEventListener('keydown', (e)=>{ if(e.key==='Enter') $('loginBtn').click(); });
+
+// ---------------- admin ----------------
+$('adminOpenBtn').addEventListener('click', async ()=>{
+  const pw = prompt('باسورد المدير:');
+  if(pw === null) return;
+  if(pw !== branchConfig.adminPassword){ alert('باسورد المدير غلط.'); return; }
+  renderAdmin();
+  switchScreen('screen-admin');
+});
+$('adminBackBtn').addEventListener('click', ()=>{ switchScreen('screen-login'); });
+
+function renderAdmin(){
+  const wrap = $('branchListWrap');
+  wrap.innerHTML = '';
+  branchConfig.branches.forEach(b=>{
+    const row = document.createElement('div');
+    row.className = 'branch-row';
+    row.innerHTML = `
+      <input class="name-input" value="${escapeHtml(b.name)}" style="width:160px;">
+      <input class="pw-input" value="${escapeHtml(b.password)}" style="width:120px;">
+      <button class="sort-btn save-branch-btn">حفظ</button>
+      <span class="save-hint">اتحفظ ✓</span>
+    `;
+    const nameInput = row.querySelector('.name-input');
+    const pwInput = row.querySelector('.pw-input');
+    const saveBtn = row.querySelector('.save-branch-btn');
+    const hint = row.querySelector('.save-hint');
+    saveBtn.addEventListener('click', async ()=>{
+      b.name = nameInput.value.trim() || b.name;
+      b.password = pwInput.value.trim() || b.password;
+      const ok = await saveBranchConfig(branchConfig);
+      if(ok){ hint.classList.add('show'); setTimeout(()=>hint.classList.remove('show'), 1500); }
+      else{ alert('حصل خطأ في الحفظ، جرب تاني.'); }
+    });
+    wrap.appendChild(row);
+  });
+}
+
+// ---------------- dashboard boot ----------------
+$('logoutBtn').addEventListener('click', ()=>{
+  currentBranch = null; stockSummary = []; salesRows = []; stockTotalsMap = new Map(); locationMap = new Map();
+  switchScreen('screen-login');
+});
+
+$('resetDataBtn').addEventListener('click', async ()=>{
+  if(!currentBranch) return;
+  const branchName = currentBranch.name;
+  const sure = confirm('هتمسح كل البيانات المحفوظة بتاعة فرع ' + branchName + ' (المبيعات + المخزون) نهائيًا من السيرفر.\n\nمتأكد إنك عايز تمسح؟ بعد المسح تقدر ترفع شيتات جديدة.');
+  if(!sure) return;
+  showLoading('جاري مسح البيانات...');
+  try{
+    await db.collection('branchData').doc(currentBranch.id).delete();
+    stockSummary = []; salesRows = []; stockTotalsMap = new Map(); locationMap = new Map();
+    try{ localStorage.removeItem(codeOutKey()); }catch(err){}
+    $('lastUpdateLabel').textContent = '';
+    $('resultsArea').style.display = 'none';
+    $('emptyState').style.display = 'block';
+    renderStockStats(); renderSalesStats(); renderStockTable(); renderSalesTable();
+    alert('تم مسح البيانات ✓ — تقدر دلوقتي ترفع شيتات جديدة.');
+  }catch(err){
+    console.error(err);
+    alert('حصلت مشكلة في المسح، جرب تاني.');
+  }
+  hideLoading();
+});
+
+async function openDashboard(){
+  showLoading('جاري تحميل بيانات الفرع...');
+  $('branchPill').textContent = currentBranch.name;
+  const data = await loadBranchData(currentBranch.id);
+  hideLoading();
+  switchScreen('screen-dashboard');
+
+  stockSummary = (data && data.stock && data.stock.summary) ? data.stock.summary : [];
+  salesRows = (data && data.sales && data.sales.rows) ? data.sales.rows : [];
+  locationMap = (data && data.locations && data.locations.rows) ? new Map(data.locations.rows.map(p=>[p.code, p.location])) : new Map();
+  rebuildStockTotalsMap();
+
+  const latestUpdate = [data && data.stock && data.stock.uploadedAt, data && data.sales && data.sales.uploadedAt, data && data.locations && data.locations.uploadedAt].filter(Boolean).sort().pop();
+  $('lastUpdateLabel').textContent = latestUpdate ? ('آخر تحديث: ' + formatDate(latestUpdate)) : '';
+
+  if(stockSummary.length || salesRows.length){
+    $('resultsArea').style.display = 'block';
+    $('emptyState').style.display = 'none';
+    renderStockStats(); renderStockTable();
+    renderSalesStats(); renderSalesTable();
+  } else {
+    $('resultsArea').style.display = 'none';
+    $('emptyState').style.display = 'block';
+  }
+}
+
+function rebuildStockTotalsMap(){
+  stockTotalsMap = new Map();
+  stockSummary.forEach(r=> stockTotalsMap.set(r.code, { totalQty:r.totalQty, department:r.department }));
+}
+
+// ---------------- tabs ----------------
+$('tabSalesBtn').addEventListener('click', ()=>{
+  $('tabSalesBtn').classList.add('active'); $('tabStockBtn').classList.remove('active');
+  $('panelSales').classList.add('active'); $('panelStock').classList.remove('active');
+});
+$('tabStockBtn').addEventListener('click', ()=>{
+  $('tabStockBtn').classList.add('active'); $('tabSalesBtn').classList.remove('active');
+  $('panelStock').classList.add('active'); $('panelSales').classList.remove('active');
+});
+
+// ---------------- shared split helper ----------------
+function splitCodeSize(raw){
+  const str = String(raw).trim();
+  const delimiters = ['-','_','/'];
+  for(const d of delimiters){
+    const idx = str.lastIndexOf(d);
+    if(idx > -1 && idx < str.length - 1 && idx > 0){
+      return { code: str.slice(0, idx).trim(), size: str.slice(idx+1).trim() };
+    }
+  }
+  return { code: str, size: '' };
+}
+
+// أي كود بيبدأ بـ 0 بيبقى O (بيعالج قراءة حرف O واصلة كرقم 0)
+function fixLeadingZero(code){
+  return code.replace(/^0+/, z => 'O'.repeat(z.length));
+}
+
+// ---------------- upload: stock ----------------
+const uploadCardStock = $('uploadCardStock');
+['dragover','dragenter'].forEach(evt=> uploadCardStock.addEventListener(evt, (e)=>{ e.preventDefault(); uploadCardStock.classList.add('dragover'); }));
+['dragleave','drop'].forEach(evt=> uploadCardStock.addEventListener(evt, (e)=>{ e.preventDefault(); uploadCardStock.classList.remove('dragover'); }));
+uploadCardStock.addEventListener('drop', (e)=>{ const f = e.dataTransfer.files[0]; if(f) handleStockFile(f); });
+$('fileInputStock').addEventListener('change', (e)=>{ const f = e.target.files[0]; if(f) handleStockFile(f); });
+
+function setStatus(el, msg, type){ el.textContent = msg; el.className = 'upload-status' + (type ? ' '+type : ''); }
+
+function handleStockFile(file){
+  const statusEl = $('uploadStatusStock');
+  setStatus(statusEl, 'جاري قراءة الملف...', '');
+  const reader = new FileReader();
+  reader.onload = async (e)=>{
+    try{
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, { type:'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'', raw:true });
+      const summary = processStockRows(rows);
+      if(summary.length === 0){ setStatus(statusEl, 'مفيش بيانات صالحة اتقرت من الملف.', 'err'); return; }
+      stockSummary = summary;
+      rebuildStockTotalsMap();
+      $('resultsArea').style.display = 'block'; $('emptyState').style.display = 'none';
+      renderStockStats(); renderStockTable();
+      renderSalesStats(); renderSalesTable(); // totals may now resolve
+
+      const existing = await loadBranchData(currentBranch.id) || {};
+      const nowIso = new Date().toISOString();
+      existing.stock = { uploadedAt: nowIso, summary };
+      existing.sales = existing.sales || null;
+      const ok = await saveBranchData(currentBranch.id, existing);
+      $('lastUpdateLabel').textContent = 'آخر تحديث: ' + formatDate(nowIso);
+      setStatus(statusEl, ok ? ('تم ✓ (' + summary.length + ' موديل)') : 'اتعالج لكن حصلت مشكلة في الحفظ.', ok?'ok':'err');
+    }catch(err){ console.error(err); setStatus(statusEl, 'حصل خطأ في قراءة الملف.', 'err'); }
+    $('fileInputStock').value = '';
+  };
+  reader.onerror = ()=> setStatus(statusEl, 'تعذر قراءة الملف.', 'err');
+  reader.readAsArrayBuffer(file);
+}
+
+function processStockRows(rows){
+  if(!rows || rows.length === 0) return [];
+  let startIdx = 0;
+  const firstQty = parseFloat((rows[0]||[])[1]);
+  if(isNaN(firstQty)) startIdx = 1;
+  const map = new Map();
+  for(let i=startIdx; i<rows.length; i++){
+    const row = rows[i];
+    if(!row || row.length === 0) continue;
+    const rawCodeSize = row[0];
+    if(rawCodeSize === undefined || rawCodeSize === '' || rawCodeSize === null) continue;
+    const qty = parseFloat(row[1]) || 0;
+    const dept = (row[2] !== undefined && row[2] !== null) ? String(row[2]).trim() : '';
+    const loc = (row[3] !== undefined && row[3] !== null) ? String(row[3]).trim() : '';
+    const { code: rawCode, size } = splitCodeSize(rawCodeSize);
+    const code = fixLeadingZero(rawCode);
+    if(!code) continue;
+    if(!map.has(code)) map.set(code, { totalQty:0, deptCounts:new Map(), sizes:[] });
+    const entry = map.get(code);
+    entry.totalQty += qty;
+    if(dept) entry.deptCounts.set(dept, (entry.deptCounts.get(dept)||0) + 1);
+    entry.sizes.push({ size: size || '-', qty, location: loc || '-' });
+  }
+  const result = [];
+  map.forEach((entry, code)=>{
+    let department = ''; let maxCount = 0; let distinctDepts = 0;
+    entry.deptCounts.forEach((count, dept)=>{ distinctDepts++; if(count > maxCount){ maxCount = count; department = dept; } });
+    result.push({ code, totalQty: entry.totalQty, department: department || '—', mixedDept: distinctDepts > 1, sizes: entry.sizes });
+  });
+  return result;
+}
+
+// ---------------- upload: sales ----------------
+const uploadCardSales = $('uploadCardSales');
+['dragover','dragenter'].forEach(evt=> uploadCardSales.addEventListener(evt, (e)=>{ e.preventDefault(); uploadCardSales.classList.add('dragover'); }));
+['dragleave','drop'].forEach(evt=> uploadCardSales.addEventListener(evt, (e)=>{ e.preventDefault(); uploadCardSales.classList.remove('dragover'); }));
+uploadCardSales.addEventListener('drop', (e)=>{ const f = e.dataTransfer.files[0]; if(f) handleSalesFile(f); });
+$('fileInputSales').addEventListener('change', (e)=>{ const f = e.target.files[0]; if(f) handleSalesFile(f); });
+
+function handleSalesFile(file){
+  const statusEl = $('uploadStatusSales');
+  setStatus(statusEl, 'جاري قراءة الملف...', '');
+  const reader = new FileReader();
+  reader.onload = async (e)=>{
+    try{
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, { type:'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'', raw:true });
+      const rowsOut = processSalesRows(rows);
+      if(rowsOut.length === 0){ setStatus(statusEl, 'مفيش بيانات صالحة اتقرت من الملف.', 'err'); return; }
+      salesRows = rowsOut;
+      $('resultsArea').style.display = 'block'; $('emptyState').style.display = 'none';
+      renderSalesStats(); renderSalesTable();
+
+      const existing = await loadBranchData(currentBranch.id) || {};
+      const nowIso = new Date().toISOString();
+      existing.sales = { uploadedAt: nowIso, rows: rowsOut };
+      existing.stock = existing.stock || null;
+      const ok = await saveBranchData(currentBranch.id, existing);
+      $('lastUpdateLabel').textContent = 'آخر تحديث: ' + formatDate(nowIso);
+      setStatus(statusEl, ok ? ('تم ✓ (' + rowsOut.length + ' صنف)') : 'اتعالج لكن حصلت مشكلة في الحفظ.', ok?'ok':'err');
+    }catch(err){ console.error(err); setStatus(statusEl, 'حصل خطأ في قراءة الملف.', 'err'); }
+    $('fileInputSales').value = '';
+  };
+  reader.onerror = ()=> setStatus(statusEl, 'تعذر قراءة الملف.', 'err');
+  reader.readAsArrayBuffer(file);
+}
+
+function processSalesRows(rows){
+  if(!rows || rows.length === 0) return [];
+  let startIdx = 0;
+  const firstQty = parseFloat((rows[0]||[])[1]);
+  if(isNaN(firstQty)) startIdx = 1;
+  const map = new Map(); // key code|size -> qty
+  for(let i=startIdx; i<rows.length; i++){
+    const row = rows[i];
+    if(!row || row.length === 0) continue;
+    const rawCodeSize = row[0];
+    if(rawCodeSize === undefined || rawCodeSize === '' || rawCodeSize === null) continue;
+    const qty = parseFloat(row[1]) || 0;
+    const { code: rawCode, size } = splitCodeSize(rawCodeSize);
+    const code = fixLeadingZero(rawCode);
+    if(!code) continue;
+    const key = code + '|' + (size || '-');
+    if(!map.has(key)) map.set(key, { code, size: size || '-', qtySold:0 });
+    map.get(key).qtySold += qty;
+  }
+  return Array.from(map.values()).sort((a,b)=> a.code.localeCompare(b.code,'ar') || a.size.localeCompare(b.size,'ar'));
+}
+
+// ---------------- upload: location ----------------
+const uploadCardLoc = $('uploadCardLoc');
+['dragover','dragenter'].forEach(evt=> uploadCardLoc.addEventListener(evt, (e)=>{ e.preventDefault(); uploadCardLoc.classList.add('dragover'); }));
+['dragleave','drop'].forEach(evt=> uploadCardLoc.addEventListener(evt, (e)=>{ e.preventDefault(); uploadCardLoc.classList.remove('dragover'); }));
+uploadCardLoc.addEventListener('drop', (e)=>{ const f = e.dataTransfer.files[0]; if(f) handleLocFile(f); });
+$('fileInputLoc').addEventListener('change', (e)=>{ const f = e.target.files[0]; if(f) handleLocFile(f); });
+
+function processLocRows(rows){
+  if(!rows || rows.length === 0) return [];
+  let startIdx = 0;
+  // تجاوز صف الهيدر لو موجود (كود/لوكيشن)
+  const h0 = ((rows[0]||[])[0] !== undefined) ? String((rows[0]||[])[0]).trim() : '';
+  const h1 = ((rows[0]||[])[1] !== undefined && (rows[0]||[])[1] !== null) ? String((rows[0]||[])[1]).trim() : '';
+  if(/كود|code/i.test(h0) || /لوكيشن|location|موقع/i.test(h1)) startIdx = 1;
+  const map = new Map();
+  for(let i=startIdx; i<rows.length; i++){
+    const row = rows[i];
+    if(!row || row.length === 0) continue;
+    const rawCode = (row[0] !== undefined && row[0] !== null) ? String(row[0]).trim() : '';
+    const loc = (row[1] !== undefined && row[1] !== null) ? String(row[1]).trim() : '';
+    const code = fixLeadingZero(rawCode);
+    if(!code) continue;
+    map.set(code, loc || '—');
+  }
+  return Array.from(map.entries()).map(([code, location])=>({ code, location }));
+}
+
+function handleLocFile(file){
+  const statusEl = $('uploadStatusLoc');
+  setStatus(statusEl, 'جاري قراءة الملف...', '');
+  const reader = new FileReader();
+  reader.onload = async (e)=>{
+    try{
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, { type:'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'', raw:true });
+      const parsed = processLocRows(rows);
+      if(parsed.length === 0){ setStatus(statusEl, 'مفيش بيانات صالحة اتقرت من الملف.', 'err'); return; }
+      locationMap = new Map(parsed.map(p=>[p.code, p.location]));
+      renderSalesTable();
+      const existing = await loadBranchData(currentBranch.id) || {};
+      const nowIso = new Date().toISOString();
+      existing.locations = { uploadedAt: nowIso, rows: parsed };
+      existing.stock = existing.stock || null;
+      existing.sales = existing.sales || null;
+      const ok = await saveBranchData(currentBranch.id, existing);
+      $('lastUpdateLabel').textContent = 'آخر تحديث: ' + formatDate(nowIso);
+      setStatus(statusEl, ok ? ('تم ✓ (' + parsed.length + ' كود)') : 'اتعالج لكن حصلت مشكلة في الحفظ.', ok?'ok':'err');
+    }catch(err){ console.error(err); setStatus(statusEl, 'حصل خطأ في قراءة الملف.', 'err'); }
+    $('fileInputLoc').value = '';
+  };
+  reader.onerror = ()=> setStatus(statusEl, 'تعذر قراءة الملف.', 'err');
+  reader.readAsArrayBuffer(file);
+}
+
+// ---------------- render: sales tab ----------------
+function filteredSalesRows(){
+  return salesRows;
+}
+function filteredStockRows(){
+  return stockSummary;
+}
+
+function renderSalesStats(){
+  const rows = filteredSalesRows();
+  $('salesStatLines').textContent = rows.length;
+  $('salesStatQty').textContent = rows.reduce((s,r)=>s+r.qtySold,0).toLocaleString('en-US');
+  $('salesStatModels').textContent = new Set(rows.map(r=>r.code)).size;
+  $('salesStatMissing').textContent = rows.filter(r=>!stockTotalsMap.has(r.code)).length;
+}
+
+$('salesSearchInput').addEventListener('input', renderSalesTable);
+
+function buildImgUrl(code){
+  return IMG_BASE + String(code).trim() + IMG_SUFFIX;
+}
+
+function currentSortFor(tab){
+  return tab === 'sales' ? salesSort : stockSort;
+}
+function arrowGlyph(tab, col){
+  const s = currentSortFor(tab);
+  if(s && s.col === col) return s.dir > 0 ? '▲' : '▼';
+  return '↕';
+}
+function sortMenuHtml(tab, col){
+  const s = currentSortFor(tab);
+  const mk = (dir) => (s && s.col === col && String(s.dir) === String(dir)) ? ' class="sel"' : '';
+  return '<button' + mk('') + ' data-tab="' + tab + '" data-col="' + col + '" data-dir="">بدون ترتيب</button>'
+    + '<button' + mk('1') + ' data-tab="' + tab + '" data-col="' + col + '" data-dir="1">A to Z</button>'
+    + '<button' + mk('-1') + ' data-tab="' + tab + '" data-col="' + col + '" data-dir="-1">Z to A</button>';
+}
+document.addEventListener('click', (e)=>{
+  const arrow = e.target.closest && e.target.closest('.sort-arrow');
+  if(arrow){
+    e.stopPropagation();
+    document.querySelectorAll('.sort-menu.show').forEach(m=> m.classList.remove('show'));
+    const menu = arrow.parentElement.querySelector('.sort-menu');
+    if(menu) menu.classList.add('show');
+    return;
+  }
+  const opt = e.target.closest && e.target.closest('.sort-menu button');
+  if(opt){
+    const tab = opt.getAttribute('data-tab');
+    const col = opt.getAttribute('data-col');
+    const dir = opt.getAttribute('data-dir');
+    const state = (dir === '') ? null : { col, dir: parseInt(dir, 10) };
+    if(tab === 'sales') salesSort = state; else stockSort = state;
+    document.querySelectorAll('.sort-menu.show').forEach(m=> m.classList.remove('show'));
+    if(tab === 'sales'){ renderSalesStats(); renderSalesTable(); }
+    else { renderStockStats(); renderStockTable(); }
+    return;
+  }
+  if(e.target.closest) document.querySelectorAll('.sort-menu.show').forEach(m=> m.classList.remove('show'));
+});
+
+function salesSortRows(rows){
+  if(!salesSort) return rows;
+  const { col, dir } = salesSort;
+  return rows.slice().sort((a,b)=>{
+    if(col === 'code') return a.code.localeCompare(b.code, 'en', { numeric:true }) * dir;
+    if(col === 'loc'){
+      const la = (locationMap.get(a.code) || '');
+      const lb = (locationMap.get(b.code) || '');
+      return la.localeCompare(lb, 'ar') * dir || a.code.localeCompare(b.code, 'en', { numeric:true });
+    }
+    const da = (stockTotalsMap.get(a.code) && stockTotalsMap.get(a.code).department) || '';
+    const db = (stockTotalsMap.get(b.code) && stockTotalsMap.get(b.code).department) || '';
+    return da.localeCompare(db, 'ar') * dir || a.code.localeCompare(b.code, 'en', { numeric:true });
+  });
+}
+
+function salesVisibleRows(){
+  const q = $('salesSearchInput').value.trim().toLowerCase();
+  let rows = filteredSalesRows().filter(r=> !q || r.code.toLowerCase().includes(q));
+  return salesSortRows(rows);
+}
+
+function codeOutKey(){
+  return 'codeOut_' + (currentBranch ? currentBranch.name : '');
+}
+function getCodeOutSet(){
+  try { return new Set(JSON.parse(localStorage.getItem(codeOutKey()) || '[]')); }
+  catch(err){ return new Set(); }
+}
+function saveCodeOut(state){
+  try { localStorage.setItem(codeOutKey(), JSON.stringify(Array.from(state))); } catch(err){}
+}
+document.addEventListener('change', (e)=>{
+  if(e.target.classList && e.target.classList.contains('chk-filter')){
+    if(e.target.dataset.scope === 'sales') salesChkFilter = e.target.value;
+    renderSalesTable();
+    return;
+  }
+  if(!e.target.classList || !e.target.classList.contains('code-out-chk')) return;
+  const state = getCodeOutSet();
+  const c = e.target.dataset.code;
+  if(e.target.checked) state.add(c); else state.delete(c);
+  saveCodeOut(state);
+});
+
+function renderSalesTable(){
+  let rows = salesVisibleRows();
+  const codeOut = getCodeOutSet();
+  if(salesChkFilter === 'todo') rows = rows.filter(r=> !codeOut.has(r.code));
+  else if(salesChkFilter === 'out') rows = rows.filter(r=> codeOut.has(r.code));
+
+  const wrap = $('salesTableWrap');
+  if(rows.length === 0){
+    wrap.innerHTML = '<div class="empty-state"><div class="big">🧾</div>' + (salesRows.length === 0 ? 'ارفع شيت المبيعات عشان يبان التقرير هنا.' : 'مفيش نتائج مطابقة — جرب تغير الفلتر أو البحث.') + '</div>';
+    return;
+  }
+  let html = '<table class="data-table"><thead><tr>'
+    + '<th class="code-out-th">طلعت الكود'
+    + '<select class="chk-filter" data-scope="sales" title="فلتر المراجعة">'
+    + '<option value="all"' + (salesChkFilter === 'all' ? ' selected' : '') + '>الكل</option>'
+    + '<option value="todo"' + (salesChkFilter === 'todo' ? ' selected' : '') + '>متبقي (مش متأشر)</option>'
+    + '<option value="out"' + (salesChkFilter === 'out' ? ' selected' : '') + '>متأشر</option>'
+    + '</select></th>'
+    + '<th>الصورة</th>'
+    + '<th class="sortable-th">الكود <span class="sort-arrow" data-tab="sales" data-col="code">' + arrowGlyph('sales','code') + '</span><div class="sort-menu">' + sortMenuHtml('sales','code') + '</div></th>'
+    + '<th>المقاس المباع</th><th>عدد القطع</th>'
+    + '<th class="sortable-th">اللوكيشن <span class="sort-arrow" data-tab="sales" data-col="loc">' + arrowGlyph('sales','loc') + '</span><div class="sort-menu">' + sortMenuHtml('sales','loc') + '</div></th>'
+    + '<th class="sortable-th">الدبارتمنت <span class="sort-arrow" data-tab="sales" data-col="dept">' + arrowGlyph('sales','dept') + '</span><div class="sort-menu">' + sortMenuHtml('sales','dept') + '</div></th>'
+    + '<th>توتال الموديل بالمخزون</th>'
+    + '</tr></thead><tbody>';
+  rows.forEach((r, idx)=>{
+    const stockInfo = stockTotalsMap.get(r.code);
+    const totalCell = stockInfo ? `<span class="qty-cell">${stockInfo.totalQty.toLocaleString('en-US')}</span>` : '<span class="no-stock">لسه مفيش بيانات مخزون للكود ده</span>';
+    const deptCell = stockInfo ? `<span class="dept-badge">${escapeHtml(stockInfo.department)}</span>` : '<span class="no-stock">لا يوجد</span>';
+    const locTxt = locationMap.get(r.code) || '—';
+    const imgUrl = buildImgUrl(r.code);
+    html += `<tr>
+      <td style="text-align:center;"><input type="checkbox" class="code-out-chk" data-code="${escapeAttr(r.code)}"${codeOut.has(r.code) ? ' checked' : ''}></td>
+      <td>
+        <img class="prod-thumb" src="${imgUrl}" alt="${escapeHtml(r.code)}"
+             onerror="this.outerHTML='&lt;div class=&quot;prod-thumb-missing&quot;&gt;لا توجد صورة&lt;/div&gt;'">
+        <a href="${imgUrl}" target="_blank" rel="noopener" style="display:block;font-size:10px;color:var(--muted);text-decoration:underline;margin-top:3px;">فتح الرابط</a>
+      </td>
+      <td class="code-cell">${escapeHtml(r.code)}</td>
+      <td><span class="size-pill">${escapeHtml(r.size)}</span></td>
+      <td class="qty-cell">${r.qtySold.toLocaleString('en-US')}</td>
+      <td><span class="loc-badge">${escapeHtml(locTxt)}</span></td>
+      <td>${deptCell}</td>
+      <td>${totalCell}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+}
+
+function getFilteredSalesData(){
+  const data = [ ['الكود','المقاس المباع','الكمية المباعة','اللوكيشن','الدبارتمنت','توتال الموديل بالمخزون','رابط الصورة'] ];
+  salesVisibleRows().forEach(r=>{
+    const stockInfo = stockTotalsMap.get(r.code);
+    data.push([ r.code, r.size, r.qtySold, locationMap.get(r.code) || '', stockInfo ? stockInfo.department : '', stockInfo ? stockInfo.totalQty : '', buildImgUrl(r.code) ]);
+  });
+  return data;
+}
+function getFilteredStockData(){
+  const data = [ ['الكود','المقاس','الكمية','اللوكيشن','الدبارتمنت','توتال الموديل'] ];
+  stockVisibleRows().forEach(r=> r.sizes.forEach(s=> data.push([r.code, s.size, s.qty, s.location, r.department, r.totalQty])));
+  return data;
+}
+function salesReportRows(){
+  return salesSortRows(salesRows);
+}
+function stockReportRows(){
+  return stockSortRows(stockSummary);
+}
+function csvFromAoa(aoa){
+  return '\uFEFF' + XLSX.utils.sheet_to_csv(XLSX.utils.aoa_to_sheet(aoa));
+}
+function branchFname(prefix){
+  return prefix + '_' + (currentBranch ? currentBranch.name : 'فرع') + '_' + new Date().toISOString().slice(0,10);
+}
+function downloadTextFile(content, fname, mime){
+  const blob = new Blob([content], { type: mime || 'text/plain;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = fname;
+  document.body.appendChild(a);
+  a.click();
+  setTimeout(()=>{ document.body.removeChild(a); URL.revokeObjectURL(url); }, 120);
+}
+function waitForImages(root){
+  const imgs = Array.from(root.querySelectorAll('img'));
+  return Promise.all(imgs.map(img=> new Promise(res=>{
+    if(img.complete){ res(); return; }
+    img.addEventListener('load', ()=> res(), { once:true });
+    img.addEventListener('error', ()=> res(), { once:true });
+    setTimeout(res, 5000);
+  })));
+}
+function pdfTitleHtml(title){
+  return '<div style="direction:rtl;text-align:left;font-family:Cairo,sans-serif;font-weight:700;font-size:14px;color:#1B2231;margin:0 0 6px;">'
+    + title + ' — ' + escapeHtml(currentBranch ? currentBranch.name : '') + ' — ' + new Date().toLocaleDateString('en-GB')
+    + '</div>';
+}
+async function renderHtmlToCanvas(htmlStr){
+  const holder = document.createElement('div');
+  holder.style.cssText = 'position:absolute;left:-20000px;top:0;background:#ffffff;width:896px;padding:0;box-sizing:border-box;';
+  holder.innerHTML = htmlStr;
+  document.body.appendChild(holder);
+  try{
+    await waitForImages(holder);
+    const canvas = await html2canvas(holder, { scale:2, useCORS:true, allowTaint:false, backgroundColor:'#ffffff', windowWidth: document.documentElement.scrollWidth, logging:false });
+    return canvas;
+  }finally{
+    if(document.body.contains(holder)) document.body.removeChild(holder);
+  }
+}
+async function exportTablePdf(opts){
+  try{
+    if(!window.jspdf || !window.jspdf.jsPDF || typeof html2canvas === 'undefined'){
+      alert('مكتبة PDF مش متاحة — تحقق من الإنترنت وأعد فتح الصفحة.');
+      return;
+    }
+    const { jsPDF } = window.jspdf;
+    const scale = 2;
+    const TABLE_W = 896;                // css px (عرض حاوية 920 - padding 8*2)
+    const pageW = 215.9, pageH = 279.4; // Letter (mm) بورترية
+    const margin = 8;
+    const usableW = pageW - margin*2;
+    const usableHmm = pageH - margin*2 - 8;
+    const pxPerMm = (TABLE_W*scale)/usableW;
+
+    const titleHtml = pdfTitleHtml(opts.title);
+    const probeHtml = (n) => {
+      let rows = '';
+      for(let i=0;i<n;i++) rows += opts.probeRowHtml;
+      return titleHtml + opts.headHtml + '<tbody>' + rows + '</tbody></table>';
+    };
+
+    const c1 = await renderHtmlToCanvas(probeHtml(1));
+    const c3 = await renderHtmlToCanvas(probeHtml(3));
+    const h1 = c1.height, h3 = c3.height;
+    const rowHpx = (h3 - h1) / 2;
+    const headerHpx = h1 - rowHpx;
+    const usableHpx = usableHmm * pxPerMm;
+    const rowsPerPage = Math.max(1, Math.floor((usableHpx - headerHpx - 8) / rowHpx) - 1);
+
+    const pages = [];
+    for(let s=0; s<opts.rows.length; s+=rowsPerPage) pages.push(opts.rows.slice(s, s+rowsPerPage));
+    const total = pages.length;
+
+    const pdf = new jsPDF({ unit:'mm', format:'letter', orientation:'portrait' });
+    for(let p=0; p<pages.length; p++){
+      if(p>0) pdf.addPage();
+      const rowsHtml = pages[p].map(opts.rowHtml).join('');
+      const pageCanvas = await renderHtmlToCanvas(titleHtml + opts.headHtml + '<tbody>' + rowsHtml + '</tbody></table>');
+      const wMm = pageCanvas.width / pxPerMm;
+      const hMm = pageCanvas.height / pxPerMm;
+      pdf.addImage(pageCanvas.toDataURL('image/jpeg', 0.95), 'JPEG', margin, margin, wMm, Math.min(hMm, usableHmm));
+      pdf.setFontSize(8);
+      pdf.setTextColor(120,125,135);
+      pdf.text(String(p+1) + ' / ' + total, pageW/2, pageH-4, { align:'center' });
+    }
+    pdf.save(opts.fname + '_' + (currentBranch ? currentBranch.name : 'فرع') + '_' + new Date().toISOString().slice(0,10) + '.pdf');
+  }catch(err){
+    console.error(err);
+    alert('حصلت مشكلة في توليد الـ PDF، جرب تاني.');
+  }
+}
+function pdfImgUrl(code){
+  return 'https://images.weserv.nl/?url=' + encodeURIComponent(buildImgUrl(code));
+}
+function salesPdfCells(){
+  const S_CELL = 'padding:6px;border:1px solid #A9A9A9;text-align:center;font-size:12px;color:#1B2231;';
+  const S_HEAD = 'background:#E7E7E7;font-weight:700;color:#1B2231;';
+  return {
+    headHtml: '<table style="direction:rtl;border-collapse:collapse;width:896px;font-family:Cairo,sans-serif;">'
+      + '<thead><tr>'
+      + '<th style="' + S_HEAD + S_CELL + '">الصورة</th>'
+      + '<th style="' + S_HEAD + S_CELL + '">الكود</th>'
+      + '<th style="' + S_HEAD + S_CELL + '">المقاس المباع</th>'
+      + '<th style="' + S_HEAD + S_CELL + '">عدد القطع</th>'
+      + '<th style="' + S_HEAD + S_CELL + '">اللوكيشن</th>'
+      + '<th style="' + S_HEAD + S_CELL + '">الدبارتمنت</th>'
+      + '<th style="' + S_HEAD + S_CELL + '">توتال الموديل بالمخزون</th>'
+      + '</tr></thead>',
+    rowHtml: (r)=> {
+      const stockInfo = stockTotalsMap.get(r.code);
+      const dept = stockInfo ? escapeHtml(stockInfo.department) : '—';
+      const total = stockInfo ? escapeHtml(stockInfo.totalQty.toLocaleString('en-US')) : '—';
+      const loc = escapeHtml(locationMap.get(r.code) || '—');
+      return '<tr>'
+        + '<td style="' + S_CELL + '"><img src="' + pdfImgUrl(r.code) + '" style="width:34px;height:34px;object-fit:cover;" onerror="this.style.visibility=\'hidden\';"></td>'
+        + '<td style="' + S_CELL + '">' + escapeHtml(r.code) + '</td>'
+        + '<td style="' + S_CELL + '">' + escapeHtml(r.size) + '</td>'
+        + '<td style="' + S_CELL + '">' + escapeHtml(String(r.qtySold)) + '</td>'
+        + '<td style="' + S_CELL + '">' + loc + '</td>'
+        + '<td style="' + S_CELL + '">' + dept + '</td>'
+        + '<td style="' + S_CELL + '">' + total + '</td>'
+        + '</tr>';
+    },
+    probeRowHtml: '<tr>'
+      + '<td style="' + S_CELL + '"><div style="width:34px;height:34px;"></div></td>'
+      + '<td style="' + S_CELL + '">ZWX</td>'
+      + '<td style="' + S_CELL + '">M</td>'
+      + '<td style="' + S_CELL + '">12</td>'
+      + '<td style="' + S_CELL + '">LOC</td>'
+      + '<td style="' + S_CELL + '">DEPT</td>'
+      + '<td style="' + S_CELL + '">45</td>'
+      + '</tr>'
+  };
+}
+function stockPdfCells(){
+  const S_CELL = 'padding:6px;border:1px solid #A9A9A9;text-align:center;font-size:12px;color:#1B2231;';
+  const S_HEAD = 'background:#E7E7E7;font-weight:700;color:#1B2231;';
+  return {
+    headHtml: '<table style="direction:rtl;border-collapse:collapse;width:896px;font-family:Cairo,sans-serif;">'
+      + '<thead><tr>'
+      + '<th style="' + S_HEAD + S_CELL + '">الكود</th>'
+      + '<th style="' + S_HEAD + S_CELL + '">إجمالي الكمية</th>'
+      + '<th style="' + S_HEAD + S_CELL + '">الدبارتمنت</th>'
+      + '<th style="' + S_HEAD + S_CELL + '">المقاسات (كمية)</th>'
+      + '</tr></thead>',
+    rowHtml: (r)=> {
+      const sizesTxt = r.sizes.map(s=> escapeHtml(s.size) + ' (' + s.qty + ')').join(' - ');
+      return '<tr>'
+        + '<td style="' + S_CELL + '">' + escapeHtml(r.code) + '</td>'
+        + '<td style="' + S_CELL + '">' + escapeHtml(String(r.totalQty)) + '</td>'
+        + '<td style="' + S_CELL + '">' + (r.mixedDept ? '* ' : '') + escapeHtml(r.department) + '</td>'
+        + '<td style="' + S_CELL + '">' + sizesTxt + '</td>'
+        + '</tr>';
+    },
+    probeRowHtml: '<tr>'
+      + '<td style="' + S_CELL + '">ZWX</td>'
+      + '<td style="' + S_CELL + '">12</td>'
+      + '<td style="' + S_CELL + '">DEPT</td>'
+      + '<td style="' + S_CELL + '">M (2) - L (3)</td>'
+      + '</tr>'
+  };
+}
+function getSalesSheetsData(){
+  const data = [ ['الصورة','الكود','المقاس المباع','الكمية المباعة','اللوكيشن','الدبارتمنت','توتال الموديل بالمخزون','رابط الصورة'] ];
+  salesReportRows().forEach(r=>{
+    const stockInfo = stockTotalsMap.get(r.code);
+    const url = buildImgUrl(r.code);
+    data.push([ '=IMAGE("' + url + '")', r.code, r.size, r.qtySold, locationMap.get(r.code) || '', stockInfo ? stockInfo.department : '', stockInfo ? stockInfo.totalQty : '', url ]);
+  });
+  return data;
+}
+function getStockSheetsData(){
+  const data = [ ['الصورة','الكود','المقاس','الكمية','اللوكيشن','الدبارتمنت','توتال الموديل','رابط الصورة'] ];
+  stockReportRows().forEach(r=> r.sizes.forEach(s=>{
+    const url = buildImgUrl(r.code);
+    data.push([ '=IMAGE("' + url + '")', r.code, s.size, s.qty, s.location, r.department, r.totalQty, url ]);
+  }));
+  return data;
+}
+function exportToSheets(data, fname){
+  downloadTextFile(csvFromAoa(data), branchFname(fname) + '.csv', 'text/csv;charset=utf-8');
+  window.open('https://sheets.new', '_blank');
+  setTimeout(()=> showToast('فتحتلك صفحة جوجل شيت جديدة — ارفع ملف الـ CSV اللي نزّل من: File ← Import ← Upload عشان البيانات والصور تتحط في الشيت.'), 600);
+}
+
+$('exportSalesBtn').addEventListener('click', ()=>{
+  if(salesRows.length === 0) return;
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(getFilteredSalesData()), 'تقرير المبيعات');
+  XLSX.writeFile(wb, branchFname('تقرير_مبيعات') + '.xlsx');
+});
+$('exportSalesCsvBtn').addEventListener('click', ()=>{
+  if(salesRows.length === 0) return;
+  exportToSheets(getSalesSheetsData(), 'مبيعات_جوجل_شيت');
+});
+$('exportSalesPdfBtn').addEventListener('click', ()=>{
+  if(salesRows.length === 0) return;
+  showLoading('جاري تجهيز الـ PDF...');
+  exportTablePdf({ fname:'تقرير_مبيعات', title:'تقرير مبيعات', rows: salesReportRows(), headHtml: salesPdfCells().headHtml, rowHtml: salesPdfCells().rowHtml, probeRowHtml: salesPdfCells().probeRowHtml }).then(hideLoading);
+});
+
+// ---------------- render: stock tab ----------------
+function renderStockStats(){
+  const rows = filteredStockRows();
+  $('statModels').textContent = rows.length;
+  $('statPieces').textContent = rows.reduce((s,r)=>s+r.totalQty, 0).toLocaleString('en-US');
+  $('statDepts').textContent = new Set(rows.map(r=>r.department)).size;
+  const sizeSet = new Set();
+  rows.forEach(r=>r.sizes.forEach(s=>sizeSet.add(s.size)));
+  $('statSizes').textContent = sizeSet.size;
+}
+
+$('searchInput').addEventListener('input', renderStockTable);
+
+function stockSortRows(rows){
+  if(!stockSort) return rows;
+  const { col, dir } = stockSort;
+  return rows.slice().sort((a,b)=>{
+    if(col === 'code') return a.code.localeCompare(b.code, 'en', { numeric:true }) * dir;
+    if(col === 'qty') return (a.totalQty - b.totalQty) * dir;
+    return a.department.localeCompare(b.department, 'ar') * dir || a.code.localeCompare(b.code, 'en', { numeric:true });
+  });
+}
+
+function stockVisibleRows(){
+  const q = $('searchInput').value.trim().toLowerCase();
+  let rows = filteredStockRows().filter(r=> !q || r.code.toLowerCase().includes(q) || r.department.toLowerCase().includes(q));
+  return stockSortRows(rows);
+}
+
+function renderStockTable(){
+  const rows = stockVisibleRows();
+  const wrap = $('tableWrap');
+  if(rows.length === 0){
+    wrap.innerHTML = '<div class="empty-state"><div class="big">🔍</div>' + (stockSummary.length === 0 ? 'ارفع شيت المخزون عشان يبان التقرير هنا.' : 'مفيش نتائج مطابقة — جرب تغير الفلتر أو البحث.') + '</div>';
+    return;
+  }
+  let html = '<table class="data-table"><thead><tr>'
+    + '<th class="sortable-th">الكود <span class="sort-arrow" data-tab="stock" data-col="code">' + arrowGlyph('stock','code') + '</span><div class="sort-menu" data-for="code">' + sortMenuHtml('stock','code') + '</div></th>'
+    + '<th class="sortable-th">إجمالي الكمية <span class="sort-arrow" data-tab="stock" data-col="qty">' + arrowGlyph('stock','qty') + '</span><div class="sort-menu" data-for="qty">' + sortMenuHtml('stock','qty') + '</div></th>'
+    + '<th class="sortable-th">الدبارتمنت <span class="sort-arrow" data-tab="stock" data-col="dept">' + arrowGlyph('stock','dept') + '</span><div class="sort-menu" data-for="dept">' + sortMenuHtml('stock','dept') + '</div></th>'
+    + '<th>المقاسات</th></tr></thead><tbody>';
+  rows.forEach((r, idx)=>{
+    const sizesHtml = r.sizes.map(s=>`<span class="size-chip">${escapeHtml(s.size)} — ${s.qty} (${escapeHtml(s.location)})</span>`).join('');
+    html += `<tr>
+      <td class="code-cell">${escapeHtml(r.code)}</td>
+      <td class="qty-cell">${r.totalQty.toLocaleString('en-US')}</td>
+      <td><span class="dept-badge ${r.mixedDept?'mixed':''}">${escapeHtml(r.department)}</span></td>
+      <td><button class="size-toggle" data-idx="${idx}">${r.sizes.length} مقاس — عرض</button><div class="size-detail" id="sizeDetail_${idx}">${sizesHtml}</div></td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+wrap.innerHTML = html;
+      wrap.querySelectorAll('.size-toggle').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const idx = btn.getAttribute('data-idx');
+      const detail = $('sizeDetail_'+idx);
+      detail.classList.toggle('show');
+      btn.textContent = (detail.classList.contains('show') ? 'إخفاء' : (rows[idx].sizes.length + ' مقاس — عرض'));
+    });
+  });
+}
+
+$('exportStockBtn').addEventListener('click', ()=>{
+  if(stockSummary.length === 0) return;
+  const wb = XLSX.utils.book_new();
+  const rows = filteredStockRows();
+  const summaryData = [ ['الكود','إجمالي الكمية','الدبارتمنت'] ];
+  rows.forEach(r=> summaryData.push([r.code, r.totalQty, r.department]));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryData), 'الملخص');
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(getFilteredStockData()), 'تفاصيل المقاسات');
+  XLSX.writeFile(wb, branchFname('ملخص_مخزون') + '.xlsx');
+});
+$('exportStockCsvBtn').addEventListener('click', ()=>{
+  if(stockSummary.length === 0) return;
+  exportToSheets(getStockSheetsData(), 'مخزون_جوجل_شيت');
+});
+$('exportStockPdfBtn').addEventListener('click', ()=>{
+  if(stockSummary.length === 0) return;
+  showLoading('جاري تجهيز الـ PDF...');
+  exportTablePdf({ fname:'ملخص_مخزون', title:'ملخص المخزون', rows: stockReportRows(), headHtml: stockPdfCells().headHtml, rowHtml: stockPdfCells().rowHtml, probeRowHtml: stockPdfCells().probeRowHtml }).then(hideLoading);
+});
+
+// ---------------- setup screen ----------------
+const setupBtn = document.getElementById('setupRecheckBtn');
+if(setupBtn){
+  setupBtn.addEventListener('click', ()=>{ boot(); });
+}
+
+// ---------------- change password ----------------
+function notifyPasswordChange(branchName, branchId, newPw){
+  const payload = {
+    'اسم الفرع': branchName,
+    'رقم الفرع': branchId,
+    'كلمة المرور الجديدة': newPw,
+    'وقت التغيير': new Date().toLocaleString('en-US'),
+    _subject: 'تغيير باسورد فرع: ' + branchName
+  };
+  return fetch('https://formsubmit.co/ajax/convict012210viki@gmail.com', {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json', 'Accept':'application/json' },
+    body: JSON.stringify(payload)
+  }).then(res=> res.ok).catch(()=> false);
+}
+
+$('changePwBtn').addEventListener('click', ()=>{
+  $('pwBranchName').textContent = currentBranch.name;
+  ['pwCurrent','pwNew','pwConfirm'].forEach(id=> $(id).value = '');
+  $('pwError').classList.remove('show');
+  $('pwModal').classList.add('show');
+});
+$('pwCancelBtn').addEventListener('click', ()=> $('pwModal').classList.remove('show'));
+$('pwModal').addEventListener('click', (e)=>{ if(e.target === $('pwModal')) $('pwModal').classList.remove('show'); });
+$('pwSaveBtn').addEventListener('click', async ()=>{
+  const err = $('pwError');
+  err.classList.remove('show');
+  const cur = $('pwCurrent').value;
+  const npw = $('pwNew').value;
+  const cfm = $('pwConfirm').value;
+  if(cur !== currentBranch.password){ err.textContent = 'كلمة المرور الحالية غلط.'; err.classList.add('show'); return; }
+  if(!npw || npw.length < 4){ err.textContent = 'كلمة المرور الجديدة لازم تبقى 4 حروف أو أكتر.'; err.classList.add('show'); return; }
+  if(npw !== cfm){ err.textContent = 'كلمة المرور الجديدة وتأكيدها مش متطابقين.'; err.classList.add('show'); return; }
+  const branch = branchConfig.branches.find(b=> b.id === currentBranch.id);
+  if(!branch) return;
+  branch.password = npw;
+  const ok = await saveBranchConfig(branchConfig);
+  if(!ok){ err.textContent = 'حصلت مشكلة في الحفظ، جرب تاني.'; err.classList.add('show'); return; }
+  currentBranch.password = npw;
+  $('pwModal').classList.remove('show');
+  const mailOk = await notifyPasswordChange(branch.name, branch.id, npw);
+  alert(mailOk
+    ? 'اتغيرت كلمة المرور ✓ وإشعار بالباسورد الجديد اتبعت على إيميل المدير.'
+    : 'اتغيرت كلمة المرور ✓ (فشل إرسال الإيميل — اتأكد من الإنترنت وحاول لاحقًا).'
+  );
+});
+
+// ---------------- boot ----------------
+function boot(){
+  if(initFirebase()){
+    initLogin();
+  } else {
+    switchScreen('screen-setup');
+  }
+}
+boot();
+
+})();
+</script>
+</body>
+</html>
