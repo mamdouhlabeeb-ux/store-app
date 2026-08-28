@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>نظام متابعة المخزون والمبيعات - الفروع</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icon-180.png">
+<meta name="theme-color" content="#1B2231">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="المخزون والمبيعات">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -114,6 +122,8 @@ input, select{
 .topbar-actions{ display:flex; align-items:center; gap:14px; }
 .link-btn{ background:transparent; color:#CFCABB; font-size:13.5px; text-decoration:underline; }
 .link-btn.danger{ color:#FF9C9C; }
+.link-btn.install{ color:var(--amber); border:1px solid rgba(217,164,65,.45); padding:5px 12px; border-radius:8px; text-decoration:none; font-weight:700; font-family:'Cairo',sans-serif; font-size:13px; }
+.link-btn.install:hover{ background:rgba(217,164,65,.14); }
 
 .container{ max-width:1180px; margin:0 auto; padding:26px 20px 60px; }
 
@@ -383,6 +393,7 @@ service cloud.firestore {
     </div>
     <div class="topbar-actions">
       <span id="lastUpdateLabel" style="font-size:12.5px;color:#B9BAB0;"></span>
+      <button class="link-btn install" id="installBtn" style="display:none;">تثبيت التطبيق</button>
       <button class="link-btn" id="changePwBtn">تغيير كلمة المرور</button>
       <button class="link-btn danger" id="resetDataBtn">مسح البيانات</button>
       <button class="link-btn" id="logoutBtn">تسجيل خروج</button>
@@ -1431,6 +1442,36 @@ function boot(){
   }
 }
 boot();
+
+// ---------------- PWA / تثبيت التطبيق ----------------
+let deferredPrompt = null;
+window.addEventListener('beforeinstallprompt', (e)=>{
+  e.preventDefault();
+  deferredPrompt = e;
+  const b = $('installBtn');
+  if(b) b.style.display = 'inline-block';
+});
+$('installBtn').addEventListener('click', async ()=>{
+  if(deferredPrompt){
+    deferredPrompt.prompt();
+    await deferredPrompt.userChoice;
+    deferredPrompt = null;
+    $('installBtn').style.display = 'none';
+  } else {
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const isAndroid = /android/i.test(navigator.userAgent);
+    if(isIOS){
+      alert('من متصفح Safari: دوس على أيقونة المشاركة ↑ بعدين اختار "إضافة إلى الشاشة الرئيسية" (Add to Home Screen).');
+    } else if(isAndroid){
+      alert('من متصفح Chrome: افتح قائمة ⋮ بعدين دوس "تثبيت التطبيق" أو "إضافة إلى الشاشة الرئيسية".');
+    } else {
+      alert('من المتصفح: استخدم خيار "تثبيت" أو "Add to Home Screen" من قائمة المتصفح.');
+    }
+  }
+});
+if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')){
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
+}
 
 })();
 </script>
