@@ -984,19 +984,34 @@ document.addEventListener('click', (e)=>{
   if(e.target.closest) document.querySelectorAll('.sort-menu.show').forEach(m=> m.classList.remove('show'));
 });
 
+function emptyRank(v){
+  const s = (v == null ? '' : String(v)).trim();
+  if(s === '') return 2;            // فاضي → آخر القائمة دائمًا
+  if(/^0+$/.test(s)) return 1;      // صفر/أصفار → قبله
+  return 0;                         // قيمة عادية
+}
+function compareBlankLast(a, b, dir, locale, numericOpt){
+  const ra = emptyRank(a), rb = emptyRank(b);
+  if(ra !== rb) return ra > rb ? 1 : -1;
+  if(ra === 2) return 0;
+  if(ra === 0 && typeof a === 'number' && typeof b === 'number' && !numericOpt) return (a - b) * dir;
+  const opts = numericOpt ? { numeric:true } : undefined;
+  return String(a).localeCompare(String(b), locale, opts) * dir;
+}
+
 function salesSortRows(rows){
   if(!salesSort) return rows;
   const { col, dir } = salesSort;
   return rows.slice().sort((a,b)=>{
-    if(col === 'code') return a.code.localeCompare(b.code, 'en', { numeric:true }) * dir;
+    if(col === 'code') return compareBlankLast(a.code, b.code, dir, 'en', true);
     if(col === 'loc'){
       const la = (locationMap.get(a.code) || '');
       const lb = (locationMap.get(b.code) || '');
-      return la.localeCompare(lb, 'ar') * dir || a.code.localeCompare(b.code, 'en', { numeric:true });
+      return compareBlankLast(la, lb, dir, 'ar') || compareBlankLast(a.code, b.code, dir, 'en', true);
     }
     const da = (stockTotalsMap.get(a.code) && stockTotalsMap.get(a.code).department) || '';
     const db = (stockTotalsMap.get(b.code) && stockTotalsMap.get(b.code).department) || '';
-    return da.localeCompare(db, 'ar') * dir || a.code.localeCompare(b.code, 'en', { numeric:true });
+    return compareBlankLast(da, db, dir, 'ar') || compareBlankLast(a.code, b.code, dir, 'en', true);
   });
 }
 
@@ -1355,9 +1370,9 @@ function stockSortRows(rows){
   if(!stockSort) return rows;
   const { col, dir } = stockSort;
   return rows.slice().sort((a,b)=>{
-    if(col === 'code') return a.code.localeCompare(b.code, 'en', { numeric:true }) * dir;
-    if(col === 'qty') return (a.totalQty - b.totalQty) * dir;
-    return a.department.localeCompare(b.department, 'ar') * dir || a.code.localeCompare(b.code, 'en', { numeric:true });
+    if(col === 'code') return compareBlankLast(a.code, b.code, dir, 'en', true);
+    if(col === 'qty') return compareBlankLast(a.totalQty, b.totalQty, dir, 'ar');
+    return compareBlankLast(a.department, b.department, dir, 'ar') || compareBlankLast(a.code, b.code, dir, 'en', true);
   });
 }
 
