@@ -211,7 +211,7 @@ th.code-out-th{ width:96px; text-align:center; }
 @keyframes spin{ to{ transform:rotate(360deg);} }
 .modal-overlay{ position:fixed; inset:0; background:rgba(27,34,49,.55); z-index:60; display:none; align-items:center; justify-content:center; padding:20px; }
 .modal-overlay.show{ display:flex; }
-.modal-card{ background:var(--paper-card); border-radius:16px; padding:24px; width:100%; max-width:380px; display:flex; flex-direction:column; gap:14px; box-shadow:0 20px 60px rgba(27,34,49,.25); }
+.modal-card{ background:var(--paper-card); border-radius:16px; padding:24px; width:100%; max-width:380px; display:flex; flex-direction:column; gap:14px; box-shadow:0 20px 60px rgba(27,34,49,.25); max-height:88vh; overflow-y:auto; }
 .modal-card h3{ font-size:17px; }
 .modal-actions{ display:flex; gap:10px; align-items:center; }
 
@@ -395,12 +395,11 @@ service cloud.firestore {
   <div class="panel" style="margin-top:18px;padding:16px;border-top:2px solid var(--line);">
     <h2 style="font-size:16px;margin:0 0 6px;">إعداد صور اللوكيشنات</h2>
     <p style="color:var(--muted);font-size:12.5px;line-height:1.8;margin:0 0 10px;">
-      حط رابط فولدر <b>Google Drive عام (Public)</b>. الفولدر الرئيسي لازم يبقى فيه <b>فولدر لكل فرع باسمه بالظبط من القائمة</b> (مثال: <b>cst</b>، <b>ssh2</b>، <b>oct2</b>...)
-      وداخل كل فولدر صور اللوكيشنات <b>باسم اللوكيشن بالظبط</b> (A1.jpg، B2.jpg). الإعداد ده بيتم <b>مرة واحدة بس</b> — وكل فرع بيشوف صوره لوحده تلقائيًا.
+      اكتب <b>مفتاح Google API</b> مرة واحدة بس هنا (متخفي عن الفروع نهائيًا). بعدها أي فرع بيرفع <b>رابط فولدره العام</b> من نافذة "تحضير التحويلات" —
+      وفولدره فيه صور اللوكيشنات باسم اللوكيشن بالظبط (A1.jpg، B2.jpg) — وتظهر صوره تلقائيًا.
     </p>
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-      <input class="search-input" id="adminDriveLink" placeholder="رابط الفولدر الرئيسي ..." style="width:290px;direction:ltr;text-align:left;">
-      <input class="search-input" id="adminDriveKey" placeholder="مفتاح Google API" style="width:250px;direction:ltr;text-align:left;">
+      <input class="search-input" id="adminDriveKey" placeholder="مفتاح Google API" style="width:260px;direction:ltr;text-align:left;">
       <button class="export-btn" id="adminDriveSaveBtn">حفظ الإعداد</button>
     </div>
     <div class="upload-status" id="adminDriveStatus"></div>
@@ -571,6 +570,17 @@ service cloud.firestore {
         <input type="file" id="fileInputMapLoc" accept=".xlsx,.xls,.csv">
         <div class="upload-status" id="uploadStatusMapLoc"></div>
       </div>
+    </div>
+    <div class="upload-card" id="photoLinkCard" style="margin-top:12px;border:1px dashed var(--line);border-radius:14px;">
+      <div class="step-tag">صور اللوكيشنات</div>
+      <p style="color:var(--muted);font-size:12.5px;line-height:1.8;margin:0 0 9px;">
+        حط رابط فولدر <b>Google Drive عام (Public)</b> اللي فيه صور اللوكيشنات (<b>باسم اللوكيشن بالظبط</b> مثل A1.jpg، B2.jpg) — مرة واحدة بس، وهتظهر صورتها تلقائيًا على أي لوكيشن.
+      </p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <input class="search-input" id="transferDriveLink" placeholder="رابط الفولدر..." style="flex:1;min-width:200px;direction:ltr;text-align:left;">
+        <button class="upload-btn" id="transferDriveConnect">ربط الصور</button>
+      </div>
+      <div class="upload-status" id="transferDriveStatus"></div>
     </div>
     <div class="modal-actions">
       <button class="btn-ghost" id="closeTransfersBtn">إغلاق</button>
@@ -928,11 +938,13 @@ async function saveTransfersToCloud(){
   }catch(err){ console.error(err); return false; }
 }
 // ---------------- صور اللوكيشنات (Google Drive) ----------------
-// الفولدر الرئيسي عام (Public) وفيه فولدر لكل فرع باسمه، وداخل كل فولدر صور اللوكيشنات بأسمائها فقط.
-// الإعداد بيتم مرة واحدة من "لوحة إدارة الفروع" (للمدير) والفروع بتشوف صورها لوحدها تلقائيًا.
+// كل فرع بيحط رابط فولدره العام (Public) مرة واحدة داخل "تحضير التحويلات" → والتطبيق بيقرا الصور ويربطها باللوكيشنات.
+// المفتاح اللي بيربط Drive بيتظبط مرة واحدة بس (مضمّن في الكود أو من لوحة المدير) — الفروع مش بتشوفه إطلاقًا.
+const DRIVE_API_KEY = ''; // ضعه مرة واحدة ويشتغل لجميع الفروع دون أي إعداد إضافي
 const locImgMap = {};
 const locImgLoadedFor = {};
 let driveCfg = null;
+let branchPhotosLink = '';
 function extractDriveFolderId(input){
   const v = String(input || '').trim();
   if(!v) return '';
@@ -953,18 +965,34 @@ function setDrivePanelStatus(msg){
   const el = $('driveStatus');
   if(el) el.innerHTML = msg;
 }
+function effectiveDriveKey(){
+  return String(DRIVE_API_KEY || (driveCfg && driveCfg.apiKey) || '').trim();
+}
 async function loadDriveConfig(){
   try{
     const snap = await db.collection('config').doc('drive').get();
     if(snap.exists){ driveCfg = snap.data() || null; }
   }catch(err){ console.error('loadDriveConfig:', err); }
 }
-async function saveDriveConfig(rootLink, apiKey){
-  const rootId = extractDriveFolderId(rootLink);
-  if(!rootId) throw new Error('الرابط اللي كتبته مش رابط فولدر صحيح.');
-  if(!apiKey) throw new Error('اكتب مفتاح Google API.');
-  await db.collection('config').doc('drive').set({ rootId, apiKey, updatedAt: new Date().toISOString() });
-  driveCfg = { rootId, apiKey };
+function photosLinkKey(){ return 'photosLink_' + (currentBranch ? currentBranch.id : ''); }
+function loadBranchPhotosLink(){
+  try{ branchPhotosLink = localStorage.getItem(photosLinkKey()) || ''; }catch(e){ branchPhotosLink = ''; }
+}
+async function loadBranchPhotosCloud(){
+  try{
+    const data = await loadBranchData(currentBranch.id);
+    if(data && data.photos && data.photos.link){
+      branchPhotosLink = data.photos.link;
+      try{ localStorage.setItem(photosLinkKey(), branchPhotosLink); }catch(e){}
+    }
+  }catch(err){ console.error(err); }
+}
+async function saveBranchPhotosLink(link){
+  try{
+    const existing = await loadBranchData(currentBranch.id) || {};
+    existing.photos = { link, updatedAt: new Date().toISOString() };
+    await saveBranchData(currentBranch.id, existing);
+  }catch(err){ console.error(err); }
 }
 function saveLocImgCache(branchKey){
   try{ localStorage.setItem('locImgs_' + branchKey, JSON.stringify({ at: Date.now(), map: locImgMap })); }catch(e){}
@@ -975,6 +1003,10 @@ function loadLocImgCache(branchKey){
     if(j && j.map){ Object.keys(locImgMap).forEach(k=> delete locImgMap[k]); Object.assign(locImgMap, j.map); return true; }
   }catch(e){}
   return false;
+}
+function clearLocImages(){
+  Object.keys(locImgMap).forEach(k=> delete locImgMap[k]);
+  if(currentBranch) locImgLoadedFor[currentBranch.id] = false;
 }
 async function driveList(url){
   const resp = await fetch(url);
@@ -994,46 +1026,87 @@ async function listDriveFolder(folderId, apiKey, onlyImages){
   } while(token);
   return files;
 }
-async function setupDriveImages(){
-  if(!driveCfg || !driveCfg.rootId || !driveCfg.apiKey || !currentBranch) return;
-  const branchKey = currentBranch.id;
-  setDrivePanelStatus('<span class="upload-status">جاري تحميل صور اللوكيشنات...</span>');
-  try{
-    const folders = await listDriveFolder(driveCfg.rootId, driveCfg.apiKey, false);
-    const myFolder = folders.filter(f=> f.mimeType === 'application/vnd.google-apps.folder').find(f=> f.name === currentBranch.id || f.name === currentBranch.name);
-    const files = await listDriveFolder(myFolder ? myFolder.id : driveCfg.rootId, driveCfg.apiKey, true);
-    const map = {};
-    files.forEach(f=>{
-      const name = (f.name || '').replace(/\.[^.]+$/, '').trim();
-      if(!name) return;
-      map[name] = 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(f.id) + '&sz=w800';
-    });
-    Object.keys(locImgMap).forEach(k=> delete locImgMap[k]);
-    Object.assign(locImgMap, map);
-    locImgLoadedFor[branchKey] = true;
-    saveLocImgCache(branchKey);
-    const n = Object.keys(map).length;
-    setDrivePanelStatus('<span class="upload-status ok">جاهز: ' + n + ' صورة لوكيشن ✓ — قف على أي لوكيشن تظهر صورته.</span>');
-  }catch(err){
-    console.error(err);
-    setDrivePanelStatus('<span class="upload-status err">فشل تحميل صور اللوكيشنات — راجع إعداد المدير (' + (err.message || '') + ')</span>');
+function setTransferDriveStatus(msg, type){
+  const el = $('transferDriveStatus'); if(!el) return;
+  el.className = 'upload-status';
+  if(type) el.classList.add(type);
+  el.textContent = msg;
+}
+function refreshDrivePanels(count, state){
+  if(state === 'ok'){
+    const okTxt = 'جاهز: ' + count + ' صورة لوكيشن ✓ — قف على أي لوكيشن تظهر صورته.';
+    setDrivePanelStatus('<span class="upload-status ok">' + okTxt + '</span>');
+    setTransferDriveStatus(okTxt, 'ok');
+  }else if(state === 'err'){
+    setDrivePanelStatus('<span class="upload-status err">صور اللوكيشنات فيها مشكلة — راجع المدير.</span>');
+  }else{
+    setDrivePanelStatus('<span class="upload-status">لم يُضف هذا الفرع رابط الصور بعد — من "تحضير التحويلات".</span>');
   }
 }
-function ensureDriveImages(){
+async function syncPhotosFromLink(link){
+  const folderId = extractDriveFolderId(link);
+  const key = effectiveDriveKey();
+  if(!folderId) throw new Error('الرابط اللي كتبته مش رابط فولدر صحيح.');
+  if(!key) throw new Error('مفتاح الصور مش مضبوط — راجع المدير.');
+  setTransferDriveStatus('جاري تحميل الصور من الفولدر...');
+  const files = await listDriveFolder(folderId, key, true);
+  const map = {};
+  files.forEach(f=>{
+    const name = (f.name || '').replace(/\.[^.]+$/, '').replace(/\.[^.]+$/, '').trim();
+    if(!name) return;
+    map[name] = 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(f.id) + '&sz=w800';
+  });
+  clearLocImages();
+  Object.assign(locImgMap, map);
+  locImgLoadedFor[currentBranch.id] = true;
+  saveLocImgCache(currentBranch.id);
+  branchPhotosLink = link;
+  try{ localStorage.setItem(photosLinkKey(), link); }catch(e){}
+  saveBranchPhotosLink(link);
+  refreshDrivePanels(Object.keys(map).length, 'ok');
+  return Object.keys(map).length;
+}
+$('transferDriveConnect').addEventListener('click', async ()=>{
+  const st = $('transferDriveStatus');
+  setStat(st, 'جاري الحفظ والتحميل...');
+  try{
+    const link = String($('transferDriveLink').value || '').trim();
+    const n = await syncPhotosFromLink(link);
+    setStat(st, 'تم ربط ' + n + ' صورة ✓ — قف على أي لوكيشن تظهر صورته.', 'ok');
+  }catch(err){
+    setStat(st, err.message || 'فشل الاتصال بـ Google Drive.', 'err');
+  }
+});
+async function ensureDriveImages(){
   if(!currentBranch || locImgLoadedFor[currentBranch.id]) return;
-  if(!driveCfg || !driveCfg.rootId){
-    setDrivePanelStatus('<span class="upload-status">صور اللوكيشنات لسه مش متجهزة.</span>');
+  loadBranchPhotosLink();
+  if(!branchPhotosLink){
+    await loadBranchPhotosCloud();
+  }
+  if(!branchPhotosLink){ refreshDrivePanels(0, 'none'); return; }
+  const inp = $('transferDriveLink');
+  if(inp && !inp.value) inp.value = branchPhotosLink;
+  if(loadLocImgCache(currentBranch.id)){
+    locImgLoadedFor[currentBranch.id] = true;
+    refreshDrivePanels(Object.keys(locImgMap).length, 'ok');
     return;
   }
-  if(loadLocImgCache(currentBranch.id)){ locImgLoadedFor[currentBranch.id] = true; setDrivePanelStatus('<span class="upload-status ok">جاهز: ' + Object.keys(locImgMap).length + ' صورة لوكيشن ✓</span>'); return; }
-  setupDriveImages();
+  try{
+    await syncPhotosFromLink(branchPhotosLink);
+  }catch(err){
+    console.error(err);
+    refreshDrivePanels(0, 'err');
+  }
 }
 $('adminDriveSaveBtn').addEventListener('click', async ()=>{
   const st = $('adminDriveStatus');
   setStat(st, 'جاري الحفظ...');
   try{
-    await saveDriveConfig($('adminDriveLink').value, $('adminDriveKey').value.trim());
-    setStat(st, 'تم حفظ إعداد الصور ✓ — اعمل دخول بأي فرع وهيحمّل صوره تلقائيًا.', 'ok');
+    const key = $('adminDriveKey').value.trim();
+    if(!key) throw new Error('اكتب مفتاح Google API.');
+    await db.collection('config').doc('drive').set({ apiKey: key, updatedAt: new Date().toISOString() });
+    driveCfg = { apiKey: key };
+    setStat(st, 'تم حفظ مفتاح الصور ✓ — الفروع تبقى تحط روابطها بس ولا تشوف أي إعداد.', 'ok');
   }catch(err){
     setStat(st, err.message || 'فشل الحفظ.', 'err');
   }
