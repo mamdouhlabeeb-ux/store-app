@@ -181,6 +181,11 @@ table.data-table tr:hover td{ background:#FAFAF7; }
 .prod-thumb{ width:80px; height:80px; border-radius:10px; object-fit:cover; background:#F0F1EC; border:1px solid var(--line); display:block; position:relative; transition:transform .18s ease; }
 .prod-thumb:hover{ transform:scale(2.6); z-index:40; box-shadow:0 14px 34px rgba(27,34,49,.35); }
 .prod-thumb-missing{ width:80px; height:80px; border-radius:10px; background:#F0F1EC; border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--muted); text-align:center; line-height:1.4; }
+table.data-table.transfer-table{ font-size:15px; }
+table.data-table.transfer-table th{ padding:9px 8px; font-size:13.5px; }
+table.data-table.transfer-table td{ padding:9px 8px; }
+table.data-table.transfer-table .code-cell{ font-size:15.5px; }
+table.data-table.transfer-table .qty-cell{ font-size:15px; }
 th.code-out-th{ width:96px; text-align:center; }
 .code-out-chk{ width:20px; height:20px; cursor:pointer; accent-color:#2F6F63; }
 .chk-filter{ width:96px; font-size:11px; padding:3px 4px; border-radius:6px; border:1px solid var(--line); background:#fff; color:var(--ink-soft); cursor:pointer; margin-top:5px; display:block; font-family:'Cairo',sans-serif; }
@@ -212,6 +217,8 @@ th.code-out-th{ width:96px; text-align:center; }
 
 .toast{ position:fixed; bottom:22px; right:50%; transform:translateX(50%); background:var(--ink); color:#F4F0E4; padding:13px 20px; border-radius:12px; font-size:14px; font-weight:700; box-shadow:0 10px 30px rgba(27,34,49,.35); z-index:99; max-width:88vw; opacity:0; pointer-events:none; transition:opacity .25s; text-align:center; font-family:'Tajawal',sans-serif; }
 .toast.show{ opacity:1; }
+#locPreview{ position:fixed; display:none; z-index:70; background:#fff; border:1px solid var(--line); border-radius:12px; padding:5px; box-shadow:0 16px 40px rgba(27,34,49,.35); pointer-events:none; max-width:240px; }
+#locPreview img{ display:block; width:220px; height:auto; max-height:220px; border-radius:8px; object-fit:cover; }
 
 .sortable-th{ position:relative; }
 .sort-arrow{ display:inline-flex; align-items:center; justify-content:center; min-width:20px; height:20px; border-radius:6px; cursor:pointer; font-size:12px; color:var(--teal); margin-inline-start:4px; background:transparent; vertical-align:middle; }
@@ -244,6 +251,8 @@ th.code-out-th{ width:96px; text-align:center; }
   table.data-table{ font-size:12.5px; }
   table.data-table th{ padding:7px 5px; font-size:11.5px; }
   table.data-table td{ padding:7px 5px; }
+  table.data-table.transfer-table th, table.data-table.transfer-table td{ padding:6px 4px; font-size:11.5px; }
+  table.data-table.transfer-table .code-cell{ font-size:12.5px; }
   .code-cell{ font-size:13.5px; }
   .qty-cell{ font-size:13px; }
   .size-pill{ padding:2px 7px; font-size:11.5px; }
@@ -265,6 +274,7 @@ th.code-out-th{ width:96px; text-align:center; }
 <div class="loading-overlay" id="loadingOverlay"><span class="spinner"></span><span id="loadingText">جاري التحميل...</span></div>
 
 <div class="toast" id="toast"></div>
+<div id="locPreview"></div>
 
 <!-- ================= CHANGE PASSWORD MODAL ================= -->
 <div class="modal-overlay" id="pwModal">
@@ -382,6 +392,19 @@ service cloud.firestore {
   </div>
   <p style="color:var(--muted);font-size:13.5px;margin-top:-10px;">غيّر اسم أو باسورد أي فرع من الـ 33 هنا. أي تعديل بيتحفظ تلقائي.</p>
   <div id="branchListWrap" style="margin-top:16px;"></div>
+  <div class="panel" style="margin-top:18px;padding:16px;border-top:2px solid var(--line);">
+    <h2 style="font-size:16px;margin:0 0 6px;">إعداد صور اللوكيشنات</h2>
+    <p style="color:var(--muted);font-size:12.5px;line-height:1.8;margin:0 0 10px;">
+      حط رابط فولدر <b>Google Drive عام (Public)</b>. الفولدر الرئيسي لازم يبقى فيه <b>فولدر لكل فرع باسمه بالظبط من القائمة</b> (مثال: <b>cst</b>، <b>ssh2</b>، <b>oct2</b>...)
+      وداخل كل فولدر صور اللوكيشنات <b>باسم اللوكيشن بالظبط</b> (A1.jpg، B2.jpg). الإعداد ده بيتم <b>مرة واحدة بس</b> — وكل فرع بيشوف صوره لوحده تلقائيًا.
+    </p>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+      <input class="search-input" id="adminDriveLink" placeholder="رابط الفولدر الرئيسي ..." style="width:290px;direction:ltr;text-align:left;">
+      <input class="search-input" id="adminDriveKey" placeholder="مفتاح Google API" style="width:250px;direction:ltr;text-align:left;">
+      <button class="export-btn" id="adminDriveSaveBtn">حفظ الإعداد</button>
+    </div>
+    <div class="upload-status" id="adminDriveStatus"></div>
+  </div>
 </div>
 
 <!-- ================= DASHBOARD ================= -->
@@ -434,6 +457,13 @@ service cloud.firestore {
         <button class="upload-btn" id="openTransfersBtn">فتح نافذة التحويلات</button>
         <div class="upload-status" id="uploadStatusTransfersCard"></div>
       </div>
+    </div>
+
+    <div class="panel" id="drivePanel" style="padding:16px;margin-bottom:22px;">
+      <div style="margin-bottom:8px;">
+        <h2 style="font-size:17px;margin:0;">صور اللوكيشنات</h2>
+      </div>
+      <div id="driveStatus" style="color:var(--muted);font-size:12.5px;line-height:1.8;"><span class="upload-status">جاري التحميل...</span></div>
     </div>
 
     <div id="resultsArea" style="display:none;">
@@ -595,6 +625,7 @@ let locationMap = new Map(); // code -> location (شيت اللوكيشن)
 let salesSort = null;    // {col:'code'|'dept', dir:1|-1} أو null = بدون ترتيب
 let salesChkFilter = 'all'; // فلتر checkbox في المبيعات: all | todo (متبقي) | out (متأشر)
 let stockSort = null;    // {col:'code'|'dept'|'qty', dir:1|-1} أو null = بدون ترتيب
+let transfersSort = null; // {col:'code'|'size'|'qty'|'locNormal'|'mapLoc'|'dept'|'total', dir:1|-1} أو null
 let db = null;
 
 function isFirebaseConfigured(){
@@ -760,6 +791,7 @@ async function openDashboard(){
     renderStockStats(); renderStockTable();
     renderSalesStats(); renderSalesTable();
     renderTransfersVisibility();
+    ensureDriveImages();
   } else {
     $('resultsArea').style.display = 'none';
     $('emptyState').style.display = 'block';
@@ -895,6 +927,152 @@ async function saveTransfersToCloud(){
     return true;
   }catch(err){ console.error(err); return false; }
 }
+// ---------------- صور اللوكيشنات (Google Drive) ----------------
+// الفولدر الرئيسي عام (Public) وفيه فولدر لكل فرع باسمه، وداخل كل فولدر صور اللوكيشنات بأسمائها فقط.
+// الإعداد بيتم مرة واحدة من "لوحة إدارة الفروع" (للمدير) والفروع بتشوف صورها لوحدها تلقائيًا.
+const locImgMap = {};
+const locImgLoadedFor = {};
+let driveCfg = null;
+function extractDriveFolderId(input){
+  const v = String(input || '').trim();
+  if(!v) return '';
+  let m = v.match(/[?&]id=([\w-]+)/);
+  if(m) return m[1];
+  m = v.match(/folders\/([\w-]+)/);
+  if(m) return m[1];
+  if(/^[\w-]{20,}$/.test(v)) return v;
+  return '';
+}
+function setStat(el, msg, type){
+  if(!el) return;
+  el.className = 'upload-status';
+  if(type) el.classList.add(type);
+  el.textContent = msg;
+}
+function setDrivePanelStatus(msg){
+  const el = $('driveStatus');
+  if(el) el.innerHTML = msg;
+}
+async function loadDriveConfig(){
+  try{
+    const snap = await db.collection('config').doc('drive').get();
+    if(snap.exists){ driveCfg = snap.data() || null; }
+  }catch(err){ console.error('loadDriveConfig:', err); }
+}
+async function saveDriveConfig(rootLink, apiKey){
+  const rootId = extractDriveFolderId(rootLink);
+  if(!rootId) throw new Error('الرابط اللي كتبته مش رابط فولدر صحيح.');
+  if(!apiKey) throw new Error('اكتب مفتاح Google API.');
+  await db.collection('config').doc('drive').set({ rootId, apiKey, updatedAt: new Date().toISOString() });
+  driveCfg = { rootId, apiKey };
+}
+function saveLocImgCache(branchKey){
+  try{ localStorage.setItem('locImgs_' + branchKey, JSON.stringify({ at: Date.now(), map: locImgMap })); }catch(e){}
+}
+function loadLocImgCache(branchKey){
+  try{
+    const j = JSON.parse(localStorage.getItem('locImgs_' + branchKey) || 'null');
+    if(j && j.map){ Object.keys(locImgMap).forEach(k=> delete locImgMap[k]); Object.assign(locImgMap, j.map); return true; }
+  }catch(e){}
+  return false;
+}
+async function driveList(url){
+  const resp = await fetch(url);
+  const j = await resp.json();
+  if(j.error || resp.status !== 200) throw new Error((j.error && j.error.message) || 'خطأ ' + resp.status);
+  return { files: j.files || [], next: j.nextPageToken || '' };
+}
+async function listDriveFolder(folderId, apiKey, onlyImages){
+  let q = "'" + folderId + "' in parents and trashed=false";
+  if(onlyImages) q += " and (mimeType contains 'image/')";
+  let files = [], token = '';
+  do{
+    const url = 'https://www.googleapis.com/drive/v3/files?q=' + encodeURIComponent(q) + '&fields=nextPageToken,files(id,name,mimeType)&key=' + encodeURIComponent(apiKey) + (token ? '&pageToken=' + encodeURIComponent(token) : '') + '&pageSize=1000';
+    const r = await driveList(url);
+    files = files.concat(r.files);
+    token = r.next;
+  } while(token);
+  return files;
+}
+async function setupDriveImages(){
+  if(!driveCfg || !driveCfg.rootId || !driveCfg.apiKey || !currentBranch) return;
+  const branchKey = currentBranch.id;
+  setDrivePanelStatus('<span class="upload-status">جاري تحميل صور اللوكيشنات...</span>');
+  try{
+    const folders = await listDriveFolder(driveCfg.rootId, driveCfg.apiKey, false);
+    const myFolder = folders.filter(f=> f.mimeType === 'application/vnd.google-apps.folder').find(f=> f.name === currentBranch.id || f.name === currentBranch.name);
+    const files = await listDriveFolder(myFolder ? myFolder.id : driveCfg.rootId, driveCfg.apiKey, true);
+    const map = {};
+    files.forEach(f=>{
+      const name = (f.name || '').replace(/\.[^.]+$/, '').trim();
+      if(!name) return;
+      map[name] = 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(f.id) + '&sz=w800';
+    });
+    Object.keys(locImgMap).forEach(k=> delete locImgMap[k]);
+    Object.assign(locImgMap, map);
+    locImgLoadedFor[branchKey] = true;
+    saveLocImgCache(branchKey);
+    const n = Object.keys(map).length;
+    setDrivePanelStatus('<span class="upload-status ok">جاهز: ' + n + ' صورة لوكيشن ✓ — قف على أي لوكيشن تظهر صورته.</span>');
+  }catch(err){
+    console.error(err);
+    setDrivePanelStatus('<span class="upload-status err">فشل تحميل صور اللوكيشنات — راجع إعداد المدير (' + (err.message || '') + ')</span>');
+  }
+}
+function ensureDriveImages(){
+  if(!currentBranch || locImgLoadedFor[currentBranch.id]) return;
+  if(!driveCfg || !driveCfg.rootId){
+    setDrivePanelStatus('<span class="upload-status">صور اللوكيشنات لسه مش متجهزة.</span>');
+    return;
+  }
+  if(loadLocImgCache(currentBranch.id)){ locImgLoadedFor[currentBranch.id] = true; setDrivePanelStatus('<span class="upload-status ok">جاهز: ' + Object.keys(locImgMap).length + ' صورة لوكيشن ✓</span>'); return; }
+  setupDriveImages();
+}
+$('adminDriveSaveBtn').addEventListener('click', async ()=>{
+  const st = $('adminDriveStatus');
+  setStat(st, 'جاري الحفظ...');
+  try{
+    await saveDriveConfig($('adminDriveLink').value, $('adminDriveKey').value.trim());
+    setStat(st, 'تم حفظ إعداد الصور ✓ — اعمل دخول بأي فرع وهيحمّل صوره تلقائيًا.', 'ok');
+  }catch(err){
+    setStat(st, err.message || 'فشل الحفظ.', 'err');
+  }
+});
+function positionLocPreview(e){
+  let x = e.clientX + 14, y = e.clientY + 14;
+  if(x + 240 > window.innerWidth) x = e.clientX - 250;
+  if(y + 240 > window.innerHeight) y = window.innerHeight - 245;
+  if(x < 4) x = 4;
+  if(y < 4) y = 4;
+  const el = $('locPreview');
+  el.style.left = x + 'px';
+  el.style.top = y + 'px';
+}
+document.addEventListener('mouseover', (e)=>{
+  const badge = e.target.closest ? e.target.closest('.loc-badge') : null;
+  const el = $('locPreview');
+  if(!badge){ el.style.display = 'none'; return; }
+  const loc = badge.textContent.trim();
+  const imgUrl = locImgMap[loc];
+  if(imgUrl){
+    el.innerHTML = '<img src="' + imgUrl + '" alt="' + escapeAttr(loc) + '">';
+    el.style.display = 'block';
+    positionLocPreview(e);
+  }else{
+    el.style.display = 'none';
+  }
+});
+document.addEventListener('mousemove', (e)=>{
+  const el = $('locPreview');
+  if(el.style.display === 'block') positionLocPreview(e);
+});
+document.addEventListener('click', (e)=>{
+  const badge = e.target.closest ? e.target.closest('.loc-badge') : null;
+  if(!badge) return;
+  const imgUrl = locImgMap[badge.textContent.trim()];
+  if(imgUrl) window.open(imgUrl, '_blank');
+});
+loadDriveConfig();
 function renderTransfersVisibility(){
   const has = transferRows.length > 0 || transferMapLoc.size > 0;
   $('tabTransfersBtn').style.display = has ? '' : 'none';
@@ -904,6 +1082,31 @@ function transferVisibleRows(){
   let rows = transferRows;
   if(transfersDest !== 'all') rows = rows.filter(r=> r.dest === transfersDest);
   return rows;
+}
+function transferSortRows(rows){
+  if(!transfersSort) return rows;
+  const { col, dir } = transfersSort;
+  return rows.slice().sort((a,b)=>{
+    if(col === 'code') return compareBlankLast(a.code, b.code, dir, 'en', true);
+    if(col === 'size') return compareBlankLast(a.size, b.size, dir, 'ar') || compareBlankLast(a.code, b.code, dir, 'en', true);
+    if(col === 'qty') return compareBlankLast(a.qty, b.qty, dir, 'ar') || compareBlankLast(a.code, b.code, dir, 'en', true);
+    if(col === 'locNormal'){
+      const la = locationMap.get(a.code) || '', lb = locationMap.get(b.code) || '';
+      return compareBlankLast(la, lb, dir, 'ar') || compareBlankLast(a.code, b.code, dir, 'en', true);
+    }
+    if(col === 'mapLoc'){
+      const la = transferMapLoc.get(a.code) || '', lb = transferMapLoc.get(b.code) || '';
+      return compareBlankLast(la, lb, dir, 'ar') || compareBlankLast(a.code, b.code, dir, 'en', true);
+    }
+    if(col === 'total'){
+      const ta = (stockTotalsMap.get(a.code) && stockTotalsMap.get(a.code).totalQty) || 0;
+      const tb = (stockTotalsMap.get(b.code) && stockTotalsMap.get(b.code).totalQty) || 0;
+      return compareBlankLast(ta, tb, dir, 'ar') || compareBlankLast(a.code, b.code, dir, 'en', true);
+    }
+    const da = (stockTotalsMap.get(a.code) && stockTotalsMap.get(a.code).department) || '';
+    const db = (stockTotalsMap.get(b.code) && stockTotalsMap.get(b.code).department) || '';
+    return compareBlankLast(da, db, dir, 'ar') || compareBlankLast(a.code, b.code, dir, 'en', true);
+  });
 }
 function renderTransfersFilters(){
   const sel = $('transfersDestFilter');
@@ -926,22 +1129,24 @@ function renderTransfersStats(){
   $('transStatMissing').textContent = missing;
 }
 function renderTransfersTable(){
-  const rows = transferVisibleRows();
+  const rows = transferSortRows(transferVisibleRows());
   const wrap = $('transfersTableWrap');
   if(rows.length === 0){
     wrap.innerHTML = '<div class="empty-state"><div class="big">📦</div>' + (transferRows.length === 0 ? 'ارفع شيت التحويلات وشيت MAP LOC من كارت "تحضير التحويلات".' : 'مفيش نتائج مطابقة للفرع المستهدف ده.') + '</div>';
     return;
   }
-  let html = '<table class="data-table"><thead><tr>'
+  const transTh = (col, label, suffix) =>
+    '<th class="sortable-th">' + label + (suffix || '') + ' <span class="sort-arrow" data-tab="transfers" data-col="' + col + '">' + arrowGlyph('transfers', col) + '</span><div class="sort-menu">' + sortMenuHtml('transfers', col) + '</div></th>';
+  let html = '<table class="data-table transfer-table"><thead><tr>'
     + '<th>طلعت الكود</th>'
     + '<th>الصورة</th>'
-    + '<th>الكود</th>'
-    + '<th>المقاس المباع</th>'
-    + '<th>عدد القطع</th>'
-    + '<th>اللوكيشن (شيت اللوكيشن)</th>'
-    + '<th>اللوكيشن (MAP LOC)</th>'
-    + '<th>الدبارتمنت</th>'
-    + '<th>توتال الموديل بالمخزون</th>'
+    + transTh('code', 'الكود')
+    + transTh('size', 'المقاس المباع')
+    + transTh('qty', 'عدد القطع')
+    + transTh('locNormal', 'اللوكيشن (شيت اللوكيشن)')
+    + transTh('mapLoc', 'اللوكيشن (MAP LOC)')
+    + transTh('dept', 'الدبارتمنت')
+    + transTh('total', 'توتال الموديل بالمخزون')
     + '</tr></thead><tbody>';
   rows.forEach((r, idx)=>{
     const stockInfo = stockTotalsMap.get(r.code);
@@ -958,7 +1163,7 @@ function renderTransfersTable(){
         <a href="${imgUrl}" target="_blank" rel="noopener" style="display:block;font-size:10px;color:var(--muted);text-decoration:underline;margin-top:3px;">فتح الرابط</a>
       </td>
       <td class="code-cell">${escapeHtml(r.code)}</td>
-      <td>${escapeHtml(r.size)}</td>
+      <td class="code-cell">${escapeHtml(r.size)}</td>
       <td class="qty-cell">${r.qty.toLocaleString('en-US')}</td>
       <td>${locNormal === '—' ? '<span class="no-stock">—</span>' : `<span class="loc-badge">${escapeHtml(locNormal)}</span>`}</td>
       <td>${locMapTxt === '—' ? '<span class="no-stock">—</span>' : `<span class="loc-badge">${escapeHtml(locMapTxt)}</span>`}</td>
@@ -1208,7 +1413,9 @@ function buildImgUrl(code){
 }
 
 function currentSortFor(tab){
-  return tab === 'sales' ? salesSort : stockSort;
+  if(tab === 'sales') return salesSort;
+  if(tab === 'stock') return stockSort;
+  return transfersSort;
 }
 function arrowGlyph(tab, col){
   const s = currentSortFor(tab);
@@ -1237,10 +1444,13 @@ document.addEventListener('click', (e)=>{
     const col = opt.getAttribute('data-col');
     const dir = opt.getAttribute('data-dir');
     const state = (dir === '') ? null : { col, dir: parseInt(dir, 10) };
-    if(tab === 'sales') salesSort = state; else stockSort = state;
+    if(tab === 'sales') salesSort = state;
+    else if(tab === 'stock') stockSort = state;
+    else if(tab === 'transfers') transfersSort = state;
     document.querySelectorAll('.sort-menu.show').forEach(m=> m.classList.remove('show'));
     if(tab === 'sales'){ renderSalesStats(); renderSalesTable(); }
-    else { renderStockStats(); renderStockTable(); }
+    else if(tab === 'stock'){ renderStockStats(); renderStockTable(); }
+    else if(tab === 'transfers'){ renderTransfersTable(); }
     return;
   }
   if(e.target.closest) document.querySelectorAll('.sort-menu.show').forEach(m=> m.classList.remove('show'));
