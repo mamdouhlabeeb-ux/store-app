@@ -747,9 +747,40 @@ function renderAdmin(){
 
 // ---------------- dashboard boot ----------------
 $('logoutBtn').addEventListener('click', ()=>{
+  stopLiveSync();
   currentBranch = null; stockSummary = []; salesRows = []; stockTotalsMap = new Map(); locationMap = new Map(); codeOutMem = null;
   switchScreen('screen-login');
 });
+
+// ---------------- Live sync بين الأجهزة المفتوحة ----------------
+let liveSync = null;
+function startLiveSync(){
+  stopLiveSync();
+  const id = currentBranch ? currentBranch.id : '';
+  if(!id) return;
+  liveSync = db.collection('branchData').doc(id).onSnapshot(snap=>{
+    const d = snap.exists ? snap.data() : null;
+    if(!d) return;
+    if(d.codeOut && Array.isArray(d.codeOut.codes)){
+      const cloudM = new Set(d.codeOut.codes);
+      if(JSON.stringify(Array.from(cloudM).sort()) !== JSON.stringify(Array.from(getCodeOutSet()).sort())){
+        codeOutMem = cloudM;
+        saveCodeOutLocal(cloudM);
+        renderSalesTable();
+      }
+    }
+    if(d.transfers && Array.isArray(d.transfers.marks)){
+      const cm = new Set(d.transfers.marks);
+      if(JSON.stringify(Array.from(cm).sort()) !== JSON.stringify(Array.from(transferMarkMem).sort())){
+        transferMarkMem = cm;
+        renderTransfersTable();
+      }
+    }
+  }, err=> console.error('liveSync:', err));
+}
+function stopLiveSync(){
+  if(liveSync){ liveSync(); liveSync = null; }
+}
 
 $('resetDataBtn').addEventListener('click', async ()=>{
   if(!currentBranch) return;
@@ -809,6 +840,7 @@ async function openDashboard(){
     $('resultsArea').style.display = 'none';
     $('emptyState').style.display = 'block';
   }
+  startLiveSync();
 }
 
 function rebuildStockTotalsMap(){
