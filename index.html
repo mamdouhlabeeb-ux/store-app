@@ -1098,9 +1098,9 @@ async function syncPhotosFromLink(link){
   const files = await listDriveFolder(folderId, key, true);
   const map = {};
   files.forEach(f=>{
-    const name = (f.name || '').replace(/\.[^.]+$/, '').replace(/\.[^.]+$/, '').trim();
+    const name = (f.name || '').replace(/\.[^.]+$/, '').trim();
     if(!name) return;
-    map[name] = 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(f.id) + '&sz=w800';
+    map[name] = 'https://lh3.googleusercontent.com/d/' + encodeURIComponent(f.id) + '=s800';
   });
   clearLocImages();
   Object.assign(locImgMap, map);
@@ -1157,6 +1157,10 @@ $('adminDriveSaveBtn').addEventListener('click', async ()=>{
     setStat(st, err.message || 'فشل الحفظ.', 'err');
   }
 });
+function fbFromUrl(u){
+  const m = String(u || '').match(/\/d\/([\w-]+)=s/);
+  return m ? 'https://drive.google.com/thumbnail?id=' + m[1] + '&sz=w800' : u;
+}
 function positionLocPreview(e){
   let x = e.clientX + 14, y = e.clientY + 14;
   if(x + 240 > window.innerWidth) x = e.clientX - 250;
@@ -1174,7 +1178,7 @@ document.addEventListener('mouseover', (e)=>{
   const loc = badge.textContent.trim();
   const imgUrl = locImgMap[loc];
   if(imgUrl){
-    el.innerHTML = '<img src="' + imgUrl + '" alt="' + escapeAttr(loc) + '">';
+    el.innerHTML = '<img src="' + imgUrl + '" data-fb="' + fbFromUrl(imgUrl) + '" alt="' + escapeAttr(loc) + '" onerror="var i=this;var fb=i.getAttribute(&#39;data-fb&#39;);if(i.src!==fb){i.src=fb;}else{i.parentNode.style.display=&#39;none&#39;;}">';
     el.style.display = 'block';
     positionLocPreview(e);
   }else{
@@ -1202,6 +1206,12 @@ document.addEventListener('click', (e)=>{
   if(!imgUrl) return;
   $('locPreview').style.display = 'none';
   const img = $('locImgModalImg');
+  img.onerror = function(){
+    const fb = fbFromUrl(img.src);
+    if(img.src !== fb) img.src = fb;
+    else img.style.display = 'none';
+  };
+  img.style.display = '';
   img.src = imgUrl;
   $('locImgModalCap').textContent = 'لوكيشن: ' + loc;
   $('locImgOpenLink').href = imgUrl;
