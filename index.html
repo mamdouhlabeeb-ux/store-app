@@ -187,7 +187,7 @@ table.data-table.transfer-table td{ padding:9px 8px; }
 table.data-table.transfer-table .code-cell{ font-size:15.5px; }
 table.data-table.transfer-table .qty-cell{ font-size:15px; }
 th.code-out-th{ width:96px; text-align:center; }
-.code-out-chk{ width:20px; height:20px; cursor:pointer; accent-color:#2F6F63; }
+.code-out-chk, .transfer-chk{ width:20px; height:20px; cursor:pointer; accent-color:#2F6F63; }
 .chk-filter{ width:96px; font-size:11px; padding:3px 4px; border-radius:6px; border:1px solid var(--line); background:#fff; color:var(--ink-soft); cursor:pointer; margin-top:5px; display:block; font-family:'Cairo',sans-serif; }
 
 .no-stock{ color:var(--muted); font-size:12px; }
@@ -406,11 +406,13 @@ service cloud.firestore {
   <div class="panel" style="margin-top:18px;padding:16px;border-top:2px solid var(--line);">
     <h2 style="font-size:16px;margin:0 0 6px;">إعداد صور اللوكيشنات</h2>
     <p style="color:var(--muted);font-size:12.5px;line-height:1.8;margin:0 0 10px;">
-      اكتب <b>مفتاح Google API</b> مرة واحدة بس هنا (متخفي عن الفروع نهائيًا). بعدها أي فرع بيرفع <b>رابط فولدره العام</b> من نافذة "تحضير التحويلات" —
-      وفولدره فيه صور اللوكيشنات باسم اللوكيشن بالظبط (A1.jpg، B2.jpg) — وتظهر صوره تلقائيًا.
+      اكتب <b>مفتاح Google API</b> مرة واحدة بس هنا (متخفي عن الفروع نهائيًا). <b>رابط الفولدر المشترك</b> اختياري:
+      لو كل الفروع بتستخدم نفس صور اللوكيشنات، اكتب رابطه هنا وهتظهر الصور تلقائيًا لكل الفروع من غير ما أي فرع يسوي حاجة.
+      ولو فرع عندو فولدر خاص بيه، هو بس اللي بيحط رابطه من نافذة "تحضير التحويلات".
     </p>
     <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
       <input class="search-input" id="adminDriveKey" placeholder="مفتاح Google API" style="width:260px;direction:ltr;text-align:left;">
+      <input class="search-input" id="adminDriveLink" placeholder="https://drive.google.com/drive/folders/..." style="width:360px;direction:ltr;text-align:left;">
       <button class="export-btn" id="adminDriveSaveBtn">حفظ الإعداد</button>
     </div>
     <div class="upload-status" id="adminDriveStatus"></div>
@@ -724,6 +726,8 @@ $('adminOpenBtn').addEventListener('click', async ()=>{
   const pw = prompt('باسورد المدير:');
   if(pw === null) return;
   if(pw !== branchConfig.adminPassword){ alert('باسورد المدير غلط.'); return; }
+  const ak = $('adminDriveKey'); if(ak) ak.value = effectiveDriveKey();
+  const al = $('adminDriveLink'); if(al && driveCfg) al.value = driveCfg.link || '';
   renderAdmin();
   switchScreen('screen-admin');
 });
@@ -878,6 +882,7 @@ const transferModalEl = $('transferModal');
 let transferRows = [];
 let transferMapLoc = new Map();
 let transfersDest = 'all';
+let transferChkFilter = 'all';
 let transferMarkMem = new Set();
 
 $('openTransfersBtn').addEventListener('click', ()=>{ transferModalEl.classList.add('show'); });
@@ -1053,11 +1058,11 @@ function findLocImg(loc){
   return '';
 }
 function saveLocImgCache(branchKey){
-  try{ localStorage.setItem('locImgs_v2_' + branchKey, JSON.stringify({ at: Date.now(), map: locImgMap })); }catch(e){}
+  try{ localStorage.setItem('locImgs_v3_' + branchKey, JSON.stringify({ at: Date.now(), map: locImgMap })); }catch(e){}
 }
 function loadLocImgCache(branchKey){
   try{
-    const j = JSON.parse(localStorage.getItem('locImgs_v2_' + branchKey) || 'null');
+    const j = JSON.parse(localStorage.getItem('locImgs_v3_' + branchKey) || 'null');
     if(j && j.map){ Object.keys(locImgMap).forEach(k=> delete locImgMap[k]); Object.assign(locImgMap, j.map); return true; }
   }catch(e){}
   return false;
@@ -1101,7 +1106,7 @@ function refreshDrivePanels(count, state){
     setDrivePanelStatus('<span class="upload-status">لم يُضف هذا الفرع رابط الصور بعد — من "تحضير التحويلات".</span>');
   }
 }
-async function syncPhotosFromLink(link){
+async function syncPhotosFromLink(link, isGlobal){
   const folderId = extractDriveFolderId(link);
   const key = effectiveDriveKey();
   if(!folderId) throw new Error('الرابط اللي كتبته مش رابط فولدر صحيح.');
@@ -1124,9 +1129,11 @@ async function syncPhotosFromLink(link){
   Object.assign(locImgMap, map);
   locImgLoadedFor[currentBranch.id] = true;
   saveLocImgCache(currentBranch.id);
-  branchPhotosLink = link;
-  try{ localStorage.setItem(photosLinkKey(), link); }catch(e){}
-  saveBranchPhotosLink(link);
+  if(!isGlobal){
+    branchPhotosLink = link;
+    try{ localStorage.setItem(photosLinkKey(), link); }catch(e){}
+    saveBranchPhotosLink(link);
+  }
   refreshDrivePanels(Object.keys(map).length, 'ok');
   return Object.keys(map).length;
 }
@@ -1147,16 +1154,17 @@ async function ensureDriveImages(){
   if(!branchPhotosLink){
     await loadBranchPhotosCloud();
   }
-  if(!branchPhotosLink){ refreshDrivePanels(0, 'none'); return; }
+  const link = branchPhotosLink || (driveCfg && driveCfg.link) || '';
+  if(!link){ refreshDrivePanels(0, 'none'); return; }
   const inp = $('transferDriveLink');
-  if(inp && !inp.value) inp.value = branchPhotosLink;
+  if(inp && !inp.value) inp.value = link;
   if(loadLocImgCache(currentBranch.id)){
     locImgLoadedFor[currentBranch.id] = true;
     refreshDrivePanels(Object.keys(locImgMap).length, 'ok');
     return;
   }
   try{
-    await syncPhotosFromLink(branchPhotosLink);
+    await syncPhotosFromLink(link, !branchPhotosLink);
   }catch(err){
     console.error(err);
     refreshDrivePanels(0, 'err');
@@ -1168,9 +1176,10 @@ $('adminDriveSaveBtn').addEventListener('click', async ()=>{
   try{
     const key = $('adminDriveKey').value.trim();
     if(!key) throw new Error('اكتب مفتاح Google API.');
-    await db.collection('config').doc('drive').set({ apiKey: key, updatedAt: new Date().toISOString() });
-    driveCfg = { apiKey: key };
-    setStat(st, 'تم حفظ مفتاح الصور ✓ — الفروع تبقى تحط روابطها بس ولا تشوف أي إعداد.', 'ok');
+    const link = $('adminDriveLink').value.trim();
+    await db.collection('config').doc('drive').set({ apiKey: key, link: link, updatedAt: new Date().toISOString() });
+    driveCfg = { apiKey: key, link: link };
+    setStat(st, 'تم حفظ الإعدادات ✓ — الفروع بتشيل الصور تلقائيًا.', 'ok');
   }catch(err){
     setStat(st, err.message || 'فشل الحفظ.', 'err');
   }
@@ -1306,7 +1315,10 @@ function renderTransfersStats(){
   $('transStatMissing').textContent = missing;
 }
 function renderTransfersTable(){
-  const rows = transferSortRows(transferVisibleRows());
+  let rows = transferSortRows(transferVisibleRows());
+  const cm = transferMarkMem;
+  if(transferChkFilter === 'todo') rows = rows.filter(r=> !cm.has(r.code));
+  else if(transferChkFilter === 'out') rows = rows.filter(r=> cm.has(r.code));
   const wrap = $('transfersTableWrap');
   if(rows.length === 0){
     wrap.innerHTML = '<div class="empty-state"><div class="big">📦</div>' + (transferRows.length === 0 ? 'ارفع شيت التحويلات وشيت MAP LOC من كارت "تحضير التحويلات".' : 'مفيش نتائج مطابقة للفرع المستهدف ده.') + '</div>';
@@ -1315,7 +1327,13 @@ function renderTransfersTable(){
   const transTh = (col, label, suffix) =>
     '<th class="sortable-th">' + label + (suffix || '') + ' <span class="sort-arrow" data-tab="transfers" data-col="' + col + '">' + arrowGlyph('transfers', col) + '</span><div class="sort-menu">' + sortMenuHtml('transfers', col) + '</div></th>';
   let html = '<table class="data-table transfer-table"><thead><tr>'
-    + '<th>طلعت الكود</th>'
+    + '<th class="code-out-th">طلعت الكود'
+    + '<select class="chk-filter" data-scope="transfers" title="فلتر المراجعة">'
+    + '<option value="all"' + (transferChkFilter === 'all' ? ' selected' : '') + '>الكل</option>'
+    + '<option value="todo"' + (transferChkFilter === 'todo' ? ' selected' : '') + '>متبقي (مش متأشر)</option>'
+    + '<option value="out"' + (transferChkFilter === 'out' ? ' selected' : '') + '>متأشر</option>'
+    + '<option value="clear" style="color:var(--brick);font-weight:700;">— مسح جميع التأشيرات —</option>'
+    + '</select></th>'
     + '<th>الصورة</th>'
     + transTh('code', 'الكود')
     + transTh('size', 'المقاس المباع')
@@ -1353,6 +1371,7 @@ function renderTransfersTable(){
 }
 $('clearTransMarksBtn').addEventListener('click', ()=>{
   transferMarkMem = new Set();
+  transferChkFilter = 'all';
   saveTransfersToCloud();
   renderTransfersTable();
   showToast('تم مسح كل تأشيرات التحويلات ✓');
@@ -1726,11 +1745,21 @@ function clearCodeOutMarks(){
 }
 document.addEventListener('change', (e)=>{
   if(e.target.classList && e.target.classList.contains('chk-filter')){
-    if(e.target.dataset.scope === 'sales'){
+    if(e.target.dataset.scope === 'transfers'){
+      if(e.target.value === 'clear'){ transferMarkMem = new Set(); transferChkFilter = 'all'; saveTransfersToCloud(); renderTransfersTable(); showToast('تم مسح كل تأشيرات التحويلات ✓'); }
+      else { transferChkFilter = e.target.value; renderTransfersTable(); }
+    }else if(e.target.dataset.scope === 'sales'){
       if(e.target.value === 'clear'){ salesChkFilter = 'all'; clearCodeOutMarks(); }
       else salesChkFilter = e.target.value;
       renderSalesTable();
     }
+    return;
+  }
+  if(e.target.classList && e.target.classList.contains('transfer-chk')){
+    const c = e.target.dataset.code;
+    if(e.target.checked) transferMarkMem.add(c); else transferMarkMem.delete(c);
+    saveTransfersToCloud();
+    renderTransfersTable();
     return;
   }
   if(!e.target.classList || !e.target.classList.contains('code-out-chk')) return;
