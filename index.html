@@ -754,17 +754,20 @@ $('logoutBtn').addEventListener('click', ()=>{
 $('resetDataBtn').addEventListener('click', async ()=>{
   if(!currentBranch) return;
   const branchName = currentBranch.name;
-  const sure = confirm('هتمسح كل البيانات المحفوظة بتاعة فرع ' + branchName + ' (المبيعات + المخزون) نهائيًا من السيرفر.\n\nمتأكد إنك عايز تمسح؟ بعد المسح تقدر ترفع شيتات جديدة.');
+  const sure = confirm('هتمسح كل بيانات فرع ' + branchName + ' (المبيعات + المخزون + اللوكيشنات + التحويلات + التأشيرات) نهائيًا من السيرفر.\n\nبعد المسح تقدر ترفع شيتات جديدة. رابط صور اللوكيشنات هيستنى محفوظ.');
   if(!sure) return;
   showLoading('جاري مسح البيانات...');
   try{
     await db.collection('branchData').doc(currentBranch.id).delete();
     stockSummary = []; salesRows = []; stockTotalsMap = new Map(); locationMap = new Map(); codeOutMem = new Set();
+    transferRows = []; transferMapLoc = new Map(); transferMarkMem = new Set(); transfersDest = 'all';
     try{ localStorage.removeItem(codeOutKey()); }catch(err){}
+    try{ localStorage.removeItem('transfers_' + currentBranch.id); }catch(err){}
+    if(branchPhotosLink) saveBranchPhotosLink(branchPhotosLink);
     $('lastUpdateLabel').textContent = '';
     $('resultsArea').style.display = 'none';
     $('emptyState').style.display = 'block';
-    renderStockStats(); renderSalesStats(); renderStockTable(); renderSalesTable();
+    renderStockStats(); renderSalesStats(); renderStockTable(); renderSalesTable(); renderTransfersVisibility();
     alert('تم مسح البيانات ✓ — تقدر دلوقتي ترفع شيتات جديدة.');
   }catch(err){
     console.error(err);
