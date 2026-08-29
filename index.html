@@ -172,11 +172,6 @@ table.data-table tr:hover td{ background:#FAFAF7; }
 .size-pill{ display:inline-block; background:#EFEDE3; color:var(--ink-soft); padding:3px 12px; border-radius:999px; font-weight:700; font-size:14px; }
 .dept-badge{ display:inline-block; background:#EFF3EE; color:var(--teal); padding:4px 11px; border-radius:999px; font-size:13.5px; font-weight:700; }
 .loc-badge{ display:inline-block; background:#EEF1F7; color:#41527A; padding:4px 11px; border-radius:999px; font-size:13.5px; font-weight:700; }
-.loc-thumb{ width:34px; height:34px; border-radius:8px; object-fit:cover; border:1px solid var(--line); background:#F0F1EC; vertical-align:middle; margin-inline-start:6px; display:block; transition:transform .18s ease; }
-.loc-thumb-wrap{ position:relative; display:inline-block; vertical-align:middle; margin-inline-start:6px; }
-.loc-thumb-wrap:hover .loc-thumb{ transform:scale(2.8); z-index:40; position:relative; box-shadow:0 12px 26px rgba(27,34,49,.4); }
-.loc-thumb-cap{ position:absolute; bottom:-20px; left:50%; transform:translateX(-50%); background:var(--ink); color:#F4F0E4; font-size:10.5px; font-weight:700; padding:2px 9px; border-radius:999px; white-space:nowrap; opacity:0; pointer-events:none; transition:opacity .15s; z-index:41; }
-.loc-thumb-wrap:hover .loc-thumb-cap{ opacity:1; }
 .dept-badge.mixed{ background:#FBEAE8; color:var(--brick); }
 .size-toggle{ background:transparent; color:var(--amber-deep); font-size:12.5px; font-weight:700; text-decoration:underline; padding:0; }
 .size-detail{ display:none; margin-top:8px; }
@@ -262,7 +257,6 @@ th.code-out-th{ width:96px; text-align:center; }
   .qty-cell{ font-size:13px; }
   .size-pill{ padding:2px 7px; font-size:11.5px; }
   .dept-badge, .loc-badge{ padding:3px 7px; font-size:11.5px; }
-  .loc-thumb{ width:28px; height:28px; border-radius:6px; margin-inline-start:4px; }
   .prod-thumb{ width:54px; height:54px; border-radius:8px; }
   .prod-thumb:hover{ transform:scale(1.6); }
   .prod-thumb-missing{ width:54px; height:54px; border-radius:8px; font-size:9px; }
@@ -1168,9 +1162,7 @@ function fbFromUrl(u){
   return m ? 'https://drive.google.com/thumbnail?id=' + m[1] + '&sz=w800' : u;
 }
 function locIconHtml(loc){
-  const url = locImgMap[loc];
-  if(!url) return '';
-  return '<span class="loc-thumb-wrap"><img class="loc-thumb" src="' + url + '" data-fb="' + fbFromUrl(url) + '" title="' + escapeAttr(loc) + '" onerror="var i=this;var fb=i.getAttribute(&#39;data-fb&#39;);if(i.src!==fb){i.src=fb;}else{i.style.display=&#39;none&#39;;}"><span class="loc-thumb-cap">' + escapeHtml(loc) + '</span></span>';
+  return '';
 }
 function positionLocPreview(e){
   let x = e.clientX + 14, y = e.clientY + 14;
@@ -1214,9 +1206,16 @@ document.addEventListener('click', (e)=>{
   if(!badge) return;
   const loc = badge.textContent.trim();
   const imgUrl = locImgMap[loc];
-  if(!imgUrl) return;
   $('locPreview').style.display = 'none';
   const img = $('locImgModalImg');
+  if(!imgUrl){
+    $('locImgOpenLink').style.display = 'none';
+    img.style.display = 'none';
+    $('locImgModalCap').textContent = 'لا توجد صورة للوكيشن "' + loc + '" — تأكد من ربط صور اللوكيشنات في نافذة تحضير التحويلات.';
+    modal.classList.add('show');
+    return;
+  }
+  $('locImgOpenLink').style.display = 'inline-block';
   img.onerror = function(){
     const fb = fbFromUrl(img.src);
     if(img.src !== fb) img.src = fb;
@@ -1326,7 +1325,7 @@ function renderTransfersTable(){
       <td><span class="size-pill">${escapeHtml(r.size)}</span></td>
       <td class="qty-cell">${r.qty.toLocaleString('en-US')}</td>
       <td>${locNormal === '—' ? '<span class="no-stock">—</span>' : `<span class="loc-badge">${escapeHtml(locNormal)}</span>`}</td>
-      <td>${locMapTxt === '—' ? '<span class="no-stock">—</span>' : `<span class="loc-badge">${escapeHtml(locMapTxt)}</span>${locIconHtml(locMapTxt)}`}</td>
+      <td>${locMapTxt === '—' ? '<span class="no-stock">—</span>' : `<span class="loc-badge">${escapeHtml(locMapTxt)}</span>`}</td>
       <td>${deptCell}</td>
       <td>${totalCell}</td>
     </tr>`;
