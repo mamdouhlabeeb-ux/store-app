@@ -1040,12 +1040,24 @@ async function saveBranchPhotosLink(link){
     await saveBranchData(currentBranch.id, existing);
   }catch(err){ console.error(err); }
 }
+function normLocKey(s){
+  return String(s || '').trim().toUpperCase().replace(/\s+/g, ' ');
+}
+function findLocImg(loc){
+  if(!loc) return '';
+  const up = normLocKey(loc);
+  if(locImgMap[up]) return locImgMap[up];
+  const raw = String(loc).trim();
+  if(locImgMap[raw]) return locImgMap[raw];
+  for(const k in locImgMap){ if(normLocKey(k) === up) return locImgMap[k]; }
+  return '';
+}
 function saveLocImgCache(branchKey){
-  try{ localStorage.setItem('locImgs_' + branchKey, JSON.stringify({ at: Date.now(), map: locImgMap })); }catch(e){}
+  try{ localStorage.setItem('locImgs_v2_' + branchKey, JSON.stringify({ at: Date.now(), map: locImgMap })); }catch(e){}
 }
 function loadLocImgCache(branchKey){
   try{
-    const j = JSON.parse(localStorage.getItem('locImgs_' + branchKey) || 'null');
+    const j = JSON.parse(localStorage.getItem('locImgs_v2_' + branchKey) || 'null');
     if(j && j.map){ Object.keys(locImgMap).forEach(k=> delete locImgMap[k]); Object.assign(locImgMap, j.map); return true; }
   }catch(e){}
   return false;
@@ -1098,7 +1110,13 @@ async function syncPhotosFromLink(link){
   const files = await listDriveFolder(folderId, key, true);
   const map = {};
   files.forEach(f=>{
-    const name = (f.name || '').replace(/\.[^.]+$/, '').trim();
+    let name = String(f.name || '').trim().replace(/\s*\(\d+\)\s*/g, '');
+    for(let t = 0; t < 3; t++){
+      const m = name.replace(/\.(jpe?g|png|gif|webp|bmp|heic|avif)$/i, '');
+      if(m === name) break;
+      name = m;
+    }
+    name = name.trim().toUpperCase();
     if(!name) return;
     map[name] = 'https://lh3.googleusercontent.com/d/' + encodeURIComponent(f.id) + '=s800';
   });
@@ -1179,7 +1197,7 @@ document.addEventListener('mouseover', (e)=>{
   const el = $('locPreview');
   if(!badge){ el.style.display = 'none'; return; }
   const loc = badge.textContent.trim();
-  const imgUrl = locImgMap[loc];
+  const imgUrl = findLocImg(loc);
   if(imgUrl){
     el.innerHTML = '<img src="' + imgUrl + '" data-fb="' + fbFromUrl(imgUrl) + '" alt="' + escapeAttr(loc) + '" onerror="var i=this;var fb=i.getAttribute(&#39;data-fb&#39;);if(i.src!==fb){i.src=fb;}else{i.parentNode.style.display=&#39;none&#39;;}">';
     el.style.display = 'block';
@@ -1205,7 +1223,7 @@ document.addEventListener('click', (e)=>{
   const badge = e.target.closest ? e.target.closest('.loc-badge') : null;
   if(!badge) return;
   const loc = badge.textContent.trim();
-  const imgUrl = locImgMap[loc];
+  const imgUrl = findLocImg(loc);
   $('locPreview').style.display = 'none';
   const img = $('locImgModalImg');
   if(!imgUrl){
