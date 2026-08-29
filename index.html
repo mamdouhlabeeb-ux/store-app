@@ -1236,7 +1236,7 @@ function renderTransfersTable(){
         <a href="${imgUrl}" target="_blank" rel="noopener" style="display:block;font-size:10px;color:var(--muted);text-decoration:underline;margin-top:3px;">فتح الرابط</a>
       </td>
       <td class="code-cell">${escapeHtml(r.code)}</td>
-      <td class="code-cell">${escapeHtml(r.size)}</td>
+      <td><span class="size-pill">${escapeHtml(r.size)}</span></td>
       <td class="qty-cell">${r.qty.toLocaleString('en-US')}</td>
       <td>${locNormal === '—' ? '<span class="no-stock">—</span>' : `<span class="loc-badge">${escapeHtml(locNormal)}</span>`}</td>
       <td>${locMapTxt === '—' ? '<span class="no-stock">—</span>' : `<span class="loc-badge">${escapeHtml(locMapTxt)}</span>`}</td>
