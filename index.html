@@ -427,12 +427,20 @@ service cloud.firestore {
         <input type="file" id="fileInputLoc" accept=".xlsx,.xls,.csv">
         <div class="upload-status" id="uploadStatusLoc"></div>
       </div>
+      <div class="upload-card" id="uploadCardTransfers">
+        <div class="step-tag">4 - تحضير التحويلات</div>
+        <h3>تحضير التحويلات</h3>
+        <p>ارفع شيت التحويلات وشيت MAP LOC في نافذة مخصوصة وتظهر لك نتيجة جاهزة للمراجعة</p>
+        <button class="upload-btn" id="openTransfersBtn">فتح نافذة التحويلات</button>
+        <div class="upload-status" id="uploadStatusTransfersCard"></div>
+      </div>
     </div>
 
     <div id="resultsArea" style="display:none;">
       <div class="tabs">
         <button class="tab-btn active" id="tabSalesBtn">تقرير المبيعات</button>
         <button class="tab-btn" id="tabStockBtn">ملخص المخزون</button>
+        <button class="tab-btn" id="tabTransfersBtn" style="display:none;">تحضير التحويلات</button>
       </div>
 
       <!-- ===== SALES TAB ===== -->
@@ -478,6 +486,28 @@ service cloud.firestore {
           <div id="tableWrap"></div>
         </div>
       </div>
+
+      <!-- ===== TRANSFERS TAB ===== -->
+      <div class="tab-panel" id="panelTransfers">
+        <div class="stats-row">
+          <div class="stat-card"><div class="num" id="transStatLines">0</div><div class="lbl">عدد أصناف التحويلات</div></div>
+          <div class="stat-card amber"><div class="num" id="transStatQty">0</div><div class="lbl">إجمالي القطع</div></div>
+          <div class="stat-card teal"><div class="num" id="transStatDests">0</div><div class="lbl">عدد الفروع المستهدفة</div></div>
+          <div class="stat-card"><div class="num" id="transStatMissing">0</div><div class="lbl">أصناف مش موجودة بالمخزون</div></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head">
+            <h2>تقرير التحويلات</h2>
+            <div class="panel-tools">
+              <select class="search-input" id="transfersDestFilter" style="width:auto;min-width:170px;" title="فلتر الفرع المستهدف">
+                <option value="all">كل الفروع المستهدفة</option>
+              </select>
+              <button class="export-btn" id="clearTransMarksBtn" style="background:var(--brick);border-color:var(--brick);">مسح التأشيرات</button>
+            </div>
+          </div>
+          <div id="transfersTableWrap"></div>
+        </div>
+      </div>
     </div>
 
     <div id="emptyState" class="empty-state">
@@ -487,6 +517,35 @@ service cloud.firestore {
   </div>
 
   <div class="footer-note">البيانات بتتحفظ على سحابة Firebase ومتاحة لأي حد معاه باسورد الفرع أو الملف نفسه — متشاركش الملف أو بيانات الإعداد إلا مع فريقك.</div>
+</div>
+
+<!-- ===== TRANSFERS MODAL ===== -->
+<div class="modal-overlay" id="transferModal">
+  <div class="modal-card" style="max-width:540px;">
+    <h3>تحضير التحويلات</h3>
+    <p style="color:var(--muted);font-size:13px;line-height:1.8;margin:0;">
+      ارفع الشيتين عشان تتجهّز نتيجة التحويلات:
+      <br><b>شيت التحويلات</b>: 3 أعمدة بالترتيب (الكود-المقاس، العدد، الفرع اللي رايحله).
+      <br><b>شيت MAP LOC</b>: عمودين بالترتيب (الكود، اللوكيشن).
+    </p>
+    <div style="display:grid;gap:12px;margin-top:10px;">
+      <div class="upload-card" id="dropTransfers">
+        <div class="step-tag">شيت التحويلات</div>
+        <label class="upload-btn" for="fileInputTransfers">اختيار ملف التحويلات</label>
+        <input type="file" id="fileInputTransfers" accept=".xlsx,.xls,.csv">
+        <div class="upload-status" id="uploadStatusTransfers"></div>
+      </div>
+      <div class="upload-card" id="dropMapLoc">
+        <div class="step-tag">شيت MAP LOC</div>
+        <label class="upload-btn" for="fileInputMapLoc">اختيار ملف MAP LOC</label>
+        <input type="file" id="fileInputMapLoc" accept=".xlsx,.xls,.csv">
+        <div class="upload-status" id="uploadStatusMapLoc"></div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-ghost" id="closeTransfersBtn">إغلاق</button>
+    </div>
+  </div>
 </div>
 
 <script>
@@ -683,19 +742,24 @@ async function openDashboard(){
   stockSummary = (data && data.stock && data.stock.summary) ? data.stock.summary : [];
   salesRows = (data && data.sales && data.sales.rows) ? data.sales.rows : [];
   locationMap = (data && data.locations && data.locations.rows) ? new Map(data.locations.rows.map(p=>[p.code, p.location])) : new Map();
+  transferRows = (data && data.transfers && data.transfers.rows) ? data.transfers.rows : [];
+  transferMapLoc = (data && data.transfers && data.transfers.mapLoc) ? new Map(data.transfers.mapLoc.map(p=>[p.code, p.location])) : new Map();
+  transferMarkMem = (data && data.transfers && data.transfers.marks) ? new Set(data.transfers.marks) : new Set();
   rebuildStockTotalsMap();
 
   // دمج علامات "طلعت الكود" من السحابة مع المحلية (بحيث لو أول مرة تفتح من جهاز جديد، العلامات القديمة تبقى موجودة)
   syncCodeOutFromCloud(data && data.codeOut);
 
-  const latestUpdate = [data && data.stock && data.stock.uploadedAt, data && data.sales && data.sales.uploadedAt, data && data.locations && data.locations.uploadedAt].filter(Boolean).sort().pop();
+  const latestUpdate = [data && data.stock && data.stock.uploadedAt, data && data.sales && data.sales.uploadedAt, data && data.locations && data.locations.uploadedAt, data && data.transfers && data.transfers.uploadedAt].filter(Boolean).sort().pop();
   $('lastUpdateLabel').textContent = latestUpdate ? ('آخر تحديث: ' + formatDate(latestUpdate)) : '';
 
-  if(stockSummary.length || salesRows.length){
+  const hasAny = stockSummary.length || salesRows.length || transferRows.length || transferMapLoc.size;
+  if(hasAny){
     $('resultsArea').style.display = 'block';
     $('emptyState').style.display = 'none';
     renderStockStats(); renderStockTable();
     renderSalesStats(); renderSalesTable();
+    renderTransfersVisibility();
   } else {
     $('resultsArea').style.display = 'none';
     $('emptyState').style.display = 'block';
@@ -708,13 +772,208 @@ function rebuildStockTotalsMap(){
 }
 
 // ---------------- tabs ----------------
-$('tabSalesBtn').addEventListener('click', ()=>{
-  $('tabSalesBtn').classList.add('active'); $('tabStockBtn').classList.remove('active');
-  $('panelSales').classList.add('active'); $('panelStock').classList.remove('active');
-});
-$('tabStockBtn').addEventListener('click', ()=>{
-  $('tabStockBtn').classList.add('active'); $('tabSalesBtn').classList.remove('active');
-  $('panelStock').classList.add('active'); $('panelSales').classList.remove('active');
+function switchDashTab(tab){
+  const panels = { sales:'panelSales', stock:'panelStock', transfers:'panelTransfers' };
+  const btns = { sales:'tabSalesBtn', stock:'tabStockBtn', transfers:'tabTransfersBtn' };
+  ['sales','stock','transfers'].forEach(t=>{
+    $(btns[t]).classList.toggle('active', t === tab);
+    $(panels[t]).classList.toggle('active', t === tab);
+  });
+  if(tab === 'transfers'){ renderTransfersFilters(); renderTransfersStats(); renderTransfersTable(); }
+}
+$('tabSalesBtn').addEventListener('click', ()=> switchDashTab('sales'));
+$('tabStockBtn').addEventListener('click', ()=> switchDashTab('stock'));
+$('tabTransfersBtn').addEventListener('click', ()=> switchDashTab('transfers'));
+
+// ---------------- تحضير التحويلات ----------------
+const transferModalEl = $('transferModal');
+let transferRows = [];
+let transferMapLoc = new Map();
+let transfersDest = 'all';
+let transferMarkMem = new Set();
+
+$('openTransfersBtn').addEventListener('click', ()=>{ transferModalEl.classList.add('show'); });
+$('closeTransfersBtn').addEventListener('click', ()=>{ transferModalEl.classList.remove('show'); });
+transferModalEl.addEventListener('click', (e)=>{ if(e.target === transferModalEl) transferModalEl.classList.remove('show'); });
+
+const dropTransfers = $('dropTransfers');
+['dragover','dragenter'].forEach(evt=> dropTransfers.addEventListener(evt, (e)=>{ e.preventDefault(); dropTransfers.classList.add('dragover'); }));
+['dragleave','drop'].forEach(evt=> dropTransfers.addEventListener(evt, (e)=>{ e.preventDefault(); dropTransfers.classList.remove('dragover'); }));
+dropTransfers.addEventListener('drop', (e)=>{ const f = e.dataTransfer.files[0]; if(f) handleTransfersFile(f); });
+$('fileInputTransfers').addEventListener('change', (e)=>{ const f = e.target.files[0]; if(f) handleTransfersFile(f); });
+
+const dropMapLoc = $('dropMapLoc');
+['dragover','dragenter'].forEach(evt=> dropMapLoc.addEventListener(evt, (e)=>{ e.preventDefault(); dropMapLoc.classList.add('dragover'); }));
+['dragleave','drop'].forEach(evt=> dropMapLoc.addEventListener(evt, (e)=>{ e.preventDefault(); dropMapLoc.classList.remove('dragover'); }));
+dropMapLoc.addEventListener('drop', (e)=>{ const f = e.dataTransfer.files[0]; if(f) handleMapLocFile(f); });
+$('fileInputMapLoc').addEventListener('change', (e)=>{ const f = e.target.files[0]; if(f) handleMapLocFile(f); });
+
+function processTransfersRows(rows){
+  if(!rows || rows.length === 0) return [];
+  let startIdx = 0;
+  const firstQty = parseFloat((rows[0]||[])[1]);
+  if(isNaN(firstQty)) startIdx = 1;
+  const map = new Map();
+  for(let i=startIdx; i<rows.length; i++){
+    const row = rows[i];
+    if(!row || row.length === 0) continue;
+    const rawCodeSize = row[0];
+    if(rawCodeSize === undefined || rawCodeSize === '' || rawCodeSize === null) continue;
+    const qty = parseFloat(row[1]) || 0;
+    const dest = (row[2] !== undefined && row[2] !== null) ? String(row[2]).trim() : 'غير محدد';
+    const { code: rawCode, size } = splitCodeSize(rawCodeSize);
+    const code = fixLeadingZero(rawCode);
+    if(!code) continue;
+    const key = code + '|' + (size || '-') + '|' + dest;
+    if(!map.has(key)) map.set(key, { code, size: size || '-', qty:0, dest });
+    map.get(key).qty += qty;
+  }
+  return Array.from(map.values());
+}
+function processMapLocRows(rows){
+  return processLocRows(rows);
+}
+function handleTransfersFile(file){
+  const statusEl = $('uploadStatusTransfers');
+  setStatus(statusEl, 'جاري قراءة الملف...', '');
+  const reader = new FileReader();
+  reader.onload = async (e)=>{
+    try{
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, { type:'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'', raw:true });
+      const parsed = processTransfersRows(rows);
+      if(parsed.length === 0){ setStatus(statusEl, 'مفيش بيانات صالحة اتقرت من الملف.', 'err'); return; }
+      transferRows = parsed;
+      transferMarkMem = new Set();
+      renderTransfersFilters();
+      renderTransfersStats(); renderTransfersTable();
+      setStatus(statusEl, 'تم قراءة شيت التحويلات ✓ (' + parsed.length + ' صنف)', 'ok');
+      $('tabTransfersBtn').style.display = '';
+      const saved = await saveTransfersToCloud();
+      $('uploadStatusTransfersCard').textContent = saved ? ('آخر تحديث تحويلات: ' + formatDate(new Date().toISOString())) : 'حصلت مشكلة في الحفظ آخر مرة.';
+    }catch(err){ console.error(err); setStatus(statusEl, 'حصل خطأ في قراءة الملف.', 'err'); }
+    $('fileInputTransfers').value = '';
+  };
+  reader.onerror = ()=> setStatus(statusEl, 'تعذر قراءة الملف.', 'err');
+  reader.readAsArrayBuffer(file);
+}
+function handleMapLocFile(file){
+  const statusEl = $('uploadStatusMapLoc');
+  setStatus(statusEl, 'جاري قراءة الملف...', '');
+  const reader = new FileReader();
+  reader.onload = async (e)=>{
+    try{
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, { type:'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'', raw:true });
+      const parsed = processMapLocRows(rows);
+      if(parsed.length === 0){ setStatus(statusEl, 'مفيش بيانات صالحة اتقرت من الملف.', 'err'); return; }
+      transferMapLoc = new Map(parsed.map(p=>[p.code, p.location]));
+      renderTransfersTable();
+      setStatus(statusEl, 'تم قراءة شيت MAP LOC ✓ (' + parsed.length + ' كود)', 'ok');
+      await saveTransfersToCloud();
+      $('tabTransfersBtn').style.display = '';
+    }catch(err){ console.error(err); setStatus(statusEl, 'حصل خطأ في قراءة الملف.', 'err'); }
+    $('fileInputMapLoc').value = '';
+  };
+  reader.onerror = ()=> setStatus(statusEl, 'تعذر قراءة الملف.', 'err');
+  reader.readAsArrayBuffer(file);
+}
+async function saveTransfersToCloud(){
+  try{
+    const existing = await loadBranchData(currentBranch.id) || {};
+    existing.transfers = {
+      uploadedAt: new Date().toISOString(),
+      rows: transferRows,
+      mapLoc: Array.from(transferMapLoc.entries()).map(([code, location])=>({ code, location })),
+      marks: Array.from(transferMarkMem)
+    };
+    await saveBranchData(currentBranch.id, existing);
+    return true;
+  }catch(err){ console.error(err); return false; }
+}
+function renderTransfersVisibility(){
+  const has = transferRows.length > 0 || transferMapLoc.size > 0;
+  $('tabTransfersBtn').style.display = has ? '' : 'none';
+  if(has){ renderTransfersFilters(); renderTransfersStats(); renderTransfersTable(); }
+}
+function transferVisibleRows(){
+  let rows = transferRows;
+  if(transfersDest !== 'all') rows = rows.filter(r=> r.dest === transfersDest);
+  return rows;
+}
+function renderTransfersFilters(){
+  const sel = $('transfersDestFilter');
+  const current = sel.value || 'all';
+  const unique = transferRows.map(r=>r.dest).filter((v,i,a)=> a.indexOf(v) === i).sort((x,y)=> x.localeCompare(y,'ar'));
+  const opts = '<option value="all">كل الفروع المستهدفة</option>' + unique.map(d=> '<option value="' + escapeAttr(d) + '">' + escapeHtml(d) + '</option>').join('');
+  sel.innerHTML = opts;
+  sel.value = unique.indexOf(current) > -1 ? current : 'all';
+  transfersDest = sel.value;
+}
+$('transfersDestFilter').addEventListener('change', (e)=>{ transfersDest = e.target.value; renderTransfersStats(); renderTransfersTable(); });
+function renderTransfersStats(){
+  const rows = transferVisibleRows();
+  let qty = 0, missing = 0;
+  rows.forEach(r=>{ qty += r.qty; if(!stockTotalsMap.has(r.code)) missing++; });
+  const dests = rows.map(r=>r.dest).filter((v,i,a)=> a.indexOf(v) === i).length;
+  $('transStatLines').textContent = rows.length;
+  $('transStatQty').textContent = qty.toLocaleString('en-US');
+  $('transStatDests').textContent = dests;
+  $('transStatMissing').textContent = missing;
+}
+function renderTransfersTable(){
+  const rows = transferVisibleRows();
+  const wrap = $('transfersTableWrap');
+  if(rows.length === 0){
+    wrap.innerHTML = '<div class="empty-state"><div class="big">📦</div>' + (transferRows.length === 0 ? 'ارفع شيت التحويلات وشيت MAP LOC من كارت "تحضير التحويلات".' : 'مفيش نتائج مطابقة للفرع المستهدف ده.') + '</div>';
+    return;
+  }
+  let html = '<table class="data-table"><thead><tr>'
+    + '<th>طلعت الكود</th>'
+    + '<th>الصورة</th>'
+    + '<th>الكود</th>'
+    + '<th>المقاس المباع</th>'
+    + '<th>عدد القطع</th>'
+    + '<th>اللوكيشن (شيت اللوكيشن)</th>'
+    + '<th>اللوكيشن (MAP LOC)</th>'
+    + '<th>الدبارتمنت</th>'
+    + '<th>توتال الموديل بالمخزون</th>'
+    + '</tr></thead><tbody>';
+  rows.forEach((r, idx)=>{
+    const stockInfo = stockTotalsMap.get(r.code);
+    const totalCell = stockInfo ? `<span class="qty-cell">${stockInfo.totalQty.toLocaleString('en-US')}</span>` : '<span class="no-stock">مفيش في المخزون</span>';
+    const deptCell = stockInfo ? `<span class="dept-badge">${escapeHtml(stockInfo.department)}</span>` : '<span class="no-stock">لا يوجد</span>';
+    const locNormal = locationMap.get(r.code) || '—';
+    const locMapTxt = transferMapLoc.get(r.code) || '—';
+    const imgUrl = buildImgUrl(r.code);
+    html += `<tr>
+      <td style="text-align:center;"><input type="checkbox" class="transfer-chk" data-code="${escapeAttr(r.code)}"${transferMarkMem.has(r.code) ? ' checked' : ''}></td>
+      <td>
+        <img class="prod-thumb" src="${imgUrl}" alt="${escapeHtml(r.code)}"
+             onerror="this.outerHTML='&lt;div class=&quot;prod-thumb-missing&quot;&gt;لا توجد صورة&lt;/div&gt;'">
+        <a href="${imgUrl}" target="_blank" rel="noopener" style="display:block;font-size:10px;color:var(--muted);text-decoration:underline;margin-top:3px;">فتح الرابط</a>
+      </td>
+      <td class="code-cell">${escapeHtml(r.code)}</td>
+      <td>${escapeHtml(r.size)}</td>
+      <td class="qty-cell">${r.qty.toLocaleString('en-US')}</td>
+      <td>${locNormal === '—' ? '<span class="no-stock">—</span>' : `<span class="loc-badge">${escapeHtml(locNormal)}</span>`}</td>
+      <td>${locMapTxt === '—' ? '<span class="no-stock">—</span>' : `<span class="loc-badge">${escapeHtml(locMapTxt)}</span>`}</td>
+      <td>${deptCell}</td>
+      <td>${totalCell}</td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  wrap.innerHTML = html;
+}
+$('clearTransMarksBtn').addEventListener('click', ()=>{
+  transferMarkMem = new Set();
+  saveTransfersToCloud();
+  renderTransfersTable();
+  showToast('تم مسح كل تأشيرات التحويلات ✓');
 });
 
 // ---------------- shared split helper ----------------
