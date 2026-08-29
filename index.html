@@ -275,6 +275,17 @@ th.code-out-th{ width:96px; text-align:center; }
 
 <div class="toast" id="toast"></div>
 <div id="locPreview"></div>
+<div class="modal-overlay" id="locImgModal">
+  <div class="modal-card" style="max-width:460px;">
+    <h3 style="font-size:16px;">صورة اللوكيشن</h3>
+    <img id="locImgModalImg" style="width:100%;border-radius:12px;object-fit:cover;max-height:62vh;background:#F0F1EC;">
+    <div id="locImgModalCap" style="color:var(--muted);font-size:13px;text-align:center;"></div>
+    <div class="modal-actions" style="justify-content:center;flex-wrap:wrap;">
+      <a class="export-btn" id="locImgOpenLink" href="#" target="_blank" rel="noopener" style="text-decoration:none;text-align:center;display:inline-block;">فتح الصورة كاملة</a>
+      <button class="btn-ghost loc-img-close" type="button">إغلاق</button>
+    </div>
+  </div>
+</div>
 
 <!-- ================= CHANGE PASSWORD MODAL ================= -->
 <div class="modal-overlay" id="pwModal">
@@ -1175,11 +1186,31 @@ document.addEventListener('mousemove', (e)=>{
   if(el.style.display === 'block') positionLocPreview(e);
 });
 document.addEventListener('click', (e)=>{
+  const modal = $('locImgModal');
+  if(e.target.closest && e.target.closest('#locImgModal') && e.target === modal){
+    modal.classList.remove('show');
+    return;
+  }
+  if(e.target.closest && e.target.closest('.loc-img-close')){
+    modal.classList.remove('show');
+    return;
+  }
   const badge = e.target.closest ? e.target.closest('.loc-badge') : null;
   if(!badge) return;
-  const imgUrl = locImgMap[badge.textContent.trim()];
-  if(imgUrl) window.open(imgUrl, '_blank');
+  const loc = badge.textContent.trim();
+  const imgUrl = locImgMap[loc];
+  if(!imgUrl) return;
+  $('locPreview').style.display = 'none';
+  const img = $('locImgModalImg');
+  img.src = imgUrl;
+  $('locImgModalCap').textContent = 'لوكيشن: ' + loc;
+  $('locImgOpenLink').href = imgUrl;
+  modal.classList.add('show');
 });
+const locImgModalEl = $('locImgModal');
+if(locImgModalEl){
+  locImgModalEl.addEventListener('click', (e)=>{ if(e.target === locImgModalEl) locImgModalEl.classList.remove('show'); });
+}
 loadDriveConfig();
 function renderTransfersVisibility(){
   const has = transferRows.length > 0 || transferMapLoc.size > 0;
