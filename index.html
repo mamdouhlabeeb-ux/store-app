@@ -393,7 +393,7 @@ service cloud.firestore {
       <button class="btn-primary" id="loginBtn">دخول</button>
       <button class="btn-ghost" id="adminOpenBtn">لوحة إدارة الفروع (للمدير)</button>
       <button class="btn-ghost" id="installBtnLogin" style="color:var(--amber-deep);text-align:center;">تثبيت التطبيق على الجهاز</button>
-      <div class="ver-stamp" id="verStamp">v2026-09-01-label11</div>
+      <div class="ver-stamp" id="verStamp">v2026-09-01-label12</div>
     </div>
   </div>
 </div>
@@ -2425,8 +2425,9 @@ function renderLabelSearched(query){
     + '.pl-price-row td.k.small9{ font-size:8pt; }'
     + '.pl-price-row td.k.small8{ font-size:7pt; }'
     + '.pl-new-tag{ color:#000; font-size:11pt; font-weight:700; }'
-    + '.pl-qr-row td{ vertical-align:bottom; padding-top:1mm; height:32mm; }'
-    + '.pl-qr img{ width:2.3cm; height:2.3cm; }'
+    + '.pl-qr-row td{ padding-top:1mm; height:24mm; vertical-align:top; }'
+    + '.pl-qr img{ width:2.2cm; height:2.2cm; }'
+    + '.pl-fill-row td{ height:auto; }'
     + '</style>';
 
   let sticker = '';
@@ -2440,7 +2441,7 @@ function renderLabelSearched(query){
       ? '<span class="pl-new-tag">NEW</span>'
       : labelPrice(pc.line2);
     sticker += '<div class="pl-label" id="plOne">'
-      + '<table class="pl-table">'
+      + '<table dir="ltr" class="pl-table">'
       + '<tr class="pl-code-row"><td colspan="2">' + escapeHtml(r.code || '') + '</td></tr>'
       + '<tr class="pl-brand-row"><td colspan="2">RAViN&rsquo;</td></tr>'
       + '<tr class="pl-price-row t1"><td class="v hl' + line1Cls + '">' + labelPrice(pc.line1) + '</td><td class="k">PRICE</td></tr>'
@@ -2448,6 +2449,7 @@ function renderLabelSearched(query){
       + '<tr class="pl-price-row t3"><td class="v">' + labelPrice(pc.line3) + '</td><td class="k small9">member -10%</td></tr>'
       + '<tr class="pl-price-row t4"><td class="v">' + labelPrice(pc.line4) + '</td><td class="k small8">قسط 3 أشهر</td></tr>'
       + '<tr class="pl-qr-row"><td colspan="2"><div class="pl-qr"><img src="' + qrImg + '" alt="QR"></div></td></tr>'
+      + '<tr class="pl-fill-row"><td colspan="2">&nbsp;</td></tr>'
       + '</table>'
       + '</div>';
   }
@@ -2521,10 +2523,10 @@ function priceEGP(p){
   if(!p || isNaN(p)) return '';
   return p.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
-// سعر الليبل زي ورقة WHITE: بدون فواصل عشرية (1700 مش 1699.99)
+// سعر الليبل: بقيمة عشرية دائمًا (1299.99 مش 1300)
 function labelPrice(p){
   if(p === null || p === undefined || isNaN(p)) return '';
-  return Math.round(p).toLocaleString('en-US');
+  return p.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function openLabelPrint(rows, code, totalQty){
@@ -2539,7 +2541,7 @@ function openLabelPrint(rows, code, totalQty){
       ? '<span class="pl-new-tag">NEW</span>'
       : labelPrice(pc.line2);
     labels += '<div class="pl-label">'
-      + '<table class="pl-table">'
+      + '<table dir="ltr" class="pl-table">'
       + '<tr class="pl-code-row"><td colspan="2">' + escapeHtml(r.code || '') + '</td></tr>'
       + '<tr class="pl-brand-row"><td colspan="2">RAViN&rsquo;</td></tr>'
       + '<tr class="pl-price-row t1"><td class="v hl' + line1Cls + '">' + labelPrice(pc.line1) + '</td><td class="k">PRICE</td></tr>'
@@ -2547,6 +2549,7 @@ function openLabelPrint(rows, code, totalQty){
       + '<tr class="pl-price-row t3"><td class="v">' + labelPrice(pc.line3) + '</td><td class="k small9">member -10%</td></tr>'
       + '<tr class="pl-price-row t4"><td class="v">' + labelPrice(pc.line4) + '</td><td class="k small8">قسط 3 أشهر</td></tr>'
       + '<tr class="pl-qr-row"><td colspan="2"><div class="pl-qr"><img src="' + qrImg + '" alt="QR"></div></td></tr>'
+      + '<tr class="pl-fill-row"><td colspan="2">&nbsp;</td></tr>'
       + '</table>'
       + '</div>';
   }
@@ -2571,8 +2574,9 @@ function openLabelPrint(rows, code, totalQty){
     + '.pl-price-row td.k.small9{ font-size:8pt; }'
     + '.pl-price-row td.k.small8{ font-size:7pt; }'
     + '.pl-new-tag{ color:#000; font-size:11pt; font-weight:700; }'
-    + '.pl-qr-row td{ vertical-align:bottom; padding-top:1mm; height:32mm; }'
-    + '.pl-qr img{ width:2.3cm; height:2.3cm; }'
+    + '.pl-qr-row td{ padding-top:1mm; height:24mm; vertical-align:top; }'
+    + '.pl-qr img{ width:2.2cm; height:2.2cm; }'
+    + '.pl-fill-row td{ height:auto; }'
     + '</style>';
   let fr = document.getElementById('labelPrintFrame');
   if(!fr){
@@ -2593,7 +2597,7 @@ function openLabelPrint(rows, code, totalQty){
       win.print();
     }catch(e){ console.error(e); }
   };
-  fr.srcdoc = '<!DOCTYPE html><html lang="ar" dir="rtl"><head><meta charset="UTF-8">' + printCss + '</head><body>' + labels + '</body></html>';
+  fr.srcdoc = '<!DOCTYPE html><html lang="ar"><head><meta charset="UTF-8">' + printCss + '</head><body>' + labels + '</body></html>';
 }
 
 function extractLabelSize(s){
