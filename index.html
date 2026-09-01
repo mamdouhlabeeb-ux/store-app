@@ -393,7 +393,7 @@ service cloud.firestore {
       <button class="btn-primary" id="loginBtn">دخول</button>
       <button class="btn-ghost" id="adminOpenBtn">لوحة إدارة الفروع (للمدير)</button>
       <button class="btn-ghost" id="installBtnLogin" style="color:var(--amber-deep);text-align:center;">تثبيت التطبيق على الجهاز</button>
-      <div class="ver-stamp" id="verStamp">v2026-09-01-label5</div>
+      <div class="ver-stamp" id="verStamp">v2026-09-01-label6</div>
     </div>
   </div>
 </div>
@@ -2420,7 +2420,7 @@ function renderLabelSearched(query){
     + '.pl-price-row td.v.hl{ background:#F2F2F2; }'
     + '.pl-price-row td.v.strike{ text-decoration:line-through; }'
     + '.pl-price-row td.k.small9{ font-size:9pt; }'
-    + '.pl-price-row td.k.small8{ font-size:8pt; text-align:left; }'
+    + '.pl-price-row td.k.small8{ font-size:8pt; text-align:center; }'
     + '.pl-new-tag{ color:#000; font-size:12pt; font-weight:700; }'
     + '.pl-qr-row td{ padding-top:4mm; }'
     + '.pl-qr img{ width:1.6in; height:1.6in; }'
@@ -2527,7 +2527,7 @@ function labelPrice(p){
 function openLabelPrint(rows, code, totalQty){
   const root = $('labelPrintRoot');
   const labelCss = '<style>'
-    + '@page{ size: 4in 8in; margin: 0.10in 0 0 0; }'
+    + '@page{ size: 4cm 8cm; margin: 0; }'
     + 'html,body{ margin:0; padding:0; }'
     + 'body{ font-family: Calibri, Arial, sans-serif; background:#fff; }'
     + '.pl-label{ font-family:Calibri, Arial, sans-serif; text-align:center; background:#fff; }'
@@ -2542,7 +2542,7 @@ function openLabelPrint(rows, code, totalQty){
     + '.pl-price-row td.v.hl{ background:#F2F2F2; }'
     + '.pl-price-row td.v.strike{ text-decoration:line-through; }'
     + '.pl-price-row td.k.small9{ font-size:9pt; }'
-    + '.pl-price-row td.k.small8{ font-size:8pt; text-align:left; }'
+    + '.pl-price-row td.k.small8{ font-size:8pt; text-align:center; }'
     + '.pl-new-tag{ color:#000; font-size:12pt; font-weight:700; }'
     + '.pl-qr-row td{ padding-top:4mm; }'
     + '.pl-qr img{ width:1.6in; height:1.6in; }'
