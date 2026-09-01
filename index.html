@@ -391,10 +391,9 @@ service cloud.firestore {
         <input type="password" id="passwordInput" placeholder="••••••">
       </div>
       <button class="btn-primary" id="loginBtn">دخول</button>
-      <button class="btn-tile" id="labelOpenBtn"><span class="tile-ico">🏷️</span><span class="tile-txt">استيكر / ليبل تسعير</span></button>
       <button class="btn-ghost" id="adminOpenBtn">لوحة إدارة الفروع (للمدير)</button>
       <button class="btn-ghost" id="installBtnLogin" style="color:var(--amber-deep);text-align:center;">تثبيت التطبيق على الجهاز</button>
-      <div class="ver-stamp" id="verStamp">v2026-09-01-label2</div>
+      <div class="ver-stamp" id="verStamp">v2026-09-01-label3</div>
     </div>
   </div>
 </div>
@@ -472,6 +471,13 @@ service cloud.firestore {
         <p>ارفع شيت التحويلات وشيت MAP LOC في نافذة مخصوصة وتظهر لك نتيجة جاهزة للمراجعة</p>
         <button class="upload-btn" id="openTransfersBtn">فتح نافذة التحويلات</button>
         <div class="upload-status" id="uploadStatusTransfersCard"></div>
+      </div>
+      <div class="upload-card" id="uploadCardLabel">
+        <div class="step-tag">5 - استيكر / ليبل تسعير</div>
+        <h3>استيكر / ليبل تسعير</h3>
+        <p>ارفع شيت الاستوك بتاع الفرع (هنا) واعمل ليبلات تسعير ورقية QR طبق الأصل</p>
+        <button class="upload-btn" id="openLabelBtn">فتح ليبل التسعير</button>
+        <div class="upload-status" id="uploadStatusLabelCard"></div>
       </div>
     </div>
 
@@ -570,13 +576,13 @@ service cloud.firestore {
   <div class="panel-head" style="margin-bottom:6px;">
     <h2 style="font-family:'Cairo',sans-serif;">استيكر / ليبل تسعير</h2>
     <div style="display:flex;gap:10px;align-items:center;">
-      <button class="link-btn" id="labelBackBtn">رجوع للرئيسية</button>
+      <button class="link-btn" id="labelBackBtn">رجوع للفرع</button>
     </div>
   </div>
 <p style="color:var(--muted);font-size:13.5px;line-height:1.8;margin:4px 0 18px;">
-    مستقلة عن باقي الشيتات: ارفع شيت الاستوك (<b>أعمدة: الكود-المقاس، الكود، السعر قبل، السعر بعد، الكمية، الدبارتمنت</b>)،
-    وبعدين اكتب الكود هيظهرلك: <b>السعر الرئيسي → السعر بعد التخفيض → 10% خصم → 3 أقساط</b> + QR.
-    الضغط على طباعة يفتح صفحة ليبلات (4×8 بوصة) طبق الأصل بصيغة جوجل شيت.
+    ارفع شيت الاستوك الخاص بالفرع ده (<b>أعمدة: الكود-المقاس، الكود، السعر قبل، السعر بعد، الكمية، الدبارتمنت</b>) — بيتبقى محفوظ للفرع ده لوحده.
+    واقف ع الكود: <b>السعر الرئيسي → سعر التخفيض → 10% خصم → 3 أقساط</b> + QR.
+    الطباعة بتفتح صفحة ليبلات 4×8 بوصة بنفس تصميم old printer (مواصفات جوجل شيت).
   </p>
 
   <div class="upload-row" style="grid-template-columns:1fr;">
@@ -2282,29 +2288,40 @@ if('serviceWorker' in navigator && (location.protocol === 'https:' || location.h
 // ================= استيكر / ليبل تسعير (standalone) =================
 const LABEL_DB_KEY = 'labelStock_v1';
 let labelRows = [];
-function loadLabelRows(){
-  try{ labelRows = JSON.parse(localStorage.getItem(LABEL_DB_KEY) || '[]'); }catch(e){ labelRows = []; }
+async function saveLabelRows(branchId){
+  if(!branchId) return;
+  try{
+    const existing = await loadBranchData(branchId) || {};
+    existing.sticker = { uploadedAt: new Date().toISOString(), sheet: labelRows };
+    await saveBranchData(branchId, existing);
+  }catch(e){ console.error(e); }
 }
-function saveLabelRows(){
-  try{ localStorage.setItem(LABEL_DB_KEY, JSON.stringify(labelRows)); }catch(e){}
-}
-loadLabelRows();
 let labelSearchInput = null;
 
 function openLabelScreen(){
   switchScreen('screen-label');
   const panel = $('labelSearchPanel');
-  if(labelRows && labelRows.length){
-    panel.style.display = 'block';
-    if(labelSearchInput){ labelSearchInput.value=''; labelSearchInput.focus(); }
-    renderLabelSearched('');
-  } else {
-    panel.style.display = 'none';
-    setLabelStockStatus('ارفع شيت الاستوك الأول عشان تقدّم search.', '');
-  }
+  (async ()=>{
+    if(currentBranch && currentBranch.id){
+      try{
+        const doc = await loadBranchData(currentBranch.id);
+        const stored = (doc && doc.sticker && doc.sticker.sheet) || [];
+        labelRows = Array.isArray(stored) ? stored : [];
+      }catch(e){ console.error(e); labelRows = []; }
+    } else { labelRows = []; }
+    if(labelRows && labelRows.length){
+      panel.style.display = 'block';
+      if(labelSearchInput){ labelSearchInput.value=''; labelSearchInput.focus(); }
+      renderLabelSearched('');
+      setLabelStockStatus('موجود (' + labelRows.length + ' سطر) من آخر رفعة للفرع ده ✓', 'ok');
+    } else {
+      panel.style.display = 'none';
+      setLabelStockStatus('ارفع شيت الاستوك الخاص بالفرع ده الأول عشان تقدّم search.', '');
+    }
+  })();
 }
-$('labelOpenBtn').addEventListener('click', openLabelScreen);
-$('labelBackBtn').addEventListener('click', ()=> switchScreen('screen-login'));
+$('openLabelBtn') && $('openLabelBtn').addEventListener('click', openLabelScreen);
+$('labelBackBtn').addEventListener('click', ()=> switchScreen('screen-dashboard'));
 
 function setLabelStockStatus(msg, type){
   const el = $('uploadStatusLabelStock'); if(!el) return;
@@ -2350,8 +2367,8 @@ function handleLabelStockFile(file){
         labelRows.push({ codeSize, code, priceBefore, priceAfter, qty, dept });
       });
       if(labelRows.length === 0){ setLabelStockStatus('مفيش بيانات صالحة اتقرت.', 'err'); return; }
-      saveLabelRows();
-      setLabelStockStatus('تم قراءة شيت الاستوك ✓ (' + labelRows.length + ' سطر).', 'ok');
+      if(currentBranch && currentBranch.id) await saveLabelRows(currentBranch.id);
+      setLabelStockStatus('تم قراءة شيت الاستوك ✓ (' + labelRows.length + ' سطر) للفرع ' + (currentBranch ? escapeHtml(currentBranch.name || '') : '') + '.', 'ok');
       $('labelSearchPanel').style.display = 'block';
       labelSearchInput = $('labelCodeSearch');
       labelSearchInput.value = '';
@@ -2492,7 +2509,6 @@ function openLabelPrint(rows, code, totalQty){
   let labels = '';
   rows.forEach(r=>{
     const pc = labelCalcPrices(r);
-    const size = extractLabelSize(r.codeSize);
     const qrImg = labelQrDataUrl(labelQrPayload(r.codeSize, code));
     const nameHtml = r.dept ? '<div class="pl-name">' + escapeHtml(r.dept) + '</div>' : '';
     let line2Html;
@@ -2503,17 +2519,17 @@ function openLabelPrint(rows, code, totalQty){
     }
     labels += '<div class="pl-label">'
       + '<div class="pl-head">'
-      + '<div class="pl-code">' + escapeHtml((size ? r.codeSize : r.code) || '') + '</div>'
-      + (size ? '<div class="pl-name">مقاس ' + escapeHtml(size) + '</div>' : nameHtml)
+      + '<div class="pl-code">' + escapeHtml(r.code || '') + '</div>'
+      + nameHtml
       + '</div>'
-      + '<div class="pl-price-row"><span class="k">سعر</span><span class="v">' + priceEGP(pc.line1) + '</span></div>'
+      + '<div class="pl-price-row"><span class="k">Price</span><span class="v">' + priceEGP(pc.line1) + '</span></div>'
       + '<div class="pl-price-row"><span class="k">سعر التخفيض</span><span class="v">' + line2Html + '</span></div>'
       + '<div class="pl-price-row"><span class="k">خصم 10%</span><span class="v">' + priceEGP(pc.line3) + '</span></div>'
       + '<div class="pl-price-row"><span class="k">3 أقساط</span><span class="v">' + priceEGP(pc.line4) + '</span></div>'
       + '<div class="pl-qr-row">'
       + '<div class="pl-promo">SCAN ME &amp; GET 10% OFF</div>'
       + '<div class="pl-qr"><img src="' + qrImg + '" alt="QR"></div>'
-      + '<div class="pl-foot">' + escapeHtml((size ? r.codeSize : r.code) || '') + '</div>'
+      + '<div class="pl-foot">' + escapeHtml(r.code || '') + '</div>'
       + '</div>'
       + '</div>';
   });
