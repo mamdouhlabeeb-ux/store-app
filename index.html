@@ -393,7 +393,7 @@ service cloud.firestore {
       <button class="btn-primary" id="loginBtn">دخول</button>
       <button class="btn-ghost" id="adminOpenBtn">لوحة إدارة الفروع (للمدير)</button>
       <button class="btn-ghost" id="installBtnLogin" style="color:var(--amber-deep);text-align:center;">تثبيت التطبيق على الجهاز</button>
-      <div class="ver-stamp" id="verStamp">v2026-09-01-label12</div>
+      <div class="ver-stamp" id="verStamp">v2026-09-01-label13</div>
     </div>
   </div>
 </div>
@@ -2411,13 +2411,13 @@ function renderLabelSearched(query){
     + '.pl-label + .pl-label{ margin-top:18px; }'
     + '.pl-table{ direction:ltr; border-collapse:collapse; width:100%; height:100%; table-layout:fixed; }'
     + '.pl-table td{ padding:0; vertical-align:middle; }'
-    + '.pl-code-row td{ font-size:15pt; font-weight:700; color:#000; height:6mm; }'
-    + '.pl-brand-row td{ height:7mm; font-size:13pt; font-weight:800; letter-spacing:1px; color:#000; }'
+    + '.pl-code-row td{ font-size:15pt; font-weight:700; color:#000; height:5mm; }'
+    + '.pl-brand-row td{ height:6mm; font-size:13pt; font-weight:800; letter-spacing:1px; color:#000; }'
     + '.pl-price-row td{ border:.5pt dotted #000; font-weight:700; }'
     + '.pl-price-row.t1 td{ height:9mm; }'
-    + '.pl-price-row.t2 td{ height:8mm; }'
-    + '.pl-price-row.t3 td{ height:9mm; }'
-    + '.pl-price-row.t4 td{ height:7mm; }'
+    + '.pl-price-row.t2 td{ height:7mm; }'
+    + '.pl-price-row.t3 td{ height:8mm; }'
+    + '.pl-price-row.t4 td{ height:6mm; }'
     + '.pl-price-row td.k{ font-size:12pt; }'
     + '.pl-price-row td.v{ font-size:11pt; }'
     + '.pl-price-row td.v.hl{ background:#F2F2F2; }'
@@ -2425,8 +2425,8 @@ function renderLabelSearched(query){
     + '.pl-price-row td.k.small9{ font-size:8pt; }'
     + '.pl-price-row td.k.small8{ font-size:7pt; }'
     + '.pl-new-tag{ color:#000; font-size:11pt; font-weight:700; }'
-    + '.pl-qr-row td{ padding-top:1mm; height:24mm; vertical-align:top; }'
-    + '.pl-qr img{ width:2.2cm; height:2.2cm; }'
+    + '.pl-qr-row td{ padding-top:1mm; height:37mm; vertical-align:top; }'
+    + '.pl-qr img{ width:3.6cm; height:3.6cm; }'
     + '.pl-fill-row td{ height:auto; }'
     + '</style>';
 
@@ -2560,13 +2560,13 @@ function openLabelPrint(rows, code, totalQty){
     + '.pl-label{ width:4cm; height:8cm; box-sizing:border-box; padding:1mm; text-align:center; overflow:hidden; page-break-after:auto; }'
     + '.pl-table{ direction:ltr; border-collapse:collapse; width:100%; height:100%; table-layout:fixed; }'
     + '.pl-table td{ padding:0; vertical-align:middle; }'
-    + '.pl-code-row td{ font-size:15pt; font-weight:700; color:#000; height:6mm; }'
-    + '.pl-brand-row td{ height:7mm; font-size:13pt; font-weight:800; letter-spacing:1px; color:#000; }'
+    + '.pl-code-row td{ font-size:15pt; font-weight:700; color:#000; height:5mm; }'
+    + '.pl-brand-row td{ height:6mm; font-size:13pt; font-weight:800; letter-spacing:1px; color:#000; }'
     + '.pl-price-row td{ border:.5pt dotted #000; font-weight:700; }'
     + '.pl-price-row.t1 td{ height:9mm; }'
-    + '.pl-price-row.t2 td{ height:8mm; }'
-    + '.pl-price-row.t3 td{ height:9mm; }'
-    + '.pl-price-row.t4 td{ height:7mm; }'
+    + '.pl-price-row.t2 td{ height:7mm; }'
+    + '.pl-price-row.t3 td{ height:8mm; }'
+    + '.pl-price-row.t4 td{ height:6mm; }'
     + '.pl-price-row td.k{ font-size:12pt; }'
     + '.pl-price-row td.v{ font-size:11pt; }'
     + '.pl-price-row td.v.hl{ background:#F2F2F2; }'
@@ -2574,8 +2574,8 @@ function openLabelPrint(rows, code, totalQty){
     + '.pl-price-row td.k.small9{ font-size:8pt; }'
     + '.pl-price-row td.k.small8{ font-size:7pt; }'
     + '.pl-new-tag{ color:#000; font-size:11pt; font-weight:700; }'
-    + '.pl-qr-row td{ padding-top:1mm; height:24mm; vertical-align:top; }'
-    + '.pl-qr img{ width:2.2cm; height:2.2cm; }'
+    + '.pl-qr-row td{ padding-top:1mm; height:37mm; vertical-align:top; }'
+    + '.pl-qr img{ width:3.6cm; height:3.6cm; }'
     + '.pl-fill-row td{ height:auto; }'
     + '</style>';
   let fr = document.getElementById('labelPrintFrame');
