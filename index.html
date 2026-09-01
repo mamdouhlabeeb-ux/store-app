@@ -393,7 +393,7 @@ service cloud.firestore {
       <button class="btn-primary" id="loginBtn">دخول</button>
       <button class="btn-ghost" id="adminOpenBtn">لوحة إدارة الفروع (للمدير)</button>
       <button class="btn-ghost" id="installBtnLogin" style="color:var(--amber-deep);text-align:center;">تثبيت التطبيق على الجهاز</button>
-      <div class="ver-stamp" id="verStamp">v2026-09-01-label10</div>
+      <div class="ver-stamp" id="verStamp">v2026-09-01-label11</div>
     </div>
   </div>
 </div>
@@ -2407,23 +2407,26 @@ function renderLabelSearched(query){
   const first = rows.length ? rows[0] : null;
 
   const labelCss = '<style>'
-    + '.pl-label{ font-family:Calibri, Arial, sans-serif; text-align:center; background:#fff; cursor:pointer; }'
+    + '.pl-label{ font-family:Calibri, Arial, sans-serif; text-align:center; background:#fff; cursor:pointer; width:4cm; height:8cm; box-sizing:border-box; padding:1mm; margin:0 auto; }'
     + '.pl-label + .pl-label{ margin-top:18px; }'
-    + '.pl-table{ direction:ltr; border-collapse:collapse; width:auto; margin:0 auto; }'
-    + '.pl-table td{ padding:0; }'
-    + '.pl-code-row td{ font-size:18pt; font-weight:700; color:#000; }'
-    + '.pl-bar-row td{ }'
-    + '.pl-brand{ display:inline-block; font-size:17pt; font-weight:800; letter-spacing:1px; color:#000; margin:1mm 0; }'
+    + '.pl-table{ direction:ltr; border-collapse:collapse; width:100%; height:100%; table-layout:fixed; }'
+    + '.pl-table td{ padding:0; vertical-align:middle; }'
+    + '.pl-code-row td{ font-size:15pt; font-weight:700; color:#000; height:6mm; }'
+    + '.pl-brand-row td{ height:7mm; font-size:13pt; font-weight:800; letter-spacing:1px; color:#000; }'
     + '.pl-price-row td{ border:.5pt dotted #000; font-weight:700; }'
-    + '.pl-price-row td.k{ font-size:14pt; vertical-align:middle; }'
-    + '.pl-price-row td.v{ font-size:12pt; vertical-align:middle; }'
+    + '.pl-price-row.t1 td{ height:9mm; }'
+    + '.pl-price-row.t2 td{ height:8mm; }'
+    + '.pl-price-row.t3 td{ height:9mm; }'
+    + '.pl-price-row.t4 td{ height:7mm; }'
+    + '.pl-price-row td.k{ font-size:12pt; }'
+    + '.pl-price-row td.v{ font-size:11pt; }'
     + '.pl-price-row td.v.hl{ background:#F2F2F2; }'
     + '.pl-price-row td.v.strike{ text-decoration:line-through; }'
-    + '.pl-price-row td.k.small9{ font-size:9pt; }'
-    + '.pl-price-row td.k.small8{ font-size:8pt; text-align:center; }'
-    + '.pl-new-tag{ color:#000; font-size:12pt; font-weight:700; }'
-    + '.pl-qr-row td{ padding-top:4mm; }'
-    + '.pl-qr img{ width:1.6in; height:1.6in; }'
+    + '.pl-price-row td.k.small9{ font-size:8pt; }'
+    + '.pl-price-row td.k.small8{ font-size:7pt; }'
+    + '.pl-new-tag{ color:#000; font-size:11pt; font-weight:700; }'
+    + '.pl-qr-row td{ vertical-align:bottom; padding-top:1mm; height:32mm; }'
+    + '.pl-qr img{ width:2.3cm; height:2.3cm; }'
     + '</style>';
 
   let sticker = '';
@@ -2439,11 +2442,11 @@ function renderLabelSearched(query){
     sticker += '<div class="pl-label" id="plOne">'
       + '<table class="pl-table">'
       + '<tr class="pl-code-row"><td colspan="2">' + escapeHtml(r.code || '') + '</td></tr>'
-      + '<tr class="pl-bar-row"><td colspan="2"><span class="pl-brand">RAViN&rsquo;</span></td></tr>'
-      + '<tr class="pl-price-row"><td style="height:30.75pt;" class="v hl' + line1Cls + '">' + labelPrice(pc.line1) + '</td><td style="height:30.75pt;" class="k">PRICE</td></tr>'
-      + '<tr class="pl-price-row"><td style="height:26.25pt;" class="v">' + line2Html + '</td><td style="height:26.25pt;" class="k">SALE</td></tr>'
-      + '<tr class="pl-price-row"><td style="height:30.75pt;" class="v">' + labelPrice(pc.line3) + '</td><td style="height:30.75pt;" class="k small9">member -10%</td></tr>'
-      + '<tr class="pl-price-row"><td style="height:21.75pt;" class="v">' + labelPrice(pc.line4) + '</td><td style="height:21.75pt;" class="k small8">قسط 3 أشهر</td></tr>'
+      + '<tr class="pl-brand-row"><td colspan="2">RAViN&rsquo;</td></tr>'
+      + '<tr class="pl-price-row t1"><td class="v hl' + line1Cls + '">' + labelPrice(pc.line1) + '</td><td class="k">PRICE</td></tr>'
+      + '<tr class="pl-price-row t2"><td class="v">' + line2Html + '</td><td class="k">SALE</td></tr>'
+      + '<tr class="pl-price-row t3"><td class="v">' + labelPrice(pc.line3) + '</td><td class="k small9">member -10%</td></tr>'
+      + '<tr class="pl-price-row t4"><td class="v">' + labelPrice(pc.line4) + '</td><td class="k small8">قسط 3 أشهر</td></tr>'
       + '<tr class="pl-qr-row"><td colspan="2"><div class="pl-qr"><img src="' + qrImg + '" alt="QR"></div></td></tr>'
       + '</table>'
       + '</div>';
