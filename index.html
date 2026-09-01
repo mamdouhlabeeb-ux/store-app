@@ -684,6 +684,22 @@ async function loadBranchConfig(){
 async function saveBranchConfig(cfg){
   try{ await db.collection('config').doc('branches').set(cfg); return true; }catch(e){ console.error(e); return false; }
 }
+async function saveBranchPasswordOnly(branchId, npw){
+  try{
+    const snap = await db.collection('config').doc('branches').get();
+    let cfg = (snap.exists && snap.data() && snap.data().branches) ? snap.data() : null;
+    if(!cfg){
+      const branches = [];
+      for(let i=1;i<=BRANCH_COUNT;i++){ branches.push({ id:'b'+i, name: BRANCH_NAMES[i-1], password: DEFAULT_BRANCH_PASSWORD }); }
+      cfg = { branches, adminPassword: DEFAULT_ADMIN_PASSWORD };
+    }
+    const b = cfg.branches.find(x=> x.id === branchId);
+    if(b) b.password = npw;
+    cfg.adminPassword = cfg.adminPassword || DEFAULT_ADMIN_PASSWORD;
+    await db.collection('config').doc('branches').set(cfg);
+    return true;
+  }catch(e){ console.error(e); return false; }
+}
 async function loadBranchData(branchId){
   try{ const snap = await db.collection('branchData').doc(branchId).get(); if(snap.exists) return snap.data(); }catch(e){ console.error(e); }
   return null;
@@ -2167,9 +2183,9 @@ $('pwSaveBtn').addEventListener('click', async ()=>{
   const branch = branchConfig.branches.find(b=> b.id === currentBranch.id);
   if(!branch) return;
   branch.password = npw;
-  const ok = await saveBranchConfig(branchConfig);
-  if(!ok){ err.textContent = 'حصلت مشكلة في الحفظ، جرب تاني.'; err.classList.add('show'); return; }
   currentBranch.password = npw;
+  const ok = await saveBranchPasswordOnly(currentBranch.id, npw);
+  if(!ok){ err.textContent = 'حصلت مشكلة في الحفظ، جرب تاني.'; err.classList.add('show'); return; }
   $('pwModal').classList.remove('show');
   const mailOk = await notifyPasswordChange(branch.name, branch.id, npw);
   alert(mailOk
