@@ -581,8 +581,8 @@ service cloud.firestore {
   </div>
 <p style="color:var(--muted);font-size:13.5px;line-height:1.8;margin:4px 0 18px;">
     ارفع شيت الاستوك الخاص بالفرع ده (<b>أعمدة: الكود-المقاس، الكود، السعر قبل، السعر بعد، الكمية، الدبارتمنت</b>) — بيتبقى محفوظ للفرع ده لوحده.
-    واقف ع الكود: <b>السعر الرئيسي → سعر التخفيض → 10% خصم → 3 أقساط</b> + QR.
-    الطباعة بتفتح صفحة ليبلات 4×8 بوصة بنفس تصميم old printer (مواصفات جوجل شيت).
+    اكتب الكود يتظهرلك الليبل طبق الأصل: <b>Price → sale → Member → Months 3</b> + QR.
+    الطباعة بيفتح 4×8 بوصة بنفس تصميم old printer white.
   </p>
 
   <div class="upload-row" style="grid-template-columns:1fr;">
@@ -2404,31 +2404,64 @@ function renderLabelSearched(query){
   const totalQty = rows.reduce((s,r)=> s + r.qty, 0);
   const depts = rows.map(r=> r.dept).filter((v,i,a)=> v && a.indexOf(v)===i);
 
+  const labelCss = '<style>'
+    + '.pl-label{ width:4in; height:8in; box-sizing:border-box; display:flex; flex-direction:column; align-items:stretch; text-align:center; background:#fff; }'
+    + '.pl-label + .pl-label{ margin-top:18px; }'
+    + '.pl-head{ border-top:1.2pt solid #000; border-bottom:1.2pt solid #000; padding:3mm 0 2mm; }'
+    + '.pl-code{ font-size:13pt; font-weight:400; color:#000; letter-spacing:1px; }'
+    + '.pl-brand{ font-size:30pt; font-weight:800; letter-spacing:1px; margin-top:1mm; line-height:1; }'
+    + '.pl-body{ padding:4mm 0 2mm; }'
+    + '.pl-price-row{ display:flex; justify-content:space-between; align-items:baseline; padding:3.2mm 1mm; border-bottom:0.5pt solid #bbb; }'
+    + '.pl-price-row .k{ font-size:13pt; color:#000; font-weight:600; }'
+    + '.pl-price-row .v{ font-size:14pt; font-weight:800; color:#000; letter-spacing:.5px; }'
+    + '.pl-new-tag{ color:#cc0000; font-weight:800; font-size:14pt; }'
+    + '.pl-qr-row{ margin-top:auto; text-align:center; padding:3mm 0 1mm; }'
+    + '.pl-qr img{ width:1.7in; height:1.7in; }'
+    + '.pl-promo{ font-size:11pt; font-weight:700; color:#000; letter-spacing:.3px; margin-top:1mm; }'
+    + '.pl-promo2{ font-size:9pt; color:#000; font-weight:600; letter-spacing:.3px; }'
+    + '</style>';
+
+  let stickers = '';
+  rows.forEach(r=>{
+    const pc = labelCalcPrices(r);
+    const qrImg = labelQrDataUrl(labelQrPayload(r.codeSize, r.code));
+    const line2Html = pc.line2IsNew
+      ? '<span class="pl-new-tag">NEW</span>'
+      : priceEGP(pc.line2);
+    stickers += '<div class="pl-label">'
+      + '<div class="pl-head">'
+      + '<div class="pl-code">' + escapeHtml(r.code || '') + '</div>'
+      + '<div class="pl-brand">RAViN&rsquo;</div>'
+      + '</div>'
+      + '<div class="pl-body">'
+      + '<div class="pl-price-row"><span class="k">Price</span><span class="v">' + priceEGP(pc.line1) + '</span></div>'
+      + '<div class="pl-price-row"><span class="k">sale</span><span class="v">' + line2Html + '</span></div>'
+      + '<div class="pl-price-row"><span class="k">Member</span><span class="v">' + priceEGP(pc.line3) + '</span></div>'
+      + '<div class="pl-price-row"><span class="k">Months 3</span><span class="v">' + priceEGP(pc.line4) + '</span></div>'
+      + '</div>'
+      + '<div class="pl-qr-row">'
+      + '<div class="pl-qr"><img src="' + qrImg + '" alt="QR"></div>'
+      + '<div class="pl-promo">SCAN ME &amp; GET 10% OFF</div>'
+      + '<div class="pl-promo2">ON UPCOMING BILLS</div>'
+      + '</div>'
+      + '</div>';
+  });
+
   html = '<div class="stats-row" style="grid-template-columns:repeat(2,1fr);">'
     + '<div class="stat-card amber"><div class="num">' + totalQty.toLocaleString('en-US') + '</div><div class="lbl">إجمالي الكمية (كل المقاسات)</div></div>'
-    + '<div class="stat-card teal"><div class="num">' + rows.length + '</div><div class="lbl">عدد المقاسات</div></div>'
+    + '<div class="stat-card teal"><div class="num">' + rows.length + '</div><div class="lbl">عدد الليبلات</div></div>'
     + '</div>'
     + '<div class="panel" style="margin-top:14px;">'
-    + '<div class="panel-head"><h2 style="font-size:18px;">الكود: ' + escapeHtml(code) + '</h2>'
+    + '<div class="panel-head" style="border-bottom:none;">'
+    + '<h2 style="font-size:18px;">الكود: ' + escapeHtml(code) + '</h2>'
     + '<button class="export-btn" id="labelPrintBtn">🖨️ طباعة ليبلات</button></div>'
-    + '<div style="margin-bottom:12px;color:var(--muted);font-size:13px;">'
+    + '</div>'
+    + '<div style="margin-top:16px;">'
+    + '<div style="margin-bottom:10px;color:var(--muted);font-size:13px;">'
     + (depts.length ? 'الدبارتمنت: ' + depts.map(escapeHtml).join('، ') : '') + '</div>'
-    + '<table class="data-table transfer-table"><thead><tr>'
-    + '<th>الكود-المقاس</th><th>السعر قبل</th><th>السعر بعد</th><th>الكمية</th><th>الدبارتمنت</th><th>QR</th>'
-    + '</tr></thead><tbody>';
-
-  rows.forEach(r=>{
-    const qr = labelQrDataUrl(r.codeSize);
-    html += '<tr>'
-      + '<td class="code-cell">' + escapeHtml(r.codeSize || '—') + '</td>'
-      + '<td>' + (r.priceBefore ? r.priceBefore.toLocaleString('en-US') : '—') + '</td>'
-      + '<td>' + (r.priceAfter ? r.priceAfter.toLocaleString('en-US') : '—') + '</td>'
-      + '<td class="qty-cell">' + r.qty.toLocaleString('en-US') + '</td>'
-      + '<td>' + (r.dept ? '<span class="dept-badge">'+escapeHtml(r.dept)+'</span>' : '—') + '</td>'
-      + '<td><img src="' + qr + '" alt="QR" style="width:44px;height:44px;border-radius:6px;border:1px solid var(--line);"></td>'
-      + '</tr>';
-  });
-  html += '</tbody></table></div>';
+    + labelCss
+    + stickers
+    + '</div>';
   area.innerHTML = html;
   const printBtn = $('labelPrintBtn');
   if(printBtn) printBtn.addEventListener('click', ()=> openLabelPrint(rows, code, totalQty));
@@ -2492,17 +2525,18 @@ function openLabelPrint(rows, code, totalQty){
     + 'body{ font-family: Arial, Helvetica, sans-serif; background:#fff; }'
     + '.pl-label{ width:4in; height:8in; box-sizing:border-box; page-break-after:always; display:flex; flex-direction:column; align-items:stretch; text-align:center; }'
     + '.pl-label:last-child{ page-break-after:auto; }'
-    + '.pl-head{ border-top:1.2pt solid #000; border-bottom:0.6pt solid #000; padding:1.5mm 0; }'
-    + '.pl-code{ font-size:17pt; font-weight:800; letter-spacing:.5px; }'
-    + '.pl-name{ font-size:9pt; color:#222; margin-top:.8mm; font-weight:600; }'
-    + '.pl-price-row{ display:flex; justify-content:space-between; padding:1mm 0; border-bottom:0.5pt solid #999; font-size:10pt; }'
-    + '.pl-price-row .k{ font-size:10pt; color:#111; }'
-    + '.pl-price-row .v{ font-size:11pt; font-weight:700; }'
-    + '.pl-new-tag{ color:#cc0000; font-weight:800; font-size:12pt; }'
-    + '.pl-qr-row{ margin-top:auto; text-align:center; padding:2mm 0 .5mm; }'
-    + '.pl-qr img{ width:1.6in; height:1.6in; }'
-    + '.pl-promo{ font-size:10pt; font-weight:700; color:#000; letter-spacing:.3px; }'
-    + '.pl-foot{ font-size:8pt; color:#333; margin-top:1mm; }'
+    + '.pl-head{ border-top:1.2pt solid #000; border-bottom:1.2pt solid #000; padding:3mm 0 2mm; }'
+    + '.pl-code{ font-size:13pt; font-weight:400; color:#000; letter-spacing:1px; }'
+    + '.pl-brand{ font-size:30pt; font-weight:800; letter-spacing:1px; margin-top:1mm; line-height:1; }'
+    + '.pl-body{ padding:4mm 0 2mm; }'
+    + '.pl-price-row{ display:flex; justify-content:space-between; align-items:baseline; padding:3.2mm 1mm; border-bottom:0.5pt solid #bbb; }'
+    + '.pl-price-row .k{ font-size:13pt; color:#000; font-weight:600; }'
+    + '.pl-price-row .v{ font-size:14pt; font-weight:800; color:#000; letter-spacing:.5px; }'
+    + '.pl-new-tag{ color:#cc0000; font-weight:800; font-size:14pt; }'
+    + '.pl-qr-row{ margin-top:auto; text-align:center; padding:3mm 0 1mm; }'
+    + '.pl-qr img{ width:1.7in; height:1.7in; }'
+    + '.pl-promo{ font-size:11pt; font-weight:700; color:#000; letter-spacing:.3px; margin-top:1mm; }'
+    + '.pl-promo2{ font-size:9pt; color:#000; font-weight:600; letter-spacing:.3px; }'
     + '@media print{ body *{ visibility:hidden; } #label-print-target, #label-print-target *{ visibility:visible; } #label-print-target{ position:absolute; left:0; top:0; width:100%; } }'
     + '</style>';
 
@@ -2510,7 +2544,6 @@ function openLabelPrint(rows, code, totalQty){
   rows.forEach(r=>{
     const pc = labelCalcPrices(r);
     const qrImg = labelQrDataUrl(labelQrPayload(r.codeSize, code));
-    const nameHtml = r.dept ? '<div class="pl-name">' + escapeHtml(r.dept) + '</div>' : '';
     let line2Html;
     if(pc.line2IsNew){
       line2Html = '<span class="pl-new-tag">NEW</span>';
@@ -2520,16 +2553,18 @@ function openLabelPrint(rows, code, totalQty){
     labels += '<div class="pl-label">'
       + '<div class="pl-head">'
       + '<div class="pl-code">' + escapeHtml(r.code || '') + '</div>'
-      + nameHtml
+      + '<div class="pl-brand">RAViN&rsquo;</div>'
       + '</div>'
+      + '<div class="pl-body">'
       + '<div class="pl-price-row"><span class="k">Price</span><span class="v">' + priceEGP(pc.line1) + '</span></div>'
-      + '<div class="pl-price-row"><span class="k">سعر التخفيض</span><span class="v">' + line2Html + '</span></div>'
-      + '<div class="pl-price-row"><span class="k">خصم 10%</span><span class="v">' + priceEGP(pc.line3) + '</span></div>'
-      + '<div class="pl-price-row"><span class="k">3 أقساط</span><span class="v">' + priceEGP(pc.line4) + '</span></div>'
+      + '<div class="pl-price-row"><span class="k">sale</span><span class="v">' + line2Html + '</span></div>'
+      + '<div class="pl-price-row"><span class="k">Member</span><span class="v">' + priceEGP(pc.line3) + '</span></div>'
+      + '<div class="pl-price-row"><span class="k">Months 3</span><span class="v">' + priceEGP(pc.line4) + '</span></div>'
+      + '</div>'
       + '<div class="pl-qr-row">'
-      + '<div class="pl-promo">SCAN ME &amp; GET 10% OFF</div>'
       + '<div class="pl-qr"><img src="' + qrImg + '" alt="QR"></div>'
-      + '<div class="pl-foot">' + escapeHtml(r.code || '') + '</div>'
+      + '<div class="pl-promo">SCAN ME &amp; GET 10% OFF</div>'
+      + '<div class="pl-promo2">ON UPCOMING BILLS</div>'
       + '</div>'
       + '</div>';
   });
