@@ -581,7 +581,7 @@ service cloud.firestore {
   </div>
 <p style="color:var(--muted);font-size:13.5px;line-height:1.8;margin:4px 0 18px;">
     ارفع شيت الاستوك الخاص بالفرع ده (<b>أعمدة: الكود-المقاس، الكود، السعر قبل، السعر بعد، الكمية، الدبارتمنت</b>) — بيتبقى محفوظ للفرع ده لوحده.
-    اكتب الكود يتظهرلك الليبل طبق الأصل: <b>PRICE → SALE → member -10% → قسط 3 أشهر</b> + QR.
+    اكتب الكود يتظهرلك الليبل طبق الأصل لورقة WHITE: <b>شريط أسود أعلى، الكود، ثم PRICE → SALE → member -10% → قسط 3 أشهر</b> + QR أسفل.
     لو السعر قبل أعلى من السعر بعد، حد بيتمسح على سعر PRICE (شريط خفيف).
     الطباعة بيفتح 4×8 بوصة بنفس تصميم الـ WHITE sheet.
   </p>
@@ -2406,19 +2406,23 @@ function renderLabelSearched(query){
   const depts = rows.map(r=> r.dept).filter((v,i,a)=> v && a.indexOf(v)===i);
 
   const labelCss = '<style>'
-    + '.pl-label{ width:4in; height:8in; box-sizing:border-box; display:flex; flex-direction:column; align-items:stretch; text-align:center; background:#fff; }'
+    + '.pl-label{ font-family:Calibri, Arial, sans-serif; text-align:center; background:#fff; }'
     + '.pl-label + .pl-label{ margin-top:18px; }'
-    + '.pl-head{ border-top:1.2pt solid #000; border-bottom:1.2pt solid #000; padding:3mm 0 2mm; }'
-    + '.pl-code{ font-size:13pt; font-weight:400; color:#000; letter-spacing:1px; }'
-    + '.pl-brand{ font-size:30pt; font-weight:800; letter-spacing:1px; margin-top:1mm; line-height:1; }'
-    + '.pl-body{ padding:4mm 0 2mm; }'
-    + '.pl-price-row{ display:flex; justify-content:space-between; align-items:baseline; padding:3.2mm 1mm; border-bottom:0.5pt solid #bbb; }'
-    + '.pl-price-row .k{ font-size:13pt; color:#000; font-weight:600; }'
-    + '.pl-price-row .v{ font-size:14pt; font-weight:800; color:#000; letter-spacing:.5px; }'
-    + '.pl-strike{ text-decoration:line-through; text-decoration-thickness:1.2px; color:#666; }'
-    + '.pl-new-tag{ color:#cc0000; font-weight:800; font-size:14pt; }'
-    + '.pl-qr-row{ margin-top:auto; text-align:center; padding:3mm 0 1mm; }'
-    + '.pl-qr img{ width:2.1in; height:2.1in; }'
+    + '.pl-table{ border-collapse:collapse; width:auto; margin:0 auto; }'
+    + '.pl-table td{ padding:0; }'
+    + '.pl-code-row td{ font-size:18pt; font-weight:700; color:#000; }'
+    + '.pl-bar-row td{ }'
+    + '.pl-bar{ display:inline-block; background:#000; }'
+    + '.pl-price-row td{ border:.5pt dotted #000; font-weight:700; }'
+    + '.pl-price-row td.k{ font-size:14pt; vertical-align:middle; }'
+    + '.pl-price-row td.v{ font-size:12pt; vertical-align:middle; }'
+    + '.pl-price-row td.v.hl{ background:#F2F2F2; }'
+    + '.pl-price-row td.v.strike{ text-decoration:line-through; }'
+    + '.pl-price-row td.k.small9{ font-size:9pt; }'
+    + '.pl-price-row td.k.small8{ font-size:8pt; text-align:left; }'
+    + '.pl-new-tag{ color:#000; font-size:12pt; font-weight:700; }'
+    + '.pl-qr-row td{ padding-top:4mm; }'
+    + '.pl-qr img{ width:1.6in; height:1.6in; }'
     + '</style>';
 
   let stickers = '';
@@ -2426,24 +2430,20 @@ function renderLabelSearched(query){
     const pc = labelCalcPrices(r);
     const qrImg = labelQrDataUrl(labelQrPayload(r.codeSize, r.code));
     const hasSale = (!pc.line2IsNew && pc.line1 > pc.line2);
-    const line1Cls = hasSale ? ' class="pl-strike"' : '';
+    const line1Cls = hasSale ? ' v strike' : '';
     const line2Html = pc.line2IsNew
       ? '<span class="pl-new-tag">NEW</span>'
-      : priceEGP(pc.line2);
+      : labelPrice(pc.line2);
     stickers += '<div class="pl-label">'
-      + '<div class="pl-head">'
-      + '<div class="pl-code">' + escapeHtml(r.code || '') + '</div>'
-      + '<div class="pl-brand">RAViN&rsquo;</div>'
-      + '</div>'
-      + '<div class="pl-body">'
-      + '<div class="pl-price-row"><span class="k">PRICE</span><span class="v"' + line1Cls + '>' + priceEGP(pc.line1) + '</span></div>'
-      + '<div class="pl-price-row"><span class="k">SALE</span><span class="v">' + line2Html + '</span></div>'
-      + '<div class="pl-price-row"><span class="k">member -10%</span><span class="v">' + priceEGP(pc.line3) + '</span></div>'
-      + '<div class="pl-price-row"><span class="k">قسط 3 أشهر</span><span class="v">' + priceEGP(pc.line4) + '</span></div>'
-      + '</div>'
-      + '<div class="pl-qr-row">'
-      + '<div class="pl-qr"><img src="' + qrImg + '" alt="QR"></div>'
-      + '</div>'
+      + '<table class="pl-table">'
+      + '<tr class="pl-code-row"><td>' + escapeHtml(r.code || '') + '</td><td>' + escapeHtml(r.code || '') + '</td></tr>'
+      + '<tr class="pl-bar-row"><td colspan="2"><span class="pl-bar" style="width:122pt;height:12pt;"></span></td></tr>'
+      + '<tr class="pl-price-row"><td style="height:30.75pt;" class="k">PRICE</td><td style="height:30.75pt;" class="v hl' + line1Cls + '">' + labelPrice(pc.line1) + '</td></tr>'
+      + '<tr class="pl-price-row"><td style="height:26.25pt;" class="k">SALE</td><td style="height:26.25pt;" class="v">' + line2Html + '</td></tr>'
+      + '<tr class="pl-price-row"><td style="height:30.75pt;" class="k small9">member -10%</td><td style="height:30.75pt;" class="v">' + labelPrice(pc.line3) + '</td></tr>'
+      + '<tr class="pl-price-row"><td style="height:21.75pt;" class="k small8">قسط 3 أشهر</td><td style="height:21.75pt;" class="v">' + labelPrice(pc.line4) + '</td></tr>'
+      + '<tr class="pl-qr-row"><td colspan="2"><div class="pl-qr"><img src="' + qrImg + '" alt="QR"></div></td></tr>'
+      + '</table>'
       + '</div>';
   });
 
@@ -2516,26 +2516,34 @@ function priceEGP(p){
   if(!p || isNaN(p)) return '';
   return p.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
+// سعر الليبل زي ورقة WHITE: بدون فواصل عشرية (1700 مش 1699.99)
+function labelPrice(p){
+  if(p === null || p === undefined || isNaN(p)) return '';
+  return Math.round(p).toLocaleString('en-US');
+}
 
 function openLabelPrint(rows, code, totalQty){
   const root = $('labelPrintRoot');
-  let html = '<style>'
+  const labelCss = '<style>'
     + '@page{ size: 4in 8in; margin: 0.10in 0 0 0; }'
     + 'html,body{ margin:0; padding:0; }'
-    + 'body{ font-family: Arial, Helvetica, sans-serif; background:#fff; }'
-    + '.pl-label{ width:4in; height:8in; box-sizing:border-box; page-break-after:always; display:flex; flex-direction:column; align-items:stretch; text-align:center; }'
-    + '.pl-label:last-child{ page-break-after:auto; }'
-    + '.pl-head{ border-top:1.2pt solid #000; border-bottom:1.2pt solid #000; padding:3mm 0 2mm; }'
-    + '.pl-code{ font-size:13pt; font-weight:400; color:#000; letter-spacing:1px; }'
-    + '.pl-brand{ font-size:30pt; font-weight:800; letter-spacing:1px; margin-top:1mm; line-height:1; }'
-    + '.pl-body{ padding:4mm 0 2mm; }'
-    + '.pl-price-row{ display:flex; justify-content:space-between; align-items:baseline; padding:3.2mm 1mm; border-bottom:0.5pt solid #bbb; }'
-    + '.pl-price-row .k{ font-size:13pt; color:#000; font-weight:600; }'
-    + '.pl-price-row .v{ font-size:14pt; font-weight:800; color:#000; letter-spacing:.5px; }'
-    + '.pl-new-tag{ color:#cc0000; font-weight:800; font-size:14pt; }'
-    + '.pl-strike{ text-decoration:line-through; text-decoration-thickness:1.2px; color:#666; }'
-    + '.pl-qr-row{ margin-top:auto; text-align:center; padding:3mm 0 1mm; }'
-    + '.pl-qr img{ width:2.1in; height:2.1in; }'
+    + 'body{ font-family: Calibri, Arial, sans-serif; background:#fff; }'
+    + '.pl-label{ font-family:Calibri, Arial, sans-serif; text-align:center; background:#fff; }'
+    + '.pl-label + .pl-label{ margin-top:8px; }'
+    + '.pl-table{ border-collapse:collapse; width:auto; margin:0 auto; }'
+    + '.pl-table td{ padding:0; }'
+    + '.pl-code-row td{ font-size:18pt; font-weight:700; color:#000; }'
+    + '.pl-bar{ display:inline-block; background:#000; }'
+    + '.pl-price-row td{ border:.5pt dotted #000; font-weight:700; }'
+    + '.pl-price-row td.k{ font-size:14pt; vertical-align:middle; }'
+    + '.pl-price-row td.v{ font-size:12pt; vertical-align:middle; }'
+    + '.pl-price-row td.v.hl{ background:#F2F2F2; }'
+    + '.pl-price-row td.v.strike{ text-decoration:line-through; }'
+    + '.pl-price-row td.k.small9{ font-size:9pt; }'
+    + '.pl-price-row td.k.small8{ font-size:8pt; text-align:left; }'
+    + '.pl-new-tag{ color:#000; font-size:12pt; font-weight:700; }'
+    + '.pl-qr-row td{ padding-top:4mm; }'
+    + '.pl-qr img{ width:1.6in; height:1.6in; }'
     + '@media print{ body *{ visibility:hidden; } #label-print-target, #label-print-target *{ visibility:visible; } #label-print-target{ position:absolute; left:0; top:0; width:100%; } }'
     + '</style>';
 
@@ -2544,31 +2552,24 @@ function openLabelPrint(rows, code, totalQty){
     const pc = labelCalcPrices(r);
     const qrImg = labelQrDataUrl(labelQrPayload(r.codeSize, code));
     const hasSale = (!pc.line2IsNew && pc.line1 > pc.line2);
-    const line1Cls = hasSale ? ' class="pl-strike"' : '';
-    let line2Html;
-    if(pc.line2IsNew){
-      line2Html = '<span class="pl-new-tag">NEW</span>';
-    } else {
-      line2Html = priceEGP(pc.line2);
-    }
+    const line1Cls = hasSale ? ' v strike' : '';
+    const line2Html = pc.line2IsNew
+      ? '<span class="pl-new-tag">NEW</span>'
+      : labelPrice(pc.line2);
     labels += '<div class="pl-label">'
-      + '<div class="pl-head">'
-      + '<div class="pl-code">' + escapeHtml(r.code || '') + '</div>'
-      + '<div class="pl-brand">RAViN&rsquo;</div>'
-      + '</div>'
-      + '<div class="pl-body">'
-      + '<div class="pl-price-row"><span class="k">PRICE</span><span class="v"' + line1Cls + '>' + priceEGP(pc.line1) + '</span></div>'
-      + '<div class="pl-price-row"><span class="k">SALE</span><span class="v">' + line2Html + '</span></div>'
-      + '<div class="pl-price-row"><span class="k">member -10%</span><span class="v">' + priceEGP(pc.line3) + '</span></div>'
-      + '<div class="pl-price-row"><span class="k">قسط 3 أشهر</span><span class="v">' + priceEGP(pc.line4) + '</span></div>'
-      + '</div>'
-      + '<div class="pl-qr-row">'
-      + '<div class="pl-qr"><img src="' + qrImg + '" alt="QR"></div>'
-      + '</div>'
+      + '<table class="pl-table">'
+      + '<tr class="pl-code-row"><td>' + escapeHtml(r.code || '') + '</td><td>' + escapeHtml(r.code || '') + '</td></tr>'
+      + '<tr class="pl-bar-row"><td colspan="2"><span class="pl-bar" style="width:122pt;height:12pt;"></span></td></tr>'
+      + '<tr class="pl-price-row"><td style="height:30.75pt;" class="k">PRICE</td><td style="height:30.75pt;" class="v hl' + line1Cls + '">' + labelPrice(pc.line1) + '</td></tr>'
+      + '<tr class="pl-price-row"><td style="height:26.25pt;" class="k">SALE</td><td style="height:26.25pt;" class="v">' + line2Html + '</td></tr>'
+      + '<tr class="pl-price-row"><td style="height:30.75pt;" class="k small9">member -10%</td><td style="height:30.75pt;" class="v">' + labelPrice(pc.line3) + '</td></tr>'
+      + '<tr class="pl-price-row"><td style="height:21.75pt;" class="k small8">قسط 3 أشهر</td><td style="height:21.75pt;" class="v">' + labelPrice(pc.line4) + '</td></tr>'
+      + '<tr class="pl-qr-row"><td colspan="2"><div class="pl-qr"><img src="' + qrImg + '" alt="QR"></div></td></tr>'
+      + '</table>'
       + '</div>';
   });
 
-  root.innerHTML = '<div id="label-print-target">' + labels + '</div>'
+  root.innerHTML = '<div id="label-print-target">' + labelCss + labels + '</div>'
     + '<div style="text-align:center;margin:20px 0;">'
     + '<button class="btn-primary" onclick="window.print()">طباعة الآن</button> '
     + '<button class="btn-ghost" onclick="document.getElementById(\'labelPrintRoot\').innerHTML=\'\'">إغلاق</button>'
