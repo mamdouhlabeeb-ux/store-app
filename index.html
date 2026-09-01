@@ -393,7 +393,7 @@ service cloud.firestore {
       <button class="btn-primary" id="loginBtn">دخول</button>
       <button class="btn-ghost" id="adminOpenBtn">لوحة إدارة الفروع (للمدير)</button>
       <button class="btn-ghost" id="installBtnLogin" style="color:var(--amber-deep);text-align:center;">تثبيت التطبيق على الجهاز</button>
-      <div class="ver-stamp" id="verStamp">v2026-09-01-label15</div>
+      <div class="ver-stamp" id="verStamp">v2026-09-01-label16</div>
     </div>
   </div>
 </div>
@@ -2412,7 +2412,7 @@ function renderLabelSearched(query){
     + '.pl-table{ direction:ltr; border-collapse:collapse; width:100%; height:100%; table-layout:fixed; }'
     + '.pl-table td{ padding:0; vertical-align:middle; }'
     + '.pl-code-row td{ font-size:15pt; font-weight:700; color:#000; height:5mm; }'
-    + '.pl-brand-row td{ height:6mm; font-size:13pt; font-weight:800; letter-spacing:1px; color:#000; }'
+    + '.pl-brand-row td{ height:6mm; font-size:13pt; font-weight:900; font-family:Calibri, Arial, sans-serif; letter-spacing:1px; color:#000; }'
     + '.pl-price-row td{ border:.5pt dotted #000; font-weight:700; }'
     + '.pl-price-row.t1 td{ height:8mm; }'
     + '.pl-price-row.t2 td{ height:6mm; }'
@@ -2425,8 +2425,8 @@ function renderLabelSearched(query){
     + '.pl-price-row td.k.small9{ font-size:8pt; }'
     + '.pl-price-row td.k.small8{ font-size:7pt; }'
     + '.pl-new-tag{ color:#000; font-size:11pt; font-weight:700; }'
-    + '.pl-qr-row td{ padding-top:1mm; height:39mm; vertical-align:top; }'
-    + '.pl-qr img{ width:3.8cm; height:3.8cm; }'
+    + '.pl-qr-row td{ padding-top:1mm; height:32mm; vertical-align:top; }'
+    + '.pl-qr img{ width:3cm; height:3cm; }'
     + '.pl-fill-row td{ height:auto; }'
     + '</style>';
 
@@ -2561,7 +2561,7 @@ function openLabelPrint(rows, code, totalQty){
     + '.pl-table{ direction:ltr; border-collapse:collapse; width:100%; height:100%; table-layout:fixed; }'
     + '.pl-table td{ padding:0; vertical-align:middle; }'
     + '.pl-code-row td{ font-size:15pt; font-weight:700; color:#000; height:5mm; }'
-    + '.pl-brand-row td{ height:6mm; font-size:13pt; font-weight:800; letter-spacing:1px; color:#000; }'
+    + '.pl-brand-row td{ height:6mm; font-size:13pt; font-weight:900; font-family:Calibri, Arial, sans-serif; letter-spacing:1px; color:#000; }'
     + '.pl-price-row td{ border:.5pt dotted #000; font-weight:700; }'
     + '.pl-price-row.t1 td{ height:8mm; }'
     + '.pl-price-row.t2 td{ height:6mm; }'
@@ -2574,8 +2574,8 @@ function openLabelPrint(rows, code, totalQty){
     + '.pl-price-row td.k.small9{ font-size:8pt; }'
     + '.pl-price-row td.k.small8{ font-size:7pt; }'
     + '.pl-new-tag{ color:#000; font-size:11pt; font-weight:700; }'
-    + '.pl-qr-row td{ padding-top:1mm; height:39mm; vertical-align:top; }'
-    + '.pl-qr img{ width:3.8cm; height:3.8cm; }'
+    + '.pl-qr-row td{ padding-top:1mm; height:32mm; vertical-align:top; }'
+    + '.pl-qr img{ width:3cm; height:3cm; }'
     + '.pl-fill-row td{ height:auto; }'
     + '</style>';
   let fr = document.getElementById('labelPrintFrame');
