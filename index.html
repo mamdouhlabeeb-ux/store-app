@@ -581,8 +581,9 @@ service cloud.firestore {
   </div>
 <p style="color:var(--muted);font-size:13.5px;line-height:1.8;margin:4px 0 18px;">
     ارفع شيت الاستوك الخاص بالفرع ده (<b>أعمدة: الكود-المقاس، الكود، السعر قبل، السعر بعد، الكمية، الدبارتمنت</b>) — بيتبقى محفوظ للفرع ده لوحده.
-    اكتب الكود يتظهرلك الليبل طبق الأصل: <b>Price → sale → Member → Months 3</b> + QR.
-    الطباعة بيفتح 4×8 بوصة بنفس تصميم old printer white.
+    اكتب الكود يتظهرلك الليبل طبق الأصل: <b>PRICE → SALE → member -10% → قسط 3 أشهر</b> + QR.
+    لو السعر قبل أعلى من السعر بعد، حد بيتمسح على سعر PRICE (شريط خفيف).
+    الطباعة بيفتح 4×8 بوصة بنفس تصميم الـ WHITE sheet.
   </p>
 
   <div class="upload-row" style="grid-template-columns:1fr;">
@@ -2414,17 +2415,18 @@ function renderLabelSearched(query){
     + '.pl-price-row{ display:flex; justify-content:space-between; align-items:baseline; padding:3.2mm 1mm; border-bottom:0.5pt solid #bbb; }'
     + '.pl-price-row .k{ font-size:13pt; color:#000; font-weight:600; }'
     + '.pl-price-row .v{ font-size:14pt; font-weight:800; color:#000; letter-spacing:.5px; }'
+    + '.pl-strike{ text-decoration:line-through; text-decoration-thickness:1.2px; color:#666; }'
     + '.pl-new-tag{ color:#cc0000; font-weight:800; font-size:14pt; }'
     + '.pl-qr-row{ margin-top:auto; text-align:center; padding:3mm 0 1mm; }'
-    + '.pl-qr img{ width:1.7in; height:1.7in; }'
-    + '.pl-promo{ font-size:11pt; font-weight:700; color:#000; letter-spacing:.3px; margin-top:1mm; }'
-    + '.pl-promo2{ font-size:9pt; color:#000; font-weight:600; letter-spacing:.3px; }'
+    + '.pl-qr img{ width:2.1in; height:2.1in; }'
     + '</style>';
 
   let stickers = '';
   rows.forEach(r=>{
     const pc = labelCalcPrices(r);
     const qrImg = labelQrDataUrl(labelQrPayload(r.codeSize, r.code));
+    const hasSale = (!pc.line2IsNew && pc.line1 > pc.line2);
+    const line1Cls = hasSale ? ' class="pl-strike"' : '';
     const line2Html = pc.line2IsNew
       ? '<span class="pl-new-tag">NEW</span>'
       : priceEGP(pc.line2);
@@ -2434,15 +2436,13 @@ function renderLabelSearched(query){
       + '<div class="pl-brand">RAViN&rsquo;</div>'
       + '</div>'
       + '<div class="pl-body">'
-      + '<div class="pl-price-row"><span class="k">Price</span><span class="v">' + priceEGP(pc.line1) + '</span></div>'
-      + '<div class="pl-price-row"><span class="k">sale</span><span class="v">' + line2Html + '</span></div>'
-      + '<div class="pl-price-row"><span class="k">Member</span><span class="v">' + priceEGP(pc.line3) + '</span></div>'
-      + '<div class="pl-price-row"><span class="k">Months 3</span><span class="v">' + priceEGP(pc.line4) + '</span></div>'
+      + '<div class="pl-price-row"><span class="k">PRICE</span><span class="v"' + line1Cls + '>' + priceEGP(pc.line1) + '</span></div>'
+      + '<div class="pl-price-row"><span class="k">SALE</span><span class="v">' + line2Html + '</span></div>'
+      + '<div class="pl-price-row"><span class="k">member -10%</span><span class="v">' + priceEGP(pc.line3) + '</span></div>'
+      + '<div class="pl-price-row"><span class="k">قسط 3 أشهر</span><span class="v">' + priceEGP(pc.line4) + '</span></div>'
       + '</div>'
       + '<div class="pl-qr-row">'
       + '<div class="pl-qr"><img src="' + qrImg + '" alt="QR"></div>'
-      + '<div class="pl-promo">SCAN ME &amp; GET 10% OFF</div>'
-      + '<div class="pl-promo2">ON UPCOMING BILLS</div>'
       + '</div>'
       + '</div>';
   });
@@ -2533,10 +2533,9 @@ function openLabelPrint(rows, code, totalQty){
     + '.pl-price-row .k{ font-size:13pt; color:#000; font-weight:600; }'
     + '.pl-price-row .v{ font-size:14pt; font-weight:800; color:#000; letter-spacing:.5px; }'
     + '.pl-new-tag{ color:#cc0000; font-weight:800; font-size:14pt; }'
+    + '.pl-strike{ text-decoration:line-through; text-decoration-thickness:1.2px; color:#666; }'
     + '.pl-qr-row{ margin-top:auto; text-align:center; padding:3mm 0 1mm; }'
-    + '.pl-qr img{ width:1.7in; height:1.7in; }'
-    + '.pl-promo{ font-size:11pt; font-weight:700; color:#000; letter-spacing:.3px; margin-top:1mm; }'
-    + '.pl-promo2{ font-size:9pt; color:#000; font-weight:600; letter-spacing:.3px; }'
+    + '.pl-qr img{ width:2.1in; height:2.1in; }'
     + '@media print{ body *{ visibility:hidden; } #label-print-target, #label-print-target *{ visibility:visible; } #label-print-target{ position:absolute; left:0; top:0; width:100%; } }'
     + '</style>';
 
@@ -2544,6 +2543,8 @@ function openLabelPrint(rows, code, totalQty){
   rows.forEach(r=>{
     const pc = labelCalcPrices(r);
     const qrImg = labelQrDataUrl(labelQrPayload(r.codeSize, code));
+    const hasSale = (!pc.line2IsNew && pc.line1 > pc.line2);
+    const line1Cls = hasSale ? ' class="pl-strike"' : '';
     let line2Html;
     if(pc.line2IsNew){
       line2Html = '<span class="pl-new-tag">NEW</span>';
@@ -2556,15 +2557,13 @@ function openLabelPrint(rows, code, totalQty){
       + '<div class="pl-brand">RAViN&rsquo;</div>'
       + '</div>'
       + '<div class="pl-body">'
-      + '<div class="pl-price-row"><span class="k">Price</span><span class="v">' + priceEGP(pc.line1) + '</span></div>'
-      + '<div class="pl-price-row"><span class="k">sale</span><span class="v">' + line2Html + '</span></div>'
-      + '<div class="pl-price-row"><span class="k">Member</span><span class="v">' + priceEGP(pc.line3) + '</span></div>'
-      + '<div class="pl-price-row"><span class="k">Months 3</span><span class="v">' + priceEGP(pc.line4) + '</span></div>'
+      + '<div class="pl-price-row"><span class="k">PRICE</span><span class="v"' + line1Cls + '>' + priceEGP(pc.line1) + '</span></div>'
+      + '<div class="pl-price-row"><span class="k">SALE</span><span class="v">' + line2Html + '</span></div>'
+      + '<div class="pl-price-row"><span class="k">member -10%</span><span class="v">' + priceEGP(pc.line3) + '</span></div>'
+      + '<div class="pl-price-row"><span class="k">قسط 3 أشهر</span><span class="v">' + priceEGP(pc.line4) + '</span></div>'
       + '</div>'
       + '<div class="pl-qr-row">'
       + '<div class="pl-qr"><img src="' + qrImg + '" alt="QR"></div>'
-      + '<div class="pl-promo">SCAN ME &amp; GET 10% OFF</div>'
-      + '<div class="pl-promo2">ON UPCOMING BILLS</div>'
       + '</div>'
       + '</div>';
   });
