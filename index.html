@@ -573,9 +573,10 @@ service cloud.firestore {
       <button class="link-btn" id="labelBackBtn">رجوع للرئيسية</button>
     </div>
   </div>
-  <p style="color:var(--muted);font-size:13.5px;line-height:1.8;margin:4px 0 18px;">
-    هي مستقلة عن باقي الشيتات: ارفع شيت الاستوك (أعمدة: <b>الكود-المقاس، الكود، السعر قبل، السعر بعد، الكمية، الدبارتمنت</b>)،
-    وبعدين اكتب أي كود هيظهرلك إجمالي كميته + ليبل تسعير بجودة QR للطباعة الورقية.
+<p style="color:var(--muted);font-size:13.5px;line-height:1.8;margin:4px 0 18px;">
+    مستقلة عن باقي الشيتات: ارفع شيت الاستوك (<b>أعمدة: الكود-المقاس، الكود، السعر قبل، السعر بعد، الكمية، الدبارتمنت</b>)،
+    وبعدين اكتب الكود هيظهرلك: <b>السعر الرئيسي → السعر بعد التخفيض → 10% خصم → 3 أقساط</b> + QR.
+    الضغط على طباعة يفتح صفحة ليبلات (4×8 بوصة) طبق الأصل بصيغة جوجل شيت.
   </p>
 
   <div class="upload-row" style="grid-template-columns:1fr;">
@@ -2438,42 +2439,86 @@ function labelQrFixCodeSize(codeSize){
   return s.charAt(0) === '0' ? '&' + s.slice(1) : s;
 }
 function labelQrPayload(codeSize, code){
-  // الكود (من غير المقاس) ولو بدأ بـ 0 -> & ، والـ QR زي sheet1: رابط shorturl بالكود
+  // الـ QR زي sheet1/Sheet5: رابط shorturl بالكود (من غير المقاس) ولو بدأ بـ 0 -> &
   const base = String(code || '').trim();
-  const fixed = base.charAt(0) === '0' ? '&' + base.slice(1) : base;
+  const fixed = /^0/.test(base) ? '&' + base.slice(1) : base;
   return 'https://ravinjeans.com/shorturl/' + fixed;
+}
+
+// نفس معادلات الأسعار الأربعة في جوجل شيت (old printer white/black)
+// سطر1 = سعر قبل (الرئيسي)   سطر2 = سعر بعد (وله منطق "New")
+// سطر3 = 90% من سعر بعد      سطر4 = سطر3 ÷ 3
+function labelCalcPrices(r){
+  const p1 = numVal(r.priceBefore);   // سعر1 الرئيسي
+  const p2 = numVal(r.priceAfter);    // سعر2 التخفيض
+  let line1 = p1;
+  let line2 = p2;
+  // منطق "New": لو السعر بعد = السعر قبل أو فاضي، يبقى "New"
+  if(p1 > 0 && p2 === 0){ line2 = p1; }
+  const line2IsNew = (p1 > 0 && p2 === p1);
+  // سطر3 = 90% من سعر2 (ولو line2 = New، يبقى 90% من سعر1)
+  const line3 = line2IsNew ? line1 * 0.9 : (line2 > 0 ? line2 * 0.9 : line1 * 0.9);
+  // سطر4 = line3 ÷ 3
+  const line4 = line3 / 3;
+  return { line1, line2, line3, line4, line2IsNew };
+}
+function priceEGP(p){
+  if(!p || isNaN(p)) return '';
+  return p.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
 function openLabelPrint(rows, code, totalQty){
   const root = $('labelPrintRoot');
   let html = '<style>'
-    + '@page{ size: auto; margin: 6mm; }'
-    + 'body{ font-family: Arial, Helvetica, sans-serif; }'
-    + '.pl-wrap{ display:flex; flex-wrap:wrap; gap:3mm; }'
-    + '.pl-label{ border:0.5pt solid #333; border-radius:2mm; padding:2mm; width:56mm; box-sizing:border-box; page-break-inside:avoid; text-align:center; }'
-    + '.pl-code{ font-size:11pt; font-weight:800; }'
-    + '.pl-size{ font-size:10pt; font-weight:700; margin-top:1mm; }'
-    + '.pl-prices{ margin-top:1mm; font-size:8.5pt; }'
-    + '.pl-qr{ margin-top:1mm; }'
-    + '.pl-qr img{ width:30mm; height:30mm; }'
+    + '@page{ size: 4in 8in; margin: 0.10in 0 0 0; }'
+    + 'html,body{ margin:0; padding:0; }'
+    + 'body{ font-family: Arial, Helvetica, sans-serif; background:#fff; }'
+    + '.pl-label{ width:4in; height:8in; box-sizing:border-box; page-break-after:always; display:flex; flex-direction:column; align-items:stretch; text-align:center; }'
+    + '.pl-label:last-child{ page-break-after:auto; }'
+    + '.pl-head{ border-top:1.2pt solid #000; border-bottom:0.6pt solid #000; padding:1.5mm 0; }'
+    + '.pl-code{ font-size:17pt; font-weight:800; letter-spacing:.5px; }'
+    + '.pl-name{ font-size:9pt; color:#222; margin-top:.8mm; font-weight:600; }'
+    + '.pl-price-row{ display:flex; justify-content:space-between; padding:1mm 0; border-bottom:0.5pt solid #999; font-size:10pt; }'
+    + '.pl-price-row .k{ font-size:10pt; color:#111; }'
+    + '.pl-price-row .v{ font-size:11pt; font-weight:700; }'
+    + '.pl-new-tag{ color:#cc0000; font-weight:800; font-size:12pt; }'
+    + '.pl-qr-row{ margin-top:auto; text-align:center; padding:2mm 0 .5mm; }'
+    + '.pl-qr img{ width:1.6in; height:1.6in; }'
+    + '.pl-promo{ font-size:10pt; font-weight:700; color:#000; letter-spacing:.3px; }'
+    + '.pl-foot{ font-size:8pt; color:#333; margin-top:1mm; }'
     + '@media print{ body *{ visibility:hidden; } #label-print-target, #label-print-target *{ visibility:visible; } #label-print-target{ position:absolute; left:0; top:0; width:100%; } }'
     + '</style>';
 
-  // Build price-label per code-size
   let labels = '';
   rows.forEach(r=>{
-    let cls = 'pl-label';
-    if(r.priceAfter > 0){ cls += ' pl-sale'; }
+    const pc = labelCalcPrices(r);
+    const size = extractLabelSize(r.codeSize);
+    const qrImg = labelQrDataUrl(labelQrPayload(r.codeSize, code));
+    const nameHtml = r.dept ? '<div class="pl-name">' + escapeHtml(r.dept) + '</div>' : '';
+    let line2Html;
+    if(pc.line2IsNew){
+      line2Html = '<span class="pl-new-tag">NEW</span>';
+    } else {
+      line2Html = priceEGP(pc.line2);
+    }
     labels += '<div class="pl-label">'
-      + '<div class="pl-code">' + escapeHtml(r.codeSize || '') + '</div>'
-      + '<div class="pl-size">مقاس: ' + escapeHtml(extractLabelSize(r.codeSize)) + '</div>'
-      + '<div class="pl-prices">قبل: ' + (r.priceBefore ? r.priceBefore.toLocaleString('en-US') : '—') + '</div>'
-      + '<div class="pl-prices">بعد: ' + (r.priceAfter ? r.priceAfter.toLocaleString('en-US') : '—') + '</div>'
-      + '<div class="pl-qr"><img src="' + labelQrDataUrl(labelQrPayload(r.codeSize, code)) + '" alt="QR"></div>'
+      + '<div class="pl-head">'
+      + '<div class="pl-code">' + escapeHtml((size ? r.codeSize : r.code) || '') + '</div>'
+      + (size ? '<div class="pl-name">مقاس ' + escapeHtml(size) + '</div>' : nameHtml)
+      + '</div>'
+      + '<div class="pl-price-row"><span class="k">سعر</span><span class="v">' + priceEGP(pc.line1) + '</span></div>'
+      + '<div class="pl-price-row"><span class="k">سعر التخفيض</span><span class="v">' + line2Html + '</span></div>'
+      + '<div class="pl-price-row"><span class="k">خصم 10%</span><span class="v">' + priceEGP(pc.line3) + '</span></div>'
+      + '<div class="pl-price-row"><span class="k">3 أقساط</span><span class="v">' + priceEGP(pc.line4) + '</span></div>'
+      + '<div class="pl-qr-row">'
+      + '<div class="pl-promo">SCAN ME &amp; GET 10% OFF</div>'
+      + '<div class="pl-qr"><img src="' + qrImg + '" alt="QR"></div>'
+      + '<div class="pl-foot">' + escapeHtml((size ? r.codeSize : r.code) || '') + '</div>'
+      + '</div>'
       + '</div>';
   });
 
-  root.innerHTML = '<div id="label-print-target"><div class="pl-wrap">' + labels + '</div></div>'
+  root.innerHTML = '<div id="label-print-target">' + labels + '</div>'
     + '<div style="text-align:center;margin:20px 0;">'
     + '<button class="btn-primary" onclick="window.print()">طباعة الآن</button> '
     + '<button class="btn-ghost" onclick="document.getElementById(\'labelPrintRoot\').innerHTML=\'\'">إغلاق</button>'
@@ -2484,6 +2529,8 @@ function openLabelPrint(rows, code, totalQty){
 function extractLabelSize(s){
   try{
     const cs = String(s || '');
+    const m = cs.match(/-(\d+(?:\.\d+)?(?:[-/]\d+(?:\.\d+)?)?)$/);
+    if(m) return m[1];
     return cs.replace(/^[A-Za-z0-9]+[-_ ]/, '');
   }catch(e){ return String(s || ''); }
 }
