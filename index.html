@@ -393,7 +393,7 @@ service cloud.firestore {
       <button class="btn-primary" id="loginBtn">دخول</button>
       <button class="btn-ghost" id="adminOpenBtn">لوحة إدارة الفروع (للمدير)</button>
       <button class="btn-ghost" id="installBtnLogin" style="color:var(--amber-deep);text-align:center;">تثبيت التطبيق على الجهاز</button>
-      <div class="ver-stamp" id="verStamp">v2026-09-01-label31</div>
+      <div class="ver-stamp" id="verStamp">v2026-09-01-label33</div>
     </div>
   </div>
 </div>
@@ -2385,11 +2385,18 @@ function handleLabelStockFile(file){
   reader.readAsArrayBuffer(file);
 }
 
+function normalizeLabelSearchCode(s){
+  let t = String(s || '').trim().toUpperCase();
+  t = t.replace(/-\s*[^-]*$/, '');
+  t = t.replace(/^R/, '');
+  t = t.replace(/[\s\-]+/g, '');
+  return t;
+}
 function renderLabelSearched(query){
   const area = $('labelResultArea');
   const q = String(query || '').trim();
-  const code = q.toUpperCase();
-  const rows = labelRows.filter(r=> (r.code || '').toUpperCase() === code);
+  const code = normalizeLabelSearchCode(q);
+  const rows = labelRows.filter(r=> normalizeLabelSearchCode(r.code) === code || normalizeLabelSearchCode(r.codeSize) === code);
 
   let html = '';
   if(!q){
@@ -2562,9 +2569,10 @@ function openLabelPrint(rows, code, totalQty){
   }
   const printCss = '<style>'
     + '@page{ size: 4cm 8cm; margin: 0; }'
-    + 'html,body{ margin:0; padding:0; height:8cm; overflow:hidden; }'
-    + 'body{ font-family: Calibri, Arial, sans-serif; background:#fff; }'
-    + '.pl-label{ width:4cm; height:8cm; box-sizing:border-box; padding:1mm 2mm; text-align:center; overflow:hidden; page-break-after:auto; }'
+    + 'html,body{ margin:0; padding:0; width:4cm; height:8cm; overflow:hidden; }'
+    + 'body{ font-family: Calibri, Arial, sans-serif; background:#fff; scrollbar-width:none; }'
+    + 'body::-webkit-scrollbar{ display:none; }'
+    + '.pl-label{ width:4cm; height:8cm; box-sizing:border-box; padding:1mm 2mm; margin:0; text-align:center; overflow:hidden; page-break-after:auto; }'
     + '.pl-table{ direction:ltr; border-collapse:collapse; width:100%; min-width:0; height:100%; margin:0 auto; table-layout:fixed; }'
     + '.pl-table td{ padding:0; vertical-align:middle; }'
     + '.pl-code-row td{ font-size:16pt; font-weight:700; color:#000; height:5mm; }'
