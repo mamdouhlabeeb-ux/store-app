@@ -393,7 +393,7 @@ service cloud.firestore {
       <button class="btn-primary" id="loginBtn">دخول</button>
       <button class="btn-ghost" id="adminOpenBtn">لوحة إدارة الفروع (للمدير)</button>
       <button class="btn-ghost" id="installBtnLogin" style="color:var(--amber-deep);text-align:center;">تثبيت التطبيق على الجهاز</button>
-      <div class="ver-stamp" id="verStamp">v2026-09-01-label21</div>
+      <div class="ver-stamp" id="verStamp">v2026-09-01-label22</div>
     </div>
   </div>
 </div>
@@ -2407,7 +2407,7 @@ function renderLabelSearched(query){
   const first = rows.length ? rows[0] : null;
 
   const labelCss = '<style>'
-    + '.pl-label{ font-family:Calibri, Arial, sans-serif; text-align:center; background:#fff; cursor:pointer; width:4cm; height:8cm; box-sizing:border-box; padding:1mm 0.5mm; margin:0 auto; }'
+    + '.pl-label{ font-family:Calibri, Arial, sans-serif; text-align:center; background:#fff; cursor:pointer; width:4cm; height:8cm; box-sizing:border-box; padding:1mm 2mm; margin:0 auto; }'
     + '.pl-label + .pl-label{ margin-top:18px; }'
     + '.pl-table{ direction:ltr; border-collapse:collapse; width:100%; min-width:0; height:100%; margin:0 auto; table-layout:fixed; }'
     + '.pl-table td{ padding:0; vertical-align:middle; }'
@@ -2557,7 +2557,7 @@ function openLabelPrint(rows, code, totalQty){
     + '@page{ size: 4cm 8cm; margin: 0; }'
     + 'html,body{ margin:0; padding:0; height:8cm; overflow:hidden; }'
     + 'body{ font-family: Calibri, Arial, sans-serif; background:#fff; }'
-    + '.pl-label{ width:4cm; height:8cm; box-sizing:border-box; padding:1mm 0.5mm; text-align:center; overflow:hidden; page-break-after:auto; }'
+    + '.pl-label{ width:4cm; height:8cm; box-sizing:border-box; padding:1mm 2mm; text-align:center; overflow:hidden; page-break-after:auto; }'
     + '.pl-table{ direction:ltr; border-collapse:collapse; width:100%; min-width:0; height:100%; margin:0 auto; table-layout:fixed; }'
     + '.pl-table td{ padding:0; vertical-align:middle; }'
     + '.pl-code-row td{ font-size:16pt; font-weight:700; color:#000; height:6mm; }'
