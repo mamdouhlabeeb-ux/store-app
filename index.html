@@ -393,7 +393,7 @@ service cloud.firestore {
       <button class="btn-primary" id="loginBtn">دخول</button>
       <button class="btn-ghost" id="adminOpenBtn">لوحة إدارة الفروع (للمدير)</button>
       <button class="btn-ghost" id="installBtnLogin" style="color:var(--amber-deep);text-align:center;">تثبيت التطبيق على الجهاز</button>
-      <div class="ver-stamp" id="verStamp">v2026-09-01-label33</div>
+      <div class="ver-stamp" id="verStamp">v2026-09-01-label34</div>
     </div>
   </div>
 </div>
@@ -853,7 +853,7 @@ function startLiveSync(){
       }
     }
     if(d.transfers && Array.isArray(d.transfers.marks)){
-      const cm = new Set(d.transfers.marks);
+      const cm = upgradeTransferMarks(new Set(d.transfers.marks));
       if(JSON.stringify(Array.from(cm).sort()) !== JSON.stringify(Array.from(transferMarkMem).sort())){
         transferMarkMem = cm;
         renderTransfersTable();
@@ -902,7 +902,7 @@ async function openDashboard(){
   locationMap = (data && data.locations && data.locations.rows) ? new Map(data.locations.rows.map(p=>[p.code, p.location])) : new Map();
   transferRows = (data && data.transfers && data.transfers.rows) ? data.transfers.rows : [];
   transferMapLoc = (data && data.transfers && data.transfers.mapLoc) ? new Map(data.transfers.mapLoc.map(p=>[p.code, p.location])) : new Map();
-  transferMarkMem = (data && data.transfers && data.transfers.marks) ? new Set(data.transfers.marks) : new Set();
+  transferMarkMem = (data && data.transfers && data.transfers.marks) ? upgradeTransferMarks(new Set(data.transfers.marks)) : new Set();
   rebuildStockTotalsMap();
 
   // دمج علامات "طلعت الكود" من السحابة مع المحلية (بحيث لو أول مرة تفتح من جهاز جديد، العلامات القديمة تبقى موجودة)
@@ -1045,14 +1045,15 @@ function handleMapLocFile(file){
 }
 async function saveTransfersToCloud(){
   try{
-    const existing = await loadBranchData(currentBranch.id) || {};
-    existing.transfers = {
-      uploadedAt: new Date().toISOString(),
-      rows: transferRows,
-      mapLoc: Array.from(transferMapLoc.entries()).map(([code, location])=>({ code, location })),
-      marks: Array.from(transferMarkMem)
+    const payload = {
+      transfers: {
+        uploadedAt: new Date().toISOString(),
+        rows: transferRows,
+        mapLoc: Array.from(transferMapLoc.entries()).map(([code, location])=>({ code, location })),
+        marks: Array.from(transferMarkMem)
+      }
     };
-    await saveBranchData(currentBranch.id, existing);
+    await db.collection('branchData').doc(currentBranch.id).set(payload, { merge:true });
     return true;
   }catch(err){ console.error(err); return false; }
 }
@@ -1382,11 +1383,27 @@ function renderTransfersStats(){
   $('transStatDests').textContent = dests;
   $('transStatMissing').textContent = missing;
 }
+function transferMarkKey(r){
+  return r.code + '|' + r.size;
+}
+function upgradeTransferMarks(marks){
+  const out = new Set();
+  marks.forEach(m=>{
+    if(String(m).indexOf('|') > -1){ out.add(m); return; }
+    transferRows.forEach(r=>{ if(r.code === m) out.add(transferMarkKey(r)); });
+    if(!transferRows.some(r=> r.code === m)) out.add(m);
+  });
+  return out;
+}
+function transferIsMarked(r){
+  if(transferMarkMem.has(transferMarkKey(r))) return true;
+  return transferMarkMem.has(r.code);
+}
 function renderTransfersTable(){
   let rows = transferSortRows(transferVisibleRows());
   const cm = transferMarkMem;
-  if(transferChkFilter === 'todo') rows = rows.filter(r=> !cm.has(r.code));
-  else if(transferChkFilter === 'out') rows = rows.filter(r=> cm.has(r.code));
+  if(transferChkFilter === 'todo') rows = rows.filter(r=> !transferIsMarked(r));
+  else if(transferChkFilter === 'out') rows = rows.filter(r=> transferIsMarked(r));
   const wrap = $('transfersTableWrap');
   if(rows.length === 0){
     wrap.innerHTML = '<div class="empty-state"><div class="big">📦</div>' + (transferRows.length === 0 ? 'ارفع شيت التحويلات وشيت MAP LOC من كارت "تحضير التحويلات".' : 'مفيش نتائج مطابقة للفرع المستهدف ده.') + '</div>';
@@ -1419,7 +1436,7 @@ function renderTransfersTable(){
     const locMapTxt = transferMapLoc.get(r.code) || '—';
     const imgUrl = buildImgUrl(r.code);
     html += `<tr>
-      <td style="text-align:center;"><input type="checkbox" class="transfer-chk" data-code="${escapeAttr(r.code)}"${transferMarkMem.has(r.code) ? ' checked' : ''}></td>
+      <td style="text-align:center;"><input type="checkbox" class="transfer-chk" data-mark="${escapeAttr(transferMarkKey(r))}"${transferIsMarked(r) ? ' checked' : ''}></td>
       <td>
         <img class="prod-thumb" src="${imgUrl}" alt="${escapeHtml(r.code)}"
              onerror="this.outerHTML='&lt;div class=&quot;prod-thumb-missing&quot;&gt;لا توجد صورة&lt;/div&gt;'">
@@ -1824,7 +1841,7 @@ document.addEventListener('change', (e)=>{
     return;
   }
   if(e.target.classList && e.target.classList.contains('transfer-chk')){
-    const c = e.target.dataset.code;
+    const c = e.target.dataset.mark || e.target.dataset.code;
     if(e.target.checked) transferMarkMem.add(c); else transferMarkMem.delete(c);
     saveTransfersToCloud();
     renderTransfersTable();
