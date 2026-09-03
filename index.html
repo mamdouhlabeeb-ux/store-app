@@ -377,7 +377,7 @@ service cloud.firestore {
       <button class="btn-primary" id="loginBtn">دخول</button>
       <button class="btn-ghost" id="adminOpenBtn">لوحة إدارة الفروع (للمدير)</button>
       <button class="btn-ghost" id="installBtnLogin" style="color:var(--amber-deep);text-align:center;">تثبيت التطبيق على الجهاز</button>
-      <div class="ver-stamp" id="verStamp">v2026-09-01-label37</div>
+      <div class="ver-stamp" id="verStamp">v2026-09-01-label38</div>
     </div>
   </div>
 </div>
@@ -462,6 +462,13 @@ service cloud.firestore {
         <p>ارفع شيت الاستوك بتاع الفرع (هنا) واعمل ليبلات تسعير ورقية QR طبق الأصل</p>
         <button class="upload-btn" id="openLabelBtn">فتح ليبل التسعير</button>
         <div class="upload-status" id="uploadStatusLabelCard"></div>
+      </div>
+      <div class="upload-card" id="uploadCardLastPrice">
+        <div class="step-tag">6 - last piece/price</div>
+        <h3>Last Piece / Price</h3>
+        <p>ارفع شيت (الكود-المقاس، السعر، العدد) واعمل سيرش/سكان للكود ويظهرلك السعر وتوتال الكمية</p>
+        <button class="upload-btn" id="openLastPriceBtn">فتح last piece/price</button>
+        <div class="upload-status" id="uploadStatusLastPriceCard"></div>
       </div>
     </div>
 
@@ -588,6 +595,40 @@ service cloud.firestore {
       </div>
     </div>
     <div id="labelResultArea"></div>
+  </div>
+</div>
+
+<!-- ================= LAST PIECE / PRICE (بحث بالسعر والعدد) - standalone ================= -->
+<div class="screen" id="screen-lastprice" style="padding:28px 20px 60px;max-width:980px;margin:0 auto;">
+  <div class="panel-head" style="margin-bottom:6px;">
+    <h2 style="font-family:'Cairo',sans-serif;">Last Piece / Price</h2>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <button class="link-btn" id="lastPriceBackBtn">رجوع للفرع</button>
+    </div>
+  </div>
+  <p style="color:var(--muted);font-size:13.5px;line-height:1.8;margin:4px 0 18px;">
+    ارفع شيت للفرع ده (<b>أعمدة بالترتيب: الكود-المقاس، السعر، العدد</b>) — بيتحفظ للفرع لوحده.
+    بعد كده اكتب أو اعمل سكان للكود في خانة السيرش ويظهرلك السعر وتوتال الكمية. أي كود بيبدأ بـ 0 بيتحوّل لـ O تلقائيًا.
+  </p>
+
+  <div class="upload-row" style="grid-template-columns:1fr;">
+    <div class="upload-card" id="dropLastPriceStock">
+      <div class="step-tag">شيت السعر/العدد</div>
+      <p>اختر ملف شيت (xlsx/xls/csv) بأعمدة: الكود-المقاس، السعر، العدد بالترتيب.</p>
+      <label class="upload-btn" for="fileInputLastPrice">اختيار ملف الشيت</label>
+      <input type="file" id="fileInputLastPrice" accept=".xlsx,.xls,.csv">
+      <div class="upload-status" id="uploadStatusLastPrice"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="lastPriceSearchPanel" style="display:none;margin-top:20px;">
+    <div class="panel-head">
+      <h2 style="font-size:19px;">ابحث / سكان الكود</h2>
+      <div class="panel-tools">
+        <input class="search-input" id="lastPriceCodeSearch" placeholder="اكتب الكود أو سكان&hellip;" style="min-width:240px;">
+      </div>
+    </div>
+    <div id="lastPriceResultArea"></div>
   </div>
 </div>
 
@@ -862,7 +903,7 @@ $('resetDataBtn').addEventListener('click', async ()=>{
   try{
     await db.collection('branchData').doc(currentBranch.id).delete();
     stockSummary = []; salesRows = []; stockTotalsMap = new Map(); locationMap = new Map(); codeOutMem = new Set();
-    transferRows = []; transferMapLoc = new Map(); transferMarkMem = new Set(); transfersDest = 'all';
+    transferRows = []; transferMapLoc = new Map(); transferMarkMem = new Set(); transfersDest = 'all'; lpRows = [];
     try{ localStorage.removeItem(codeOutKey()); }catch(err){}
     try{ localStorage.removeItem('transfers_' + currentBranch.id); }catch(err){}
     if(branchPhotosLink) saveBranchPhotosLink(branchPhotosLink);
@@ -2628,6 +2669,154 @@ function extractLabelSize(s){
     if(m) return m[1];
     return cs.replace(/^[A-Za-z0-9]+[-_ ]/, '');
   }catch(e){ return String(s || ''); }
+}
+
+// ================= Last Piece / Price (بحث بالسعر والعدد) =================
+let lpRows = [];
+
+async function saveLastPriceRows(branchId){
+  if(!branchId) return;
+  try{
+    const existing = await loadBranchData(branchId) || {};
+    existing.lastPrice = { uploadedAt: new Date().toISOString(), rows: lpRows };
+    await saveBranchData(branchId, existing);
+  }catch(e){ console.error(e); }
+}
+
+// أي كود بيبدأ بـ 0 بيتحوّل لـ O + يشيل R البادئة + يشيل المقاس بعد "-"
+function normalizeLastPriceCode(s){
+  let t = String(s || '').trim().toUpperCase();
+  t = t.replace(/-[^-]*$/, '');          // يشيل المقاس بعد آخر "-"
+  t = t.replace(/^R/, '');               // يشيل الـ R البادئة
+  t = t.replace(/[\s\-]+/g, '');         // يشيل الفراغات والشرطات
+  t = t.replace(/^0+/, m => 'O'.repeat(m.length)); // أي 0 بادئ -> O
+  return t;
+}
+
+function normalizeLastPriceUploadCode(s){
+  return normalizeLastPriceCode(s);
+}
+
+function openLastPriceScreen(){
+  switchScreen('screen-lastprice');
+  const panel = $('lastPriceSearchPanel');
+  (async ()=>{
+    if(currentBranch && currentBranch.id){
+      try{
+        const doc = await loadBranchData(currentBranch.id);
+        const stored = (doc && doc.lastPrice && doc.lastPrice.rows) || [];
+        lpRows = Array.isArray(stored) ? stored : [];
+      }catch(e){ console.error(e); lpRows = []; }
+    } else { lpRows = []; }
+    if(lpRows && lpRows.length){
+      panel.style.display = 'block';
+      const inp = $('lastPriceCodeSearch');
+      inp.value = '';
+      inp.focus();
+      renderLastPriceSearched('');
+      setLastPriceStockStatus('الشيت موجود (' + lpRows.length + ' سطر) من آخر رفعة للفرع ده ✓', 'ok');
+    } else {
+      panel.style.display = 'none';
+      setLastPriceStockStatus('ارفع شيت (الكود-المقاس، السعر، العدد) الأول عشان تقدر تبحث.', '');
+    }
+  })();
+}
+$('openLastPriceBtn') && $('openLastPriceBtn').addEventListener('click', openLastPriceScreen);
+$('lastPriceBackBtn') && $('lastPriceBackBtn').addEventListener('click', ()=> switchScreen('screen-dashboard'));
+
+function setLastPriceStockStatus(msg, type){
+  const el = $('uploadStatusLastPrice'); if(!el) return;
+  el.className = 'upload-status'; if(type) el.classList.add(type); el.textContent = msg;
+}
+
+const dropLastPrice = $('dropLastPriceStock');
+['dragover','dragenter'].forEach(evt=> dropLastPrice.addEventListener(evt, (e)=>{ e.preventDefault(); dropLastPrice.classList.add('dragover'); }));
+['dragleave','drop'].forEach(evt=> dropLastPrice.addEventListener(evt, (e)=>{ e.preventDefault(); dropLastPrice.classList.remove('dragover'); }));
+$('dropLastPriceStock').addEventListener('drop', (e)=>{ if(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) handleLastPriceStockFile(e.dataTransfer.files[0]); });
+$('fileInputLastPrice').addEventListener('change', (e)=>{ if(e.target.files && e.target.files[0]) handleLastPriceStockFile(e.target.files[0]); });
+
+function handleLastPriceStockFile(file){
+  setLastPriceStockStatus('جاري قراءة الملف...', '');
+  const reader = new FileReader();
+  reader.onload = async (e)=>{
+    try{
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, { type:'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'', raw:true });
+      if(!rows || rows.length === 0){ setLastPriceStockStatus('الملف فاضي.', 'err'); return; }
+
+      // حساب عمود الكود-المقاس: لو العمود الأول بس موجود، القيمة فيه؛ لو في عمود كود منفصل ناخده (فيه كود-ومقاس في عمود أو عمودين)
+      let colSize = 0, colPrice = 1, colQty = 2;
+      // لاكتشاف لو الشيت فيه عمود كود منفصل (الكود في عمود، والمقاس في عمود) — نبقّي البسيط: 3 أعمدة (كود-مقاس، سعر، عدد)
+      lpRows = [];
+      rows.forEach(row=>{
+        if(!row || !row.length) return;
+        const codeSize = String(row[colSize] === null || row[colSize] === undefined ? '' : row[colSize]).trim();
+        const price = numVal(row[colPrice]);
+        const qty = numVal(row[colQty]);
+        if(!codeSize) return;
+        lpRows.push({ codeSize: normalizeLastPriceUploadCode(codeSize), origCode: codeSize, price, qty });
+      });
+      if(lpRows.length === 0){ setLastPriceStockStatus('مفيش بيانات صالحة اتقرت.', 'err'); return; }
+      if(currentBranch && currentBranch.id) await saveLastPriceRows(currentBranch.id);
+      setLastPriceStockStatus('تم قراءة الشيت ✓ (' + lpRows.length + ' سطر) للفرع ' + (currentBranch ? escapeHtml(currentBranch.name || '') : '') + '.', 'ok');
+      $('lastPriceSearchPanel').style.display = 'block';
+      const inp = $('lastPriceCodeSearch');
+      inp.value = '';
+      inp.focus();
+      renderLastPriceSearched('');
+    }catch(err){
+      console.error(err);
+      setLastPriceStockStatus('حصل خطأ في قراءة الملف.', 'err');
+    }
+    $('fileInputLastPrice').value = '';
+  };
+  reader.onerror = ()=> setLastPriceStockStatus('تعذر قراءة الملف.', 'err');
+  reader.readAsArrayBuffer(file);
+}
+
+function renderLastPriceSearched(query){
+  const area = $('lastPriceResultArea');
+  const q = String(query || '').trim();
+  const code = normalizeLastPriceCode(q);
+
+  let html = '';
+  if(!q){
+    html = '<div class="empty-state"><div class="big">🔍</div><div>اكتب أو سكان الكود فوق عشان يظهرلك السعر وتوتال الكمية.</div></div>';
+    area.innerHTML = html;
+    return;
+  }
+  const matched = lpRows.filter(r=> r.codeSize === code || normalizeLastPriceCode(r.origCode) === code);
+  if(matched.length === 0){
+    html = '<div class="empty-state"><div class="big">❌</div><div>مفيش كود "'.concat(escapeHtml(q),'" في الشيت.</div></div>');
+    area.innerHTML = html;
+    return;
+  }
+  const totalQty = matched.reduce((s,r)=> s + r.qty, 0);
+  const pricePerPiece = matched.length ? matched[0].price : 0;
+
+  // جدول النتايج: الكود / توتال الموديل (الكمية) / سعر القطعة
+  html = '<div class="stats-row" style="grid-template-columns:repeat(3,1fr);">'
+    + '<div class="stat-card"><div class="num">' + escapeHtml(matched[0].origCode || matched[0].codeSize || code) + '</div><div class="lbl">الكود</div></div>'
+    + '<div class="stat-card amber"><div class="num">' + totalQty.toLocaleString('en-US') + '</div><div class="lbl">توتال الموديل (العدد)</div></div>'
+    + '<div class="stat-card teal"><div class="num">' + priceEGP(pricePerPiece) + '</div><div class="lbl">سعر القطعة</div></div>'
+    + '</div>'
+    + '<div class="panel" style="margin-top:14px;"><table class="data-table"><thead><tr>'
+    + '<th>code</th><th>size</th><th>qty</th><th>price</th>'
+    + '</tr></thead><tbody>'
+    + matched.map(r=> '<tr>'
+        + '<td>' + escapeHtml(r.origCode || r.codeSize || '') + '</td>'
+        + '<td>' + escapeHtml(extractLabelSize(r.origCode) || '—') + '</td>'
+        + '<td>' + r.qty.toLocaleString('en-US') + '</td>'
+        + '<td>' + priceEGP(r.price) + '</td>'
+        + '</tr>').join('')
+    + '</tbody></table></div>';
+  area.innerHTML = html;
+}
+const lpSearch = $('lastPriceCodeSearch');
+if(lpSearch){
+  lpSearch.addEventListener('input', (e)=> renderLastPriceSearched(e.target.value));
 }
 
 })();
