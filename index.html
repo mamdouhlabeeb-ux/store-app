@@ -377,7 +377,7 @@ service cloud.firestore {
       <button class="btn-primary" id="loginBtn">دخول</button>
       <button class="btn-ghost" id="adminOpenBtn">لوحة إدارة الفروع (للمدير)</button>
       <button class="btn-ghost" id="installBtnLogin" style="color:var(--amber-deep);text-align:center;">تثبيت التطبيق على الجهاز</button>
-      <div class="ver-stamp" id="verStamp">v2026-09-01-label38</div>
+      <div class="ver-stamp" id="verStamp">v2026-09-01-label39</div>
     </div>
   </div>
 </div>
@@ -2433,6 +2433,8 @@ function handleLabelStockFile(file){
 
 function normalizeLabelSearchCode(s){
   let t = String(s || '').trim().toUpperCase();
+  t = t.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)); // الأرقام العربية -> إنجليزية
+  t = t.replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)); // الأرقام الفارسية -> إنجليزية
   t = t.replace(/-\s*[^-]*$/, '');
   t = t.replace(/^R/, '');
   t = t.replace(/[\s\-]+/g, '');
@@ -2686,6 +2688,8 @@ async function saveLastPriceRows(branchId){
 // أي كود بيبدأ بـ 0 بيتحوّل لـ O + يشيل R البادئة + يشيل المقاس بعد "-"
 function normalizeLastPriceCode(s){
   let t = String(s || '').trim().toUpperCase();
+  t = t.replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d)); // الأرقام العربية -> إنجليزية
+  t = t.replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)); // الأرقام الفارسية -> إنجليزية
   t = t.replace(/-[^-]*$/, '');          // يشيل المقاس بعد آخر "-"
   t = t.replace(/^R/, '');               // يشيل الـ R البادئة
   t = t.replace(/[\s\-]+/g, '');         // يشيل الفراغات والشرطات
@@ -2787,7 +2791,7 @@ function renderLastPriceSearched(query){
     area.innerHTML = html;
     return;
   }
-  const matched = lpRows.filter(r=> r.codeSize === code || normalizeLastPriceCode(r.origCode) === code);
+  const matched = lpRows.filter(r=> normalizeLastPriceCode(r.codeSize) === code || normalizeLastPriceCode(r.origCode) === code);
   if(matched.length === 0){
     html = '<div class="empty-state"><div class="big">❌</div><div>مفيش كود "'.concat(escapeHtml(q),'" في الشيت.</div></div>');
     area.innerHTML = html;
