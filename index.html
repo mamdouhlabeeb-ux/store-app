@@ -621,15 +621,19 @@ service cloud.firestore {
     </div>
   </div>
 
-  <div class="panel" id="lastPriceSearchPanel" style="display:none;margin-top:20px;">
-    <div class="panel-head">
-      <h2 style="font-size:19px;">ابحث / سكان الكود</h2>
-      <div class="panel-tools">
-        <input class="search-input" id="lastPriceCodeSearch" placeholder="اكتب الكود أو سكان&hellip;" style="min-width:240px;">
-      </div>
-    </div>
-    <div id="lastPriceResultArea"></div>
-  </div>
+  <style>
+    .lp-row{display:flex;gap:12px;align-items:center;margin-top:10px;flex-wrap:wrap;}
+    .lp-row .search-input{flex:1;min-width:220px;}
+    .lp-result{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+    .lp-item{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:8px 16px;text-align:center;min-width:104px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
+    .lp-item.amber{border-color:#f59e0b;}
+    .lp-item.teal{border-color:#14b8a6;}
+    .lp-val{font-size:20px;font-weight:800;color:#111;line-height:1.2;}
+    .lp-lbl{font-size:11px;color:#6b7280;margin-top:2px;font-weight:600;}
+    .lp-none{color:#dc2626;font-weight:700;padding:10px 4px;}
+  </style>
+
+  <div id="lastPriceStream"></div>
 </div>
 
 <!-- ===== PRINT WINDOW (ليبل تسعير) ===== -->
@@ -2703,7 +2707,6 @@ function normalizeLastPriceUploadCode(s){
 
 function openLastPriceScreen(){
   switchScreen('screen-lastprice');
-  const panel = $('lastPriceSearchPanel');
   (async ()=>{
     if(currentBranch && currentBranch.id){
       try{
@@ -2713,14 +2716,10 @@ function openLastPriceScreen(){
       }catch(e){ console.error(e); lpRows = []; }
     } else { lpRows = []; }
     if(lpRows && lpRows.length){
-      panel.style.display = 'block';
-      const inp = $('lastPriceCodeSearch');
-      inp.value = '';
-      inp.focus();
-      renderLastPriceSearched('');
+      openLastPriceStream();
       setLastPriceStockStatus('الشيت موجود (' + lpRows.length + ' سطر) من آخر رفعة للفرع ده ✓', 'ok');
     } else {
-      panel.style.display = 'none';
+      const streamEl = $('lastPriceStream'); if(streamEl) streamEl.innerHTML = '';
       setLastPriceStockStatus('ارفع شيت (الكود-المقاس، السعر، العدد) الأول عشان تقدر تبحث.', '');
     }
   })();
@@ -2765,11 +2764,7 @@ function handleLastPriceStockFile(file){
       if(lpRows.length === 0){ setLastPriceStockStatus('مفيش بيانات صالحة اتقرت.', 'err'); return; }
       if(currentBranch && currentBranch.id) await saveLastPriceRows(currentBranch.id);
       setLastPriceStockStatus('تم قراءة الشيت ✓ (' + lpRows.length + ' سطر) للفرع ' + (currentBranch ? escapeHtml(currentBranch.name || '') : '') + '.', 'ok');
-      $('lastPriceSearchPanel').style.display = 'block';
-      const inp = $('lastPriceCodeSearch');
-      inp.value = '';
-      inp.focus();
-      renderLastPriceSearched('');
+      openLastPriceStream();
     }catch(err){
       console.error(err);
       setLastPriceStockStatus('حصل خطأ في قراءة الملف.', 'err');
@@ -2780,47 +2775,62 @@ function handleLastPriceStockFile(file){
   reader.readAsArrayBuffer(file);
 }
 
-function renderLastPriceSearched(query){
-  const area = $('lastPriceResultArea');
-  const q = String(query || '').trim();
+function lastPriceFind(q){
   const code = normalizeLastPriceCode(q);
-
-  let html = '';
-  if(!q){
-    html = '<div class="empty-state"><div class="big">🔍</div><div>اكتب أو سكان الكود فوق عشان يظهرلك السعر وتوتال الكمية.</div></div>';
-    area.innerHTML = html;
-    return;
-  }
   const matched = lpRows.filter(r=> normalizeLastPriceCode(r.codeSize) === code || normalizeLastPriceCode(r.origCode) === code);
-  if(matched.length === 0){
-    html = '<div class="empty-state"><div class="big">❌</div><div>مفيش كود "'.concat(escapeHtml(q),'" في الشيت.</div></div>');
-    area.innerHTML = html;
-    return;
-  }
-  const totalQty = matched.reduce((s,r)=> s + r.qty, 0);
-  const pricePerPiece = matched.length ? matched[0].price : 0;
-
-  // جدول النتايج: الكود / توتال الموديل (الكمية) / سعر القطعة
-  html = '<div class="stats-row" style="grid-template-columns:repeat(3,1fr);">'
-    + '<div class="stat-card"><div class="num">' + escapeHtml(matched[0].origCode || matched[0].codeSize || code) + '</div><div class="lbl">الكود</div></div>'
-    + '<div class="stat-card amber"><div class="num">' + totalQty.toLocaleString('en-US') + '</div><div class="lbl">توتال الموديل (العدد)</div></div>'
-    + '<div class="stat-card teal"><div class="num">' + priceEGP(pricePerPiece) + '</div><div class="lbl">سعر القطعة</div></div>'
-    + '</div>'
-    + '<div class="panel" style="margin-top:14px;"><table class="data-table"><thead><tr>'
-    + '<th>code</th><th>size</th><th>qty</th><th>price</th>'
-    + '</tr></thead><tbody>'
-    + matched.map(r=> '<tr>'
-        + '<td>' + escapeHtml(r.origCode || r.codeSize || '') + '</td>'
-        + '<td>' + escapeHtml(extractLabelSize(r.origCode) || '—') + '</td>'
-        + '<td>' + r.qty.toLocaleString('en-US') + '</td>'
-        + '<td>' + priceEGP(r.price) + '</td>'
-        + '</tr>').join('')
-    + '</tbody></table></div>';
-  area.innerHTML = html;
+  return matched.length ? { code, matched } : null;
 }
-const lpSearch = $('lastPriceCodeSearch');
-if(lpSearch){
-  lpSearch.addEventListener('input', (e)=> renderLastPriceSearched(e.target.value));
+
+function disableRowInput(inp){
+  inp.setAttribute('readonly','readonly');
+  inp.style.opacity = '0.45';
+}
+
+function addLastPriceRow(){
+  const wrap = $('lastPriceStream');
+  if(!wrap) return;
+  const row = document.createElement('div');
+  row.className = 'lp-row';
+  row.innerHTML = '<input class="search-input" placeholder="اكتب الكود أو سكان&hellip;" style="min-width:220px;" autocomplete="off" autocorrect="off">'
+    + '<div class="lp-result"></div>';
+  wrap.appendChild(row);
+  const inp = row.querySelector('input');
+  const res = row.querySelector('.lp-result');
+  let committed = false;
+
+  inp.addEventListener('input', ()=>{
+    const q = inp.value.trim();
+    if(!q){ res.innerHTML = ''; return; }
+    const found = lastPriceFind(q);
+    if(!found){
+      res.innerHTML = '<span class="lp-none">❌ مفيش</span>';
+    } else {
+      const totalQty = found.matched.reduce((s,r)=> s + r.qty, 0);
+      const price = found.matched[0].price;
+      res.innerHTML = ''
+        + '<div class="lp-item amber"><div class="lp-val">' + totalQty.toLocaleString('en-US') + '</div><div class="lp-lbl">توتال الموديل</div></div>'
+        + '<div class="lp-item teal"><div class="lp-val">' + priceEGP(price) + '</div><div class="lp-lbl">سعر القطعة</div></div>';
+    }
+  });
+
+  const commit = ()=>{
+    if(committed) return;
+    const q = inp.value.trim();
+    if(q && lastPriceFind(q)){
+      committed = true;
+      disableRowInput(inp);
+      addLastPriceRow();
+    }
+  };
+  inp.addEventListener('change', commit);
+  inp.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); commit(); } });
+  inp.focus();
+}
+
+function openLastPriceStream(){
+  const wrap = $('lastPriceStream');
+  if(wrap) wrap.innerHTML = '';
+  addLastPriceRow();
 }
 
 })();
