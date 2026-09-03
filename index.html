@@ -393,7 +393,7 @@ service cloud.firestore {
       <button class="btn-primary" id="loginBtn">دخول</button>
       <button class="btn-ghost" id="adminOpenBtn">لوحة إدارة الفروع (للمدير)</button>
       <button class="btn-ghost" id="installBtnLogin" style="color:var(--amber-deep);text-align:center;">تثبيت التطبيق على الجهاز</button>
-      <div class="ver-stamp" id="verStamp">v2026-09-01-label34</div>
+      <div class="ver-stamp" id="verStamp">v2026-09-01-label35</div>
     </div>
   </div>
 </div>
@@ -1419,14 +1419,14 @@ function renderTransfersTable(){
     + '<option value="out"' + (transferChkFilter === 'out' ? ' selected' : '') + '>متأشر</option>'
     + '<option value="clear" style="color:var(--brick);font-weight:700;">— مسح جميع التأشيرات —</option>'
     + '</select></th>'
-    + '<th>الصورة</th>'
-    + transTh('code', 'الكود')
-    + transTh('size', 'المقاس المباع')
-    + transTh('qty', 'عدد القطع')
-    + transTh('locNormal', 'اللوكيشن (شيت اللوكيشن)')
-    + transTh('mapLoc', 'اللوكيشن (MAP LOC)')
-    + transTh('dept', 'الدبارتمنت')
-    + transTh('total', 'توتال الموديل بالمخزون')
+    + '<th>image</th>'
+    + transTh('code', 'code')
+    + transTh('size', 'size')
+    + transTh('qty', 'qty')
+    + transTh('locNormal', 'loc')
+    + transTh('mapLoc', 'map loc')
+    + transTh('dept', 'dpt')
+    + transTh('total', 'total')
     + '</tr></thead><tbody>';
   rows.forEach((r, idx)=>{
     const stockInfo = stockTotalsMap.get(r.code);
@@ -1873,12 +1873,12 @@ function renderSalesTable(){
     + '<option value="out"' + (salesChkFilter === 'out' ? ' selected' : '') + '>متأشر</option>'
     + '<option value="clear" style="color:var(--brick);font-weight:700;">— مسح جميع التأشيرات —</option>'
     + '</select></th>'
-    + '<th>الصورة</th>'
-    + '<th class="sortable-th">الكود <span class="sort-arrow" data-tab="sales" data-col="code">' + arrowGlyph('sales','code') + '</span><div class="sort-menu">' + sortMenuHtml('sales','code') + '</div></th>'
-    + '<th>المقاس المباع</th><th>عدد القطع</th>'
-    + '<th class="sortable-th">اللوكيشن <span class="sort-arrow" data-tab="sales" data-col="loc">' + arrowGlyph('sales','loc') + '</span><div class="sort-menu">' + sortMenuHtml('sales','loc') + '</div></th>'
-    + '<th class="sortable-th">الدبارتمنت <span class="sort-arrow" data-tab="sales" data-col="dept">' + arrowGlyph('sales','dept') + '</span><div class="sort-menu">' + sortMenuHtml('sales','dept') + '</div></th>'
-    + '<th>توتال الموديل بالمخزون</th>'
+    + '<th>image</th>'
+    + '<th class="sortable-th">code <span class="sort-arrow" data-tab="sales" data-col="code">' + arrowGlyph('sales','code') + '</span><div class="sort-menu">' + sortMenuHtml('sales','code') + '</div></th>'
+    + '<th>size</th><th>qty</th>'
+    + '<th class="sortable-th">loc <span class="sort-arrow" data-tab="sales" data-col="loc">' + arrowGlyph('sales','loc') + '</span><div class="sort-menu">' + sortMenuHtml('sales','loc') + '</div></th>'
+    + '<th class="sortable-th">dpt <span class="sort-arrow" data-tab="sales" data-col="dept">' + arrowGlyph('sales','dept') + '</span><div class="sort-menu">' + sortMenuHtml('sales','dept') + '</div></th>'
+    + '<th>total</th>'
     + '</tr></thead><tbody>';
   rows.forEach((r, idx)=>{
     const stockInfo = stockTotalsMap.get(r.code);
@@ -1906,7 +1906,7 @@ function renderSalesTable(){
 }
 
 function getFilteredSalesData(){
-  const data = [ ['الكود','المقاس المباع','الكمية المباعة','اللوكيشن','الدبارتمنت','توتال الموديل بالمخزون','رابط الصورة'] ];
+  const data = [ ['code','size','qty','loc','dpt','total','رابط الصورة'] ];
   salesVisibleRows().forEach(r=>{
     const stockInfo = stockTotalsMap.get(r.code);
     data.push([ r.code, r.size, r.qtySold, locationMap.get(r.code) || '', stockInfo ? stockInfo.department : '', stockInfo ? stockInfo.totalQty : '', buildImgUrl(r.code) ]);
@@ -1914,7 +1914,7 @@ function getFilteredSalesData(){
   return data;
 }
 function getFilteredStockData(){
-  const data = [ ['الكود','المقاس','الكمية','اللوكيشن','الدبارتمنت','توتال الموديل'] ];
+  const data = [ ['code','size','qty','loc','dpt','total'] ];
   stockVisibleRows().forEach(r=> r.sizes.forEach(s=> data.push([r.code, s.size, s.qty, s.location, r.department, r.totalQty])));
   return data;
 }
@@ -2027,13 +2027,13 @@ function salesPdfCells(){
   return {
     headHtml: '<table style="direction:rtl;border-collapse:collapse;width:896px;font-family:Cairo,sans-serif;">'
       + '<thead><tr>'
-      + '<th style="' + S_HEAD + S_CELL + '">الصورة</th>'
-      + '<th style="' + S_HEAD + S_CELL + '">الكود</th>'
-      + '<th style="' + S_HEAD + S_CELL + '">المقاس المباع</th>'
-      + '<th style="' + S_HEAD + S_CELL + '">عدد القطع</th>'
-      + '<th style="' + S_HEAD + S_CELL + '">اللوكيشن</th>'
-      + '<th style="' + S_HEAD + S_CELL + '">الدبارتمنت</th>'
-      + '<th style="' + S_HEAD + S_CELL + '">توتال الموديل بالمخزون</th>'
+      + '<th style="' + S_HEAD + S_CELL + '">image</th>'
+      + '<th style="' + S_HEAD + S_CELL + '">code</th>'
+      + '<th style="' + S_HEAD + S_CELL + '">size</th>'
+      + '<th style="' + S_HEAD + S_CELL + '">qty</th>'
+      + '<th style="' + S_HEAD + S_CELL + '">loc</th>'
+      + '<th style="' + S_HEAD + S_CELL + '">dpt</th>'
+      + '<th style="' + S_HEAD + S_CELL + '">total</th>'
       + '</tr></thead>',
     rowHtml: (r)=> {
       const stockInfo = stockTotalsMap.get(r.code);
@@ -2067,10 +2067,10 @@ function stockPdfCells(){
   return {
     headHtml: '<table style="direction:rtl;border-collapse:collapse;width:896px;font-family:Cairo,sans-serif;">'
       + '<thead><tr>'
-      + '<th style="' + S_HEAD + S_CELL + '">الكود</th>'
-      + '<th style="' + S_HEAD + S_CELL + '">إجمالي الكمية</th>'
-      + '<th style="' + S_HEAD + S_CELL + '">الدبارتمنت</th>'
-      + '<th style="' + S_HEAD + S_CELL + '">المقاسات (كمية)</th>'
+      + '<th style="' + S_HEAD + S_CELL + '">code</th>'
+      + '<th style="' + S_HEAD + S_CELL + '">qty</th>'
+      + '<th style="' + S_HEAD + S_CELL + '">dpt</th>'
+      + '<th style="' + S_HEAD + S_CELL + '">sizes (qty)</th>'
       + '</tr></thead>',
     rowHtml: (r)=> {
       const sizesTxt = r.sizes.map(s=> escapeHtml(s.size) + ' (' + s.qty + ')').join(' - ');
@@ -2090,7 +2090,7 @@ function stockPdfCells(){
   };
 }
 function getSalesSheetsData(){
-  const data = [ ['الصورة','الكود','المقاس المباع','الكمية المباعة','اللوكيشن','الدبارتمنت','توتال الموديل بالمخزون','رابط الصورة'] ];
+  const data = [ ['image','code','size','qty','loc','dpt','total','image link'] ];
   salesReportRows().forEach(r=>{
     const stockInfo = stockTotalsMap.get(r.code);
     const url = buildImgUrl(r.code);
@@ -2099,7 +2099,7 @@ function getSalesSheetsData(){
   return data;
 }
 function getStockSheetsData(){
-  const data = [ ['الصورة','الكود','المقاس','الكمية','اللوكيشن','الدبارتمنت','توتال الموديل','رابط الصورة'] ];
+  const data = [ ['image','code','size','qty','loc','dpt','total','image link'] ];
   stockReportRows().forEach(r=> r.sizes.forEach(s=>{
     const url = buildImgUrl(r.code);
     data.push([ '=IMAGE("' + url + '")', r.code, s.size, s.qty, s.location, r.department, r.totalQty, url ]);
@@ -2165,10 +2165,10 @@ function renderStockTable(){
     return;
   }
   let html = '<table class="data-table"><thead><tr>'
-    + '<th class="sortable-th">الكود <span class="sort-arrow" data-tab="stock" data-col="code">' + arrowGlyph('stock','code') + '</span><div class="sort-menu" data-for="code">' + sortMenuHtml('stock','code') + '</div></th>'
-    + '<th class="sortable-th">إجمالي الكمية <span class="sort-arrow" data-tab="stock" data-col="qty">' + arrowGlyph('stock','qty') + '</span><div class="sort-menu" data-for="qty">' + sortMenuHtml('stock','qty') + '</div></th>'
-    + '<th class="sortable-th">الدبارتمنت <span class="sort-arrow" data-tab="stock" data-col="dept">' + arrowGlyph('stock','dept') + '</span><div class="sort-menu" data-for="dept">' + sortMenuHtml('stock','dept') + '</div></th>'
-    + '<th>المقاسات</th></tr></thead><tbody>';
+    + '<th class="sortable-th">code <span class="sort-arrow" data-tab="stock" data-col="code">' + arrowGlyph('stock','code') + '</span><div class="sort-menu" data-for="code">' + sortMenuHtml('stock','code') + '</div></th>'
+    + '<th class="sortable-th">qty <span class="sort-arrow" data-tab="stock" data-col="qty">' + arrowGlyph('stock','qty') + '</span><div class="sort-menu" data-for="qty">' + sortMenuHtml('stock','qty') + '</div></th>'
+    + '<th class="sortable-th">dpt <span class="sort-arrow" data-tab="stock" data-col="dept">' + arrowGlyph('stock','dept') + '</span><div class="sort-menu" data-for="dept">' + sortMenuHtml('stock','dept') + '</div></th>'
+    + '<th>sizes</th></tr></thead><tbody>';
   rows.forEach((r, idx)=>{
     const sizesHtml = r.sizes.map(s=>`<span class="size-chip">${escapeHtml(s.size)} — ${s.qty} (${escapeHtml(s.location)})</span>`).join('');
     html += `<tr>
@@ -2194,7 +2194,7 @@ $('exportStockBtn').addEventListener('click', ()=>{
   if(stockSummary.length === 0) return;
   const wb = XLSX.utils.book_new();
   const rows = filteredStockRows();
-  const summaryData = [ ['الكود','إجمالي الكمية','الدبارتمنت'] ];
+  const summaryData = [ ['code','qty','dpt'] ];
   rows.forEach(r=> summaryData.push([r.code, r.totalQty, r.department]));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryData), 'الملخص');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(getFilteredStockData()), 'تفاصيل المقاسات');
