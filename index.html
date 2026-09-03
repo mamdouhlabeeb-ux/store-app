@@ -628,6 +628,8 @@ service cloud.firestore {
     .lp-item{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:8px 16px;text-align:center;min-width:104px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
     .lp-item.amber{border-color:#f59e0b;}
     .lp-item.teal{border-color:#14b8a6;}
+    .lp-item.danger{border-color:#dc2626;background:#fef2f2;}
+    .lp-item.danger .lp-val{color:#dc2626;}
     .lp-val{font-size:20px;font-weight:800;color:#111;line-height:1.2;}
     .lp-lbl{font-size:11px;color:#6b7280;margin-top:2px;font-weight:600;}
     .lp-none{color:#dc2626;font-weight:700;padding:10px 4px;}
@@ -2830,7 +2832,7 @@ function addLastPriceRow(){
   if(!wrap) return;
   const row = document.createElement('div');
   row.className = 'lp-row';
-  row.innerHTML = '<input class="search-input" placeholder="اكتب الكود أو سكان&hellip;" style="min-width:220px;" autocomplete="off" autocorrect="off">'
+  row.innerHTML = '<input class="search-input" placeholder="اكتب الكود أو سكان&hellip;" style="min-width:220px;" inputmode="numeric" pattern="[0-9]*" autocomplete="off" autocorrect="off">'
     + '<div class="lp-result"></div>';
   wrap.appendChild(row);
   const inp = row.querySelector('input');
@@ -2847,10 +2849,12 @@ function addLastPriceRow(){
     } else {
       const totalQty = found.matched.reduce((s,r)=> s + r.qty, 0);
       const price = found.matched[0].price;
+      const over = (limit !== null && totalQty > limit);
+      const totalClass = over ? 'lp-item danger' : 'lp-item amber';
       res.innerHTML = ''
-        + '<div class="lp-item amber"><div class="lp-val">' + totalQty.toLocaleString('en-US') + '</div><div class="lp-lbl">توتال الموديل</div></div>'
+        + '<div class="' + totalClass + '"><div class="lp-val">' + totalQty.toLocaleString('en-US') + '</div><div class="lp-lbl">توتال الموديل</div></div>'
         + '<div class="lp-item teal"><div class="lp-val">' + priceEGP(price) + '</div><div class="lp-lbl">سعر القطعة</div></div>';
-      if(limit !== null && totalQty > limit){
+      if(over){
         showLastPriceWarn('تحذير: الكود "' + q + '" توتاله (' + totalQty + ') أزيد من العدد المحدد (' + limit + ') — مش من اللاست بيس!');
       }
     }
