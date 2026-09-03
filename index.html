@@ -631,8 +631,22 @@ service cloud.firestore {
     .lp-val{font-size:20px;font-weight:800;color:#111;line-height:1.2;}
     .lp-lbl{font-size:11px;color:#6b7280;margin-top:2px;font-weight:600;}
     .lp-none{color:#dc2626;font-weight:700;padding:10px 4px;}
+    .lp-warn-bar{display:none;background:#fef2f2;border:1px solid #dc2626;color:#991b1b;padding:10px 14px;border-radius:12px;margin-top:14px;font-size:14px;font-weight:700;align-items:center;gap:10px;}
+    .lp-warn-bar.show{display:flex;}
+    .lp-warn-bar .warn-x{margin-left:auto;background:#dc2626;color:#fff;border:none;border-radius:8px;width:26px;height:26px;font-size:15px;line-height:1;cursor:pointer;font-weight:800;}
+    .lp-limit{display:flex;gap:10px;align-items:center;margin-top:16px;flex-wrap:wrap;}
+    .lp-limit label{font-weight:700;color:#111;}
+    .lp-limit input{width:120px;padding:9px 12px;border:1px solid #e5e7eb;border-radius:10px;font-size:15px;}
   </style>
 
+  <div class="lp-limit">
+    <label>اقل عدد قطع على اللاست بيس:</label>
+    <input type="number" id="lastPriceLimitInput" placeholder="فاضي = بدون تحذير" min="0" style="width:140px;">
+  </div>
+  <div class="lp-warn-bar" id="lastPriceWarnBar">
+    <span id="lastPriceWarnMsg"></span>
+    <button type="button" class="warn-x" id="lastPriceWarnClose">✕</button>
+  </div>
   <div id="lastPriceStream"></div>
 </div>
 
@@ -2781,6 +2795,31 @@ function lastPriceFind(q){
   return matched.length ? { code, matched } : null;
 }
 
+function lastPriceLimitValue(){
+  const el = $('lastPriceLimitInput');
+  const v = el ? parseInt(el.value, 10) : NaN;
+  return (el && el.value !== '' && !isNaN(v)) ? v : null;
+}
+
+let lpWarnTimer = null;
+function showLastPriceWarn(msg){
+  const bar = $('lastPriceWarnBar');
+  const txt = $('lastPriceWarnMsg');
+  if(!bar || !txt) return;
+  txt.textContent = msg;
+  bar.classList.add('show');
+  try{
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.connect(g); g.connect(ctx.destination);
+    o.frequency.value = 880; g.gain.value = 0.6;
+    o.start(); setTimeout(()=>{ o.stop(); ctx.close(); }, 200);
+  }catch(e){}
+  clearTimeout(lpWarnTimer);
+  lpWarnTimer = setTimeout(()=>{ bar.classList.remove('show'); }, 2500);
+}
+
 function disableRowInput(inp){
   inp.setAttribute('readonly','readonly');
   inp.style.opacity = '0.45';
@@ -2802,6 +2841,7 @@ function addLastPriceRow(){
     const q = inp.value.trim();
     if(!q){ res.innerHTML = ''; return; }
     const found = lastPriceFind(q);
+    const limit = lastPriceLimitValue();
     if(!found){
       res.innerHTML = '<span class="lp-none">❌ مفيش</span>';
     } else {
@@ -2810,6 +2850,9 @@ function addLastPriceRow(){
       res.innerHTML = ''
         + '<div class="lp-item amber"><div class="lp-val">' + totalQty.toLocaleString('en-US') + '</div><div class="lp-lbl">توتال الموديل</div></div>'
         + '<div class="lp-item teal"><div class="lp-val">' + priceEGP(price) + '</div><div class="lp-lbl">سعر القطعة</div></div>';
+      if(limit !== null && totalQty > limit){
+        showLastPriceWarn('تحذير: الكود "' + q + '" توتاله (' + totalQty + ') أزيد من العدد المحدد (' + limit + ') — مش من اللاست بيس!');
+      }
     }
   });
 
