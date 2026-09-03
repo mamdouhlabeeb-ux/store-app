@@ -377,7 +377,7 @@ service cloud.firestore {
       <button class="btn-primary" id="loginBtn">دخول</button>
       <button class="btn-ghost" id="adminOpenBtn">لوحة إدارة الفروع (للمدير)</button>
       <button class="btn-ghost" id="installBtnLogin" style="color:var(--amber-deep);text-align:center;">تثبيت التطبيق على الجهاز</button>
-      <div class="ver-stamp" id="verStamp">v2026-09-01-label36</div>
+      <div class="ver-stamp" id="verStamp">v2026-09-01-label37</div>
     </div>
   </div>
 </div>
@@ -658,7 +658,7 @@ function formatDate(iso){ if(!iso) return ''; const d = new Date(iso); return d.
 
 const BRANCH_COUNT = 33;
 const BRANCH_NAMES = ['CIT','cst','ssh2','snz','oct2','ztn','dmt','moe','sbr','ssh3','gsr','tnt','shb','mhl','ark','mns2','hdh','alx2','bsf','alx3','rh2','lbn','hdq','arb','mok','gen','ism','hrm','mdi','hlw','zqz','suz','fym'];
-const DEFAULT_BRANCH_PASSWORD = '1234';
+const DEFAULT_BRANCH_PASSWORD = '2020';
 const DEFAULT_ADMIN_PASSWORD = 'admin2026';
 const IMG_BASE = 'https://www.ravinjeans.com/collection/small/';
 const IMG_SUFFIX = 'a.jpg';
@@ -714,6 +714,10 @@ async function loadBranchConfig(){
   }
   cfg.branches.forEach((b,i)=>{ b.name = BRANCH_NAMES[i] || b.name; });
   cfg.adminPassword = cfg.adminPassword || DEFAULT_ADMIN_PASSWORD;
+  if(cfg.passwordTag !== '2020'){
+    cfg.branches.forEach(b=>{ b.password = DEFAULT_BRANCH_PASSWORD; });
+    cfg.passwordTag = '2020';
+  }
   try{ await db.collection('config').doc('branches').set(cfg); }catch(e){ console.error(e); }
   return cfg;
 }
