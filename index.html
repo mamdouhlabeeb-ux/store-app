@@ -2714,6 +2714,7 @@ function normalizeLastPriceCode(s){
   t = t.replace(/^R/, '');               // يشيل الـ R البادئة
   t = t.replace(/[\s\-]+/g, '');         // يشيل الفراغات والشرطات
   t = t.replace(/^0+/, m => 'O'.repeat(m.length)); // أي 0 بادئ -> O
+  t = t.replace(/^[RO]+/, '');                    // يشيل أي R أو O بادئة عشان القراءة تكون ثابتة مع/من غير البادئة
   return t;
 }
 
@@ -2851,9 +2852,15 @@ function addLastPriceRow(){
       const price = found.matched[0].price;
       const over = (limit !== null && totalQty > limit);
       const totalClass = over ? 'lp-item danger' : 'lp-item amber';
+      const locNorm = normalizeLastPriceCode(found.matched[0].codeSize);
+      let mapLocTxt = '—';
+      transferMapLoc.forEach((val, key)=>{
+        if(normalizeLastPriceCode(key) === locNorm){ mapLocTxt = val; }
+      });
       res.innerHTML = ''
         + '<div class="' + totalClass + '"><div class="lp-val">' + totalQty.toLocaleString('en-US') + '</div><div class="lp-lbl">توتال الموديل</div></div>'
-        + '<div class="lp-item teal"><div class="lp-val">' + priceEGP(price) + '</div><div class="lp-lbl">سعر القطعة</div></div>';
+        + '<div class="lp-item teal"><div class="lp-val">' + priceEGP(price) + '</div><div class="lp-lbl">سعر القطعة</div></div>'
+        + '<div class="lp-item teal"><div class="lp-val">' + escapeHtml(mapLocTxt) + '</div><div class="lp-lbl">Map Loc</div></div>';
       if(over){
         showLastPriceWarn('تحذير: الكود "' + q + '" توتاله (' + totalQty + ') أزيد من العدد المحدد (' + limit + ') — مش من اللاست بيس!');
       }
