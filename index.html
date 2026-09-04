@@ -623,7 +623,7 @@ service cloud.firestore {
 
   <style>
     .lp-row{display:flex;gap:12px;align-items:center;margin-top:10px;flex-wrap:wrap;}
-    .lp-row .search-input{flex:1;min-width:220px;}
+    .lp-row .search-input{flex:0 1 auto;min-width:130px;max-width:210px;}
     .lp-result{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
     .lp-item{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:8px 16px;text-align:center;min-width:104px;box-shadow:0 1px 3px rgba(0,0,0,.06);}
     .lp-item.amber{border-color:#f59e0b;}
@@ -2833,7 +2833,7 @@ function addLastPriceRow(){
   if(!wrap) return;
   const row = document.createElement('div');
   row.className = 'lp-row';
-  row.innerHTML = '<input class="search-input" placeholder="اكتب الكود أو سكان&hellip;" style="min-width:220px;" inputmode="numeric" pattern="[0-9]*" autocomplete="off" autocorrect="off">'
+  row.innerHTML = '<input class="search-input" placeholder="اكتب الكود أو سكان&hellip;" style="flex:0 1 auto;min-width:130px;max-width:210px;" inputmode="numeric" pattern="[0-9]*" autocomplete="off" autocorrect="off">'
     + '<div class="lp-result"></div>';
   wrap.appendChild(row);
   const inp = row.querySelector('input');
