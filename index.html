@@ -545,6 +545,7 @@ service cloud.firestore {
               <select class="search-input" id="transfersDestFilter" style="width:auto;min-width:170px;" title="فلتر الفرع المستهدف">
                 <option value="all">كل الفروع المستهدفة</option>
               </select>
+              <button class="export-btn" id="exportTransfersBtn">إكسل</button>
               <button class="export-btn" id="clearTransMarksBtn" style="background:var(--brick);border-color:var(--brick);">مسح التأشيرات</button>
             </div>
           </div>
@@ -1511,6 +1512,21 @@ $('clearTransMarksBtn').addEventListener('click', ()=>{
   showToast('تم مسح كل تأشيرات التحويلات ✓');
 });
 
+$('exportTransfersBtn').addEventListener('click', ()=>{
+  if(transferRows.length === 0) return;
+  let rows = transferVisibleRows();
+  if(transferChkFilter === 'todo') rows = rows.filter(r=> !transferIsMarked(r));
+  else if(transferChkFilter === 'out') rows = rows.filter(r=> transferIsMarked(r));
+  rows = transferSortRows(rows);
+  const wb = XLSX.utils.book_new();
+  const data = [ ['الكود-المقاس','العدد المطلوب','الفرع المستهدف','اتحضر؟'] ];
+  rows.forEach(r=>{
+    data.push([ String(r.code) + '-' + String(r.size), r.qty, r.dest, transferIsMarked(r) ? 'نعم' : 'لا' ]);
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), 'تحضير التحويلات');
+  XLSX.writeFile(wb, branchFname('تحضير_التحويلات') + '.xlsx');
+});
+
 // ---------------- shared split helper ----------------
 function splitCodeSize(raw){
   const str = String(raw).trim();
@@ -2217,13 +2233,14 @@ function renderStockTable(){
     + '<th class="sortable-th">code <span class="sort-arrow" data-tab="stock" data-col="code">' + arrowGlyph('stock','code') + '</span><div class="sort-menu" data-for="code">' + sortMenuHtml('stock','code') + '</div></th>'
     + '<th class="sortable-th">qty <span class="sort-arrow" data-tab="stock" data-col="qty">' + arrowGlyph('stock','qty') + '</span><div class="sort-menu" data-for="qty">' + sortMenuHtml('stock','qty') + '</div></th>'
     + '<th class="sortable-th">dpt <span class="sort-arrow" data-tab="stock" data-col="dept">' + arrowGlyph('stock','dept') + '</span><div class="sort-menu" data-for="dept">' + sortMenuHtml('stock','dept') + '</div></th>'
-    + '<th>sizes</th></tr></thead><tbody>';
+    + '<th>sizes</th><th>loc</th></tr></thead><tbody>';
   rows.forEach((r, idx)=>{
     const sizesHtml = r.sizes.map(s=>`<span class="size-chip">${escapeHtml(s.size)} — ${s.qty} (${escapeHtml(s.location)})</span>`).join('');
     html += `<tr>
       <td class="code-cell">${escapeHtml(r.code)}</td>
       <td class="qty-cell">${r.totalQty.toLocaleString('en-US')}</td>
       <td><span class="dept-badge ${r.mixedDept?'mixed':''}">${escapeHtml(r.department)}</span></td>
+      <td>${escapeHtml(locationMap.get(r.code) || '—')}</td>
       <td><button class="size-toggle" data-idx="${idx}">${r.sizes.length} مقاس — عرض</button><div class="size-detail" id="sizeDetail_${idx}">${sizesHtml}</div></td>
     </tr>`;
   });
@@ -2457,6 +2474,8 @@ function normalizeLabelSearchCode(s){
   t = t.replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d)); // الأرقام الفارسية -> إنجليزية
   t = t.replace(/-\s*[^-]*$/, '');
   t = t.replace(/^R/, '');
+  t = t.replace(/^0+/, m => 'O'.repeat(m.length));
+  t = t.replace(/^[RO]+/, ''); // يشيل أي R أو O بادية فالكود يقرا مع او من غير البادئة
   t = t.replace(/[\s\-]+/g, '');
   return t;
 }
@@ -2860,7 +2879,8 @@ function addLastPriceRow(){
       res.innerHTML = ''
         + '<div class="' + totalClass + '"><div class="lp-val">' + totalQty.toLocaleString('en-US') + '</div><div class="lp-lbl">توتال الموديل</div></div>'
         + '<div class="lp-item teal"><div class="lp-val">' + priceEGP(price) + '</div><div class="lp-lbl">سعر القطعة</div></div>'
-        + '<div class="lp-item teal"><div class="lp-val">' + escapeHtml(mapLocTxt) + '</div><div class="lp-lbl">Map Loc</div></div>';
+        + '<div class="lp-item teal"><div class="lp-val">' + escapeHtml(mapLocTxt) + '</div><div class="lp-lbl">Map Loc</div></div>'
+        + '<img class="prod-thumb" src="' + buildImgUrl(found.matched[0].code) + '" alt="' + escapeHtml(found.matched[0].code) + '" onerror="this.outerHTML=\'<div class=&quot;prod-thumb-missing&quot;>لا توجد صورة</div>\'">';
       if(over){
         showLastPriceWarn('تحذير: الكود "' + q + '" توتاله (' + totalQty + ') أزيد من العدد المحدد (' + limit + ') — مش من اللاست بيس!');
       }
