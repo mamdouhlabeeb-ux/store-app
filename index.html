@@ -1758,6 +1758,12 @@ function buildImgUrl(code){
   return IMG_BASE + String(code).trim() + IMG_SUFFIX;
 }
 
+function lastPriceImgUrl(codeSize){
+  const parts = splitCodeSize(String(codeSize || '').trim());
+  const fixed = fixLeadingZero(parts.code);
+  return IMG_BASE + fixed + IMG_SUFFIX;
+}
+
 function currentSortFor(tab){
   if(tab === 'sales') return salesSort;
   if(tab === 'stock') return stockSort;
@@ -2880,7 +2886,7 @@ function addLastPriceRow(){
         + '<div class="' + totalClass + '"><div class="lp-val">' + totalQty.toLocaleString('en-US') + '</div><div class="lp-lbl">توتال الموديل</div></div>'
         + '<div class="lp-item teal"><div class="lp-val">' + priceEGP(price) + '</div><div class="lp-lbl">سعر القطعة</div></div>'
         + '<div class="lp-item teal"><div class="lp-val">' + escapeHtml(mapLocTxt) + '</div><div class="lp-lbl">Map Loc</div></div>'
-        + '<img class="prod-thumb" src="' + buildImgUrl(found.matched[0].code) + '" alt="' + escapeHtml(found.matched[0].code) + '" onerror="this.outerHTML=\'<div class=&quot;prod-thumb-missing&quot;>لا توجد صورة</div>\'">';
+        + '<img class="prod-thumb" src="' + lastPriceImgUrl(found.matched[0].origCode) + '" alt="' + escapeHtml(fixLeadingZero(splitCodeSize(String(found.matched[0].origCode || '')).code)) + '" onerror="this.outerHTML=\'<div class=&quot;prod-thumb-missing&quot;>لا توجد صورة</div>\'">';
       if(over){
         showLastPriceWarn('تحذير: الكود "' + q + '" توتاله (' + totalQty + ') أزيد من العدد المحدد (' + limit + ') — مش من اللاست بيس!');
       }
