@@ -661,10 +661,8 @@ service cloud.firestore {
   <div id="lastPriceStream"></div>
   <div id="scanModal" class="scan-modal">
     <div class="scan-modal-box">
-      <div id="scanBox"><video id="scanVideo" playsinline muted></video><div id="scanStatus"></div><div id="scanDiag" style="font-size:11px;color:#9ca3af;margin-top:6px;text-align:center;"></div></div>
+      <div id="scanBox"><video id="scanVideo" playsinline muted></video><div id="scanStatus"></div></div>
       <div class="scan-modal-actions">
-        <input type="file" id="scanPhotoInput" accept="image/*" capture="environment" style="display:none;">
-        <button type="button" class="btn-ghost" id="scanPhotoFallback" style="color:var(--amber-deep);display:none;">📷 سكان من صورة (عند فشل الكاميرا)</button>
         <button type="button" class="btn-ghost" id="scanCloseBtn">إغلاق</button>
       </div>
     </div>
@@ -2390,29 +2388,9 @@ function handleInstallClick(){
 $('installBtn').addEventListener('click', handleInstallClick);
 $('installBtnLogin').addEventListener('click', handleInstallClick);
 
-// إلغاء أي Service Worker مسجّل — وجوده بيسبب تعطّل كاميرا التطبيق المثبّت على ايفون (خلل في WebKit)
-if('serviceWorker' in navigator){
-  navigator.serviceWorker.getRegistrations().then(rs=>{ rs.forEach(r=> r.unregister().catch(()=>{})); }).catch(()=>{});
+if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')){
+  navigator.serviceWorker.register('sw.js').catch(()=>{});
 }
-
-// استيقاظ مبكر للكاميرا عند أول تفاعل من المستخدم — بيعلّق الإذن ويفك مشكلة فشل تشغيل الفيديو في وضع PWA الايفون
-let lastPrimeActive = true;
-function lpPrimeCamera(){
-  lastPrimeActive = false;
-  try{
-    if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
-      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(s=>{
-        setTimeout(()=>{ s.getTracks().forEach(t=> t.stop()); }, 1000);
-      }).catch(()=>{});
-    }
-  }catch(e){}
-}
-document.addEventListener('click', ()=>{
-  if(lastPrimeActive) lpPrimeCamera();
-}, { once: true });
-document.addEventListener('touchstart', ()=>{
-  if(lastPrimeActive) lpPrimeCamera();
-}, { once: true, passive: true });
 
 // ================= استيكر / ليبل تسعير (standalone) =================
 const LABEL_DB_KEY = 'labelStock_v1';
@@ -2987,45 +2965,6 @@ function lpScanFailMsg(){
   }
   return 'تعذّر فتح الكاميرا — اتحقق من إذن الكاميرا في المتصفح.';
 }
-const scanPhotoFallback = $('scanPhotoFallback');
-const scanPhotoInput = $('scanPhotoInput');
-function lpShowPhotoFallback(show){
-  if(scanPhotoFallback) scanPhotoFallback.style.display = show ? 'inline-block' : 'none';
-}
-if(scanPhotoFallback && scanPhotoInput){
-  scanPhotoFallback.addEventListener('click', ()=>{
-    stopLastPriceScanner();
-    scanPhotoInput.click();
-  });
-  scanPhotoInput.addEventListener('change', ()=>{
-    const f = scanPhotoInput.files && scanPhotoInput.files[0];
-    scanPhotoInput.value = '';
-    if(!f) return;
-    const modal = $('scanModal');
-    const statusEl = $('scanStatus');
-    modal.classList.add('show');
-    statusEl.textContent = 'جارِ قراءة الصورة...';
-    lpEnsureLib(()=>{
-      try{
-        const tmp = document.createElement('div');
-        tmp.id = 'lpScanFileTmp';
-        tmp.style.display = 'none';
-        document.body.appendChild(tmp);
-        const h5 = new Html5Qrcode('lpScanFileTmp', false);
-        h5.scanFileV2(f, false).then((res)=>{
-          const r = Array.isArray(res) && res.length ? res[0] : res;
-          const text = r && (r.decodedText || r.text);
-          stopLastPriceScanner();
-          if(text && lpPendingScan){ const c = lpPendingScan; lpPendingScan = null; c(text); }
-          else{ statusEl.textContent = 'ما لقيتش باركود في الصورة — التقط صورة أوضح وأقرب.'; }
-        }).catch((err)=>{
-          stopLastPriceScanner();
-          statusEl.textContent = 'ما لقيتش باركود في الصورة (' + (err && err.message ? err.message : err) + ')';
-        });
-      }catch(e){ statusEl.textContent = 'حصل خطأ في قراءة الصورة: ' + (e && e.message ? e.message : e); }
-    });
-  });
-}
 function stopLastPriceScanner(){
   if(lpScannerState){
     clearInterval(lpScannerState.timer);
@@ -3049,13 +2988,10 @@ function openLastPriceScanner(onScan){
   const modal = $('scanModal');
   const video = $('scanVideo');
   const statusEl = $('scanStatus');
-  const diagEl = $('scanDiag');
   if(!modal || !video || !statusEl) return;
   lpPendingScan = onScan;
   modal.classList.add('show');
-  lpShowPhotoFallback(false);
   statusEl.textContent = 'جارِ فتح الكاميرا...';
-  if(diagEl) diagEl.textContent = 'الوضع: ' + (lpIsStandalone() ? 'تطبيق مثبّت' : 'متصفح') + ' • BarcodeDetector: ' + ('BarcodeDetector' in window ? 'متاح' : 'مش متاح') + ' • مكتبة: ' + (window.Html5Qrcode ? 'مثبّتة' : 'سيتم التحميل');
 
   const done = (raw)=>{
     stopLastPriceScanner();
@@ -3091,7 +3027,7 @@ function openLastPriceScanner(onScan){
             }
           }catch(e){}
         }, 350);
-      }).catch(()=>{ statusEl.textContent = lpScanFailMsg(); lpShowPhotoFallback(true); });
+      }).catch(()=>{ statusEl.textContent = lpScanFailMsg(); });
       return;
     }catch(e){}
   }
@@ -3118,8 +3054,8 @@ function startLastPriceLibScan(onScan){
         ()=>{},
         undefined,
         { formatsToSupport: [ Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39, Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8 ] }
-      ).catch(err=>{ statusEl.textContent = lpScanFailMsg(); lpShowPhotoFallback(true); });
-    }catch(e){ statusEl.textContent = 'حصل خطأ في تشغيل السكان.'; lpShowPhotoFallback(true); }
+      ).catch(err=>{ statusEl.textContent = lpScanFailMsg(); });
+    }catch(e){ statusEl.textContent = 'حصل خطأ في تشغيل السكان.'; }
   });
 }
 
