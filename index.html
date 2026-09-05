@@ -663,6 +663,8 @@ service cloud.firestore {
     <div class="scan-modal-box">
       <div id="scanBox"><video id="scanVideo" playsinline muted></video><div id="scanStatus"></div></div>
       <div class="scan-modal-actions">
+        <button type="button" class="scan-btn" id="scanPhotoBtn" style="background:var(--amber-deep);">📷 التقاط صورة للباركود</button>
+        <input type="file" id="scanPhotoInput" accept="image/*" capture="environment" style="display:none;">
         <button type="button" class="btn-ghost" id="scanCloseBtn">إغلاق</button>
       </div>
     </div>
@@ -2940,6 +2942,65 @@ function openLastPriceStream(){
 }
 
 let lpScannerState = null;
+let lpPendingScan = null;
+function lpEnsureLib(cb){
+  if(window.Html5Qrcode){ cb(); return; }
+  const statusEl = $('scanStatus');
+  if(statusEl) statusEl.textContent = 'جارِ تحميل مكتبة السكان...';
+  const s = document.createElement('script');
+  s.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+  s.onload = ()=> cb();
+  s.onerror = ()=>{ if(statusEl) statusEl.textContent = 'تعذّر تحميل مكتبة السكان — اتأكد من الإنترنت.'; };
+  document.head.appendChild(s);
+}
+function lpIsStandalone(){
+  try{
+    if(window.navigator.standalone === true) return true;
+    if(window.matchMedia && matchMedia('(display-mode: standalone)').matches) return true;
+  }catch(e){}
+  return false;
+}
+function lpScanFailMsg(){
+  if(lpIsStandalone()){
+    return 'الكاميرا المباشرة مش متاحة داخل التطبيق المثبّت على ايفون (قيود Apple) — استخدم زر «📷 التقاط صورة للباركود» بالأعلى.';
+  }
+  return 'تعذّر فتح الكاميرا — اتحقق من إذن الكاميرا في المتصفح.';
+}
+const scanPhotoBtn = $('scanPhotoBtn');
+const scanPhotoInput = $('scanPhotoInput');
+if(scanPhotoBtn && scanPhotoInput){
+  scanPhotoBtn.addEventListener('click', ()=>{
+    stopLastPriceScanner();
+    scanPhotoInput.click();
+  });
+  scanPhotoInput.addEventListener('change', ()=>{
+    const f = scanPhotoInput.files && scanPhotoInput.files[0];
+    scanPhotoInput.value = '';
+    if(!f) return;
+    const modal = $('scanModal');
+    const statusEl = $('scanStatus');
+    modal.classList.add('show');
+    statusEl.textContent = 'جارِ قراءة الصورة...';
+    lpEnsureLib(()=>{
+      try{
+        const tmp = document.createElement('div');
+        tmp.style.display = 'none';
+        document.body.appendChild(tmp);
+        const h5 = new Html5Qrcode(tmp, false);
+        h5.scanFileV2(f, false).then((res)=>{
+          const r = Array.isArray(res) && res.length ? res[0] : res;
+          const text = r && (r.decodedText || r.text);
+          stopLastPriceScanner();
+          if(text && lpPendingScan){ const c = lpPendingScan; lpPendingScan = null; c(text); }
+          else{ statusEl.textContent = 'ما لقيتش باركود في الصورة — التقط صورة أوضح وأقرب.'; }
+        }).catch(()=>{
+          stopLastPriceScanner();
+          statusEl.textContent = 'ما لقيتش باركود في الصورة — التقط صورة أوضح وأقرب.';
+        });
+      }catch(e){ statusEl.textContent = 'حصل خطأ في قراءة الصورة.'; }
+    });
+  });
+}
 function stopLastPriceScanner(){
   if(lpScannerState){
     clearInterval(lpScannerState.timer);
@@ -2964,12 +3025,16 @@ function openLastPriceScanner(onScan){
   const video = $('scanVideo');
   const statusEl = $('scanStatus');
   if(!modal || !video || !statusEl) return;
+  lpPendingScan = onScan;
   modal.classList.add('show');
   statusEl.textContent = 'جارِ فتح الكاميرا...';
 
   const done = (raw)=>{
     stopLastPriceScanner();
-    if(raw && typeof onScan === 'function') onScan(raw);
+    if(raw && onScan){
+      const c = onScan; lpPendingScan = null;
+      c(raw);
+    }
   };
 
   if('BarcodeDetector' in window){
@@ -2998,7 +3063,7 @@ function openLastPriceScanner(onScan){
             }
           }catch(e){}
         }, 350);
-      }).catch(()=>{ statusEl.textContent = 'تعذّر فتح الكاميرا.'; });
+      }).catch(()=>{ statusEl.textContent = lpScanFailMsg(); });
       return;
     }catch(e){}
   }
@@ -3008,32 +3073,26 @@ function openLastPriceScanner(onScan){
 function startLastPriceLibScan(onScan){
   const statusEl = $('scanStatus');
   const modal = $('scanModal');
-  if(!window.Html5Qrcode){
-    statusEl.textContent = 'جارِ تحميل مكتبة السكان...';
-    const s = document.createElement('script');
-    s.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
-    s.onload = ()=> startLastPriceLibScan(onScan);
-    s.onerror = ()=>{ statusEl.textContent = 'تعذّر تحميل مكتبة السكان — اتأكد من الإنترنت.'; };
-    document.head.appendChild(s);
-    return;
-  }
-  const box = $('scanBox');
-  if(!box) return;
-  box.innerHTML = '<div id="lpScanH5"></div>';
-  lpScannerState = { timer: null, h5: null, useVideo: false, useLib: true };
-  try{
-    const h5 = new Html5Qrcode('lpScanH5');
-    lpScannerState.h5 = h5;
-    lpScannerState.useVideo = false;
-    h5.start(
-      { facingMode: 'environment' },
-      { fps: 15, qrbox: { width: 300, height: 120 } },
-      (text)=>{ done(text); },
-      ()=>{},
-      undefined,
-      { formatsToSupport: [ Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39, Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8 ] }
-    ).catch(err=>{ statusEl.textContent = 'تعذّر فتح الكاميرا: ' + err; });
-  }catch(e){ statusEl.textContent = 'حصل خطأ في تشغيل السكان.'; }
+  lpEnsureLib(()=>{
+    if(!modal.classList.contains('show')) return;
+    const box = $('scanBox');
+    if(!box) return;
+    box.innerHTML = '<div id="lpScanH5"></div>';
+    lpScannerState = { timer: null, h5: null, useVideo: false, useLib: true };
+    try{
+      const h5 = new Html5Qrcode('lpScanH5');
+      lpScannerState.h5 = h5;
+      lpScannerState.useVideo = false;
+      h5.start(
+        { facingMode: 'environment' },
+        { fps: 15, qrbox: { width: 300, height: 120 } },
+        (text)=>{ done(text); },
+        ()=>{},
+        undefined,
+        { formatsToSupport: [ Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39, Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8 ] }
+      ).catch(err=>{ statusEl.textContent = lpScanFailMsg(); });
+    }catch(e){ statusEl.textContent = 'حصل خطأ في تشغيل السكان.'; }
+  });
 }
 
 })();
