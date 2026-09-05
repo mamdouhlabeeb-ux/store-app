@@ -2885,7 +2885,7 @@ function addLastPriceRow(){
       res.innerHTML = ''
         + '<div class="' + totalClass + '"><div class="lp-val">' + totalQty.toLocaleString('en-US') + '</div><div class="lp-lbl">توتال الموديل</div></div>'
         + '<div class="lp-item teal"><div class="lp-val">' + priceEGP(price) + '</div><div class="lp-lbl">سعر القطعة</div></div>'
-        + '<div class="lp-item teal"><div class="lp-val">' + escapeHtml(mapLocTxt) + '</div><div class="lp-lbl">Map Loc</div></div>'
+        + '<div class="lp-item teal"><div class="lp-val">' + (mapLocTxt === '—' ? '—' : '<span class="loc-badge">' + escapeHtml(mapLocTxt) + '</span>') + '</div><div class="lp-lbl">Map Loc</div></div>'
         + '<img class="prod-thumb" src="' + lastPriceImgUrl(found.matched[0].origCode) + '" alt="' + escapeHtml(fixLeadingZero(splitCodeSize(String(found.matched[0].origCode || '')).code)) + '" onerror="this.outerHTML=\'<div class=&quot;prod-thumb-missing&quot;>لا توجد صورة</div>\'">';
       if(over){
         showLastPriceWarn('تحذير: الكود "' + q + '" توتاله (' + totalQty + ') أزيد من العدد المحدد (' + limit + ') — مش من اللاست بيس!');
