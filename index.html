@@ -470,6 +470,13 @@ service cloud.firestore {
         <button class="upload-btn" id="openLastPriceBtn">فتح last piece/price</button>
         <div class="upload-status" id="uploadStatusLastPriceCard"></div>
       </div>
+      <div class="upload-card" id="uploadCardMapCheck">
+        <div class="step-tag">7 - Map Check</div>
+        <h3>Map Check (فحص اللوكيشن)</h3>
+        <p>ارفع شيت MAP LOC (عمودين: الكود، اللوكيشن) واختار لوكيشن واكتب/سكان الأكواد وينزّل ريبورت Excel محترم</p>
+        <button class="upload-btn" id="openMapCheckBtn">فتح Map Check</button>
+        <div class="upload-status" id="uploadStatusMapCheckCard"></div>
+      </div>
     </div>
 
     <div class="panel" id="drivePanel" style="padding:16px;margin-bottom:22px;">
@@ -671,6 +678,82 @@ service cloud.firestore {
 
 <!-- ===== PRINT WINDOW (ليبل تسعير) ===== -->
 <div style="position:fixed;left:-9999px;top:0;width:4cm;" id="labelPrintRoot"></div>
+
+<!-- ================= MAP CHECK (فحص اللوكيشن) ================= -->
+<div class="screen" id="screen-mapcheck" style="padding:28px 20px 60px;max-width:980px;margin:0 auto;">
+  <style>
+    .mc-wrap{display:flex;flex-direction:column;gap:12px;}
+    .mc-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+    .mc-row{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:10px 14px;}
+    .mc-row.ok{border-color:#a7f3d0;background:#ecfdf5;}
+    .mc-row.wrong{border-color:#fca5a5;background:#fef2f2;box-shadow:inset 0 0 0 1px #fecaca;}
+    .mc-code{font-family:'Cairo',sans-serif;font-weight:800;font-size:16px;flex:0 0 auto;min-width:150px;}
+    .mc-status{font-size:12.5px;font-weight:800;}
+    .mc-status.ok{color:#047857;}
+    .mc-status.wrong{color:#b91c1c;}
+    .mc-loc{margin-inline-start:auto;font-weight:800;font-size:14.5px;padding:4px 12px;border-radius:999px;}
+    .mc-loc.ok{background:#d1fae5;color:#047857;}
+    .mc-loc.wrong{background:#fee2e2;color:#b91c1c;}
+    .mc-del{background:transparent;border:none;color:#9ca3af;font-size:16px;cursor:pointer;line-height:1;padding:4px;}
+    .mc-del:hover{color:var(--brick);}
+    .mc-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
+    @media(max-width:700px){.mc-stats{grid-template-columns:1fr 1fr;}}
+  </style>
+  <div class="panel-head" style="margin-bottom:6px;">
+    <h2 style="font-family:'Cairo',sans-serif;">Map Check (فحص اللوكيشن)</h2>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <button class="link-btn" id="mapCheckBackBtn">رجوع للفرع</button>
+    </div>
+  </div>
+  <p style="color:var(--muted);font-size:13.5px;line-height:1.8;margin:4px 0 18px;">
+    ارفع شيت الـ MAP LOC (<b>عمودين بالترتيب: الكود، اللوكيشن</b>) — بيتحفظ للفرع لوحده.
+    اختار اللوكيشن المطلوب فحصه من القائمة، واكتب أو اعمل سكان للأكواد تحت: أي كود موقعه مختلف عن اللوكيشن المختار بينوّر بالأحمر.
+    في الآخر اضغط <b>«تم الانتهاء»</b> وينزل ريبورت Excel محترم بالتقرير الكامل.
+  </p>
+
+  <div class="upload-row" style="grid-template-columns:1fr;">
+    <div class="upload-card" id="dropMapCheckLoc">
+      <div class="step-tag">شيت MAP LOC</div>
+      <p>اختر ملف شيت (xlsx/xls/csv) بعمودين بالترتيب: <b>الكود، اللوكيشن</b>. أي كود بيُقرا بالبادئة (R أو O/0) أو من غيرها، ومع المقاس أو بدونه — كله نفس الكود الأساسي.</p>
+      <label class="upload-btn" for="fileInputMapCheckLoc">اختيار ملف الشيت</label>
+      <input type="file" id="fileInputMapCheckLoc" accept=".xlsx,.xls,.csv">
+      <div class="upload-status" id="uploadStatusMapCheckLoc"></div>
+    </div>
+  </div>
+
+  <div class="panel" id="mapCheckPanel" style="display:none;margin-top:20px;">
+    <div class="panel-head">
+      <h2 style="font-size:19px;">فحص اللوكيشن</h2>
+      <div class="panel-tools">
+        <label style="font-weight:700;font-size:13.5px;">اللوكيشن المفحوص:</label>
+        <select class="search-input" id="mapCheckLocSelect" style="width:130px;"></select>
+        <button class="export-btn" id="mapCheckResetBtn" style="background:var(--paper);color:var(--muted);border-color:var(--line);">تفريغ القائمة</button>
+      </div>
+    </div>
+    <div class="mc-wrap">
+      <div class="mc-actions">
+        <input class="search-input" id="mapCheckCodeInput" placeholder="اكتب الكود..." inputmode="numeric" style="flex:0 1 auto;min-width:160px;max-width:240px;">
+        <button class="export-btn" id="mapCheckAddBtn">+ إضافة</button>
+        <button class="scan-btn" id="mapCheckScanBtn">📷 سكان</button>
+      </div>
+      <div id="mapCheckList" style="display:flex;flex-direction:column;gap:8px;"></div>
+      <div id="mapCheckSummary" style="display:none;padding:12px 14px;border-radius:12px;background:#f8fafc;border:1px solid var(--line);font-size:14px;font-weight:800;"></div>
+      <div class="mc-actions">
+        <button class="export-btn" id="mapCheckFinishBtn" style="background:var(--amber-deep);border-color:var(--amber-deep);color:#fff;padding:12px 22px;font-size:15px;">تم الانتهاء — اعمل الريبورت</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel" id="mapCheckReportPanel" style="display:none;margin-top:20px;">
+    <div class="panel-head">
+      <h2 style="font-size:19px;">ريبورت Map Check</h2>
+      <div class="panel-tools">
+        <button class="export-btn" id="mapCheckExportBtn">تنزيل ريبورت Excel</button>
+      </div>
+    </div>
+    <div id="mapCheckReportBody"></div>
+  </div>
+</div>
 
 <!-- ===== TRANSFERS MODAL ===== -->
 <div class="modal-overlay" id="transferModal">
@@ -943,6 +1026,7 @@ $('resetDataBtn').addEventListener('click', async ()=>{
     transferRows = []; transferMapLoc = new Map(); transferMarkMem = new Set(); transfersDest = 'all'; lpRows = [];
     try{ localStorage.removeItem(codeOutKey()); }catch(err){}
     try{ localStorage.removeItem('transfers_' + currentBranch.id); }catch(err){}
+    try{ localStorage.removeItem(mapCheckDBKey()); }catch(err){}
     if(branchPhotosLink) saveBranchPhotosLink(branchPhotosLink);
     $('lastUpdateLabel').textContent = '';
     $('resultsArea').style.display = 'none';
@@ -3058,6 +3142,276 @@ function startLastPriceLibScan(onScan){
     }catch(e){ statusEl.textContent = 'حصل خطأ في تشغيل السكان.'; }
   });
 }
+
+// ================= MAP CHECK (فحص اللوكيشن) =================
+const mapCheckDBKey = ()=> 'mapCheck_v1_' + (currentBranch ? currentBranch.id : 'anon');
+let mapCheckMap = new Map();          // كود مُطبّع -> لوكيشن
+let mapCheckEntries = [];             // { code, norm, loc }
+let mapCheckSelectedLoc = '';
+let mapCheckReport = null;
+
+function saveMapCheckDB(){
+  try{
+    localStorage.setItem(mapCheckDBKey(), JSON.stringify({
+      at: Date.now(),
+      rows: Array.from(mapCheckMap.entries()),
+      entries: mapCheckEntries,
+      sel: mapCheckSelectedLoc
+    }));
+  }catch(e){}
+}
+function loadMapCheckDB(){
+  try{
+    const j = JSON.parse(localStorage.getItem(mapCheckDBKey()) || 'null');
+    if(j && j.rows && Array.isArray(j.rows)) mapCheckMap = new Map(j.rows.map(p=>[p[0], p[1]]));
+    else mapCheckMap = new Map();
+    mapCheckEntries = (j && Array.isArray(j.entries)) ? j.entries.map(en=>({ code: en.code, norm: en.norm, loc: en.loc })) : [];
+    mapCheckSelectedLoc = (j && j.sel) || '';
+  }catch(e){ mapCheckMap = new Map(); mapCheckEntries = []; mapCheckSelectedLoc = ''; }
+}
+
+function setMapCheckLocStatus(msg, type){
+  const el = $('uploadStatusMapCheckLoc'); if(!el) return;
+  el.className = 'upload-status'; if(type) el.classList.add(type); el.textContent = msg;
+}
+
+function openMapCheckScreen(){
+  switchScreen('screen-mapcheck');
+  loadMapCheckDB();
+  mapCheckReport = null;
+  const rp = $('mapCheckReportPanel'); if(rp) rp.style.display = 'none';
+  if(mapCheckMap && mapCheckMap.size){
+    setMapCheckLocStatus('الشيت موجود (' + mapCheckMap.size + ' كود) من آخر رفعة للفرع ده ✓', 'ok');
+    $('mapCheckPanel').style.display = 'block';
+    refreshMapCheckLocs();
+    renderMapCheckList();
+    refreshMapCheckSummary();
+    $('mapCheckCodeInput').focus();
+  } else {
+    setMapCheckLocStatus('ارفع شيت MAP LOC (الكود، اللوكيشن) الأول.', '');
+  }
+}
+$('openMapCheckBtn') && $('openMapCheckBtn').addEventListener('click', openMapCheckScreen);
+$('mapCheckBackBtn') && $('mapCheckBackBtn').addEventListener('click', ()=>{ stopLastPriceScanner(); switchScreen('screen-dashboard'); });
+
+const dropMapCheckLoc = $('dropMapCheckLoc');
+['dragover','dragenter'].forEach(evt=> dropMapCheckLoc.addEventListener(evt, (e)=>{ e.preventDefault(); dropMapCheckLoc.classList.add('dragover'); }));
+['dragleave','drop'].forEach(evt=> dropMapCheckLoc.addEventListener(evt, (e)=>{ e.preventDefault(); dropMapCheckLoc.classList.remove('dragover'); }));
+dropMapCheckLoc.addEventListener('drop', (e)=>{ if(e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]) handleMapCheckLocFile(e.dataTransfer.files[0]); });
+$('fileInputMapCheckLoc').addEventListener('change', (e)=>{ if(e.target.files && e.target.files[0]) handleMapCheckLocFile(e.target.files[0]); });
+
+function handleMapCheckLocFile(file){
+  setMapCheckLocStatus('جاري قراءة الملف...', '');
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    try{
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, { type:'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'', raw:true });
+      if(!rows || rows.length === 0){ setMapCheckLocStatus('الملف فاضي.', 'err'); return; }
+      const m = new Map();
+      rows.forEach(r=>{
+        if(!r) return;
+        const code = String(r[0] !== undefined && r[0] !== null ? r[0] : '').trim();
+        const loc = String(r[1] !== undefined && r[1] !== null ? r[1] : '').trim().toUpperCase();
+        const norm = normalizeLastPriceCode(code);
+        if(!norm || !loc) return;
+        m.set(norm, loc);
+      });
+      mapCheckMap = m;
+      mapCheckEntries = [];
+      mapCheckReport = null;
+      $('mapCheckReportPanel').style.display = 'none';
+      refreshMapCheckLocs();
+      renderMapCheckList();
+      refreshMapCheckSummary();
+      saveMapCheckDB();
+      setMapCheckLocStatus('تم رفع شيت MAP LOC (' + m.size + ' كود) ✓', 'ok');
+      $('mapCheckPanel').style.display = 'block';
+      $('mapCheckCodeInput').focus();
+    }catch(err){
+      console.error(err);
+      setMapCheckLocStatus('حصل خطأ في قراءة الملف. تيقن إنه xlsx/xls/csv.', 'err');
+    }
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+function refreshMapCheckLocs(){
+  const sel = $('mapCheckLocSelect');
+  const prev = mapCheckSelectedLoc;
+  const locs = Array.from(new Set(Array.from(mapCheckMap.values()))).sort();
+  sel.innerHTML = '<option value="">اختار اللوكيشن...</option>' + locs.map(l=> '<option value="' + escapeHtml(l) + '">' + escapeHtml(l) + '</option>').join('');
+  if(locs.indexOf(prev) !== -1){ sel.value = prev; mapCheckSelectedLoc = prev; }
+  else if(locs.length){ sel.value = locs[0]; mapCheckSelectedLoc = locs[0]; }
+  else { sel.value = ''; mapCheckSelectedLoc = ''; }
+  renderMapCheckList();
+  refreshMapCheckSummary();
+}
+$('mapCheckLocSelect').addEventListener('change', ()=>{
+  mapCheckSelectedLoc = $('mapCheckLocSelect').value;
+  mapCheckReport = null;
+  $('mapCheckReportPanel').style.display = 'none';
+  renderMapCheckList();
+  refreshMapCheckSummary();
+});
+
+$('mapCheckResetBtn').addEventListener('click', ()=>{
+  mapCheckEntries = [];
+  mapCheckReport = null;
+  $('mapCheckReportPanel').style.display = 'none';
+  renderMapCheckList();
+  refreshMapCheckSummary();
+  saveMapCheckDB();
+  $('mapCheckCodeInput').focus();
+});
+
+function mapCheckAddCode(raw){
+  const input = $('mapCheckCodeInput');
+  const rawCode = String(raw || input.value || '').trim();
+  if(!rawCode){ return; }
+  const norm = normalizeLastPriceCode(rawCode);
+  if(!norm){ showToast('اكتب كود صحيح.'); input.value = ''; return; }
+  if(mapCheckEntries.some(en=> en.norm === norm)){ showToast('الكود ده مضاف قبل كده.'); input.value = ''; return; }
+  mapCheckReport = null;
+  $('mapCheckReportPanel').style.display = 'none';
+  mapCheckEntries.push({ code: rawCode, norm, loc: mapCheckMap.get(norm) || '' });
+  renderMapCheckList();
+  refreshMapCheckSummary();
+  saveMapCheckDB();
+  input.value = '';
+  input.focus();
+}
+$('mapCheckAddBtn').addEventListener('click', ()=> mapCheckAddCode());
+$('mapCheckCodeInput').addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); mapCheckAddCode(); } });
+$('mapCheckScanBtn').addEventListener('click', ()=> openLastPriceScanner((text)=>{ mapCheckAddCode(text); }));
+
+function renderMapCheckList(){
+  const list = $('mapCheckList');
+  const sel = mapCheckSelectedLoc;
+  let html = '';
+  if(mapCheckEntries.length === 0){
+    html = '<div class="empty-state"><div class="big">📋</div><div>لسه مفيش أكواد — اكتب كود أو اعمل سكان.</div></div>';
+  } else {
+    mapCheckEntries.forEach((en, i)=>{
+      const checked = !!sel;
+      const ok = checked && en.loc === sel;
+      html += '<div class="mc-row ' + (checked ? (ok ? 'ok' : 'wrong') : '') + '">'
+        + '<span class="mc-code">' + escapeHtml(en.code) + '</span>'
+        + '<span class="mc-status ' + (ok ? 'ok' : 'wrong') + '">' + (checked ? (ok ? '✔ صح' : '✘ خطأ') : '—') + '</span>'
+        + '<span class="mc-loc ' + (ok ? 'ok' : 'wrong') + '">' + escapeHtml(en.loc || 'مش موجود في الشيت') + '</span>'
+        + '<button type="button" class="mc-del" data-i="' + i + '">✕</button>'
+        + '</div>';
+    });
+  }
+  list.innerHTML = html;
+  list.querySelectorAll('.mc-del').forEach(b=> b.addEventListener('click', ()=>{
+    mapCheckEntries.splice(parseInt(b.getAttribute('data-i'), 10), 1);
+    mapCheckReport = null;
+    $('mapCheckReportPanel').style.display = 'none';
+    renderMapCheckList();
+    refreshMapCheckSummary();
+    saveMapCheckDB();
+  }));
+}
+
+function refreshMapCheckSummary(){
+  const wrap = $('mapCheckSummary');
+  const sel = mapCheckSelectedLoc;
+  if(!mapCheckEntries.length || !sel){ wrap.style.display = 'none'; return; }
+  const correct = mapCheckEntries.filter(en=> en.loc === sel).length;
+  const wrong = mapCheckEntries.length - correct;
+  wrap.style.display = 'block';
+  wrap.style.background = wrong ? '#fef2f2' : '#ecfdf5';
+  wrap.style.borderColor = wrong ? '#fca5a5' : '#a7f3d0';
+  wrap.textContent = 'صح: ' + correct + '  •  خطأ: ' + wrong + '  •  الإجمالي: ' + mapCheckEntries.length
+    + (wrong ? '  — في أكواد خطأ، راجع الأحمر قبل ما تنهي.️' : '  — كل الأكواد في اللوكيشن الصح 👌');
+}
+
+$('mapCheckFinishBtn').addEventListener('click', ()=>{
+  if(!mapCheckMap || !mapCheckMap.size){ showToast('ارفع شيت MAP LOC الأول.'); return; }
+  const sel = mapCheckSelectedLoc;
+  if(!sel){ showToast('اختار اللوكيشن المفحوص الأول.'); return; }
+  const correct = mapCheckEntries.filter(en=> en.loc === sel).length;
+  const wrong = mapCheckEntries.length - correct;
+  const expected = Array.from(mapCheckMap.values()).filter(l=> l === sel).length;
+  const totalEntered = mapCheckEntries.length;
+  const accPct = totalEntered ? Math.round(correct / totalEntered * 100) : 0;
+  const wrongPct = totalEntered ? Math.round(wrong / totalEntered * 100) : 0;
+  mapCheckReport = { sel, expected, totalEntered, correct, wrong, accPct, wrongPct };
+  renderMapCheckReport();
+  $('mapCheckReportPanel').style.display = 'block';
+  $('mapCheckReportPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  mapCheckExport();
+  showToast('تم عمل الريبورت ✓ — نزل ملف Excel.');
+});
+
+function renderMapCheckReport(){
+  const r = mapCheckReport;
+  const body = $('mapCheckReportBody');
+  if(!r) return;
+  const grade = r.totalEntered === 0 ? '—' : (r.accPct === 100 ? 'ممتاز' : r.accPct >= 85 ? 'جيد جدًا' : r.accPct >= 70 ? 'جيد' : 'محتاج مراجعة');
+  const barColor = r.accPct >= 85 ? 'var(--teal)' : r.accPct >= 70 ? 'var(--amber)' : 'var(--brick)';
+  let details = '';
+  mapCheckEntries.forEach(en=>{
+    const ok = !!r.sel && en.loc === r.sel;
+    details += '<tr><td class="code-cell">' + escapeHtml(en.code) + '</td><td>' + escapeHtml(r.sel) + '</td><td>' + escapeHtml(en.loc || '—') + '</td><td>' + (ok ? '<span style="color:#047857;font-weight:800;">صح</span>' : '<span style="color:#b91c1c;font-weight:800;">خطأ</span>') + '</td></tr>';
+  });
+  body.innerHTML =
+    '<div class="mc-stats">'
+    + '<div class="stat-card amber"><div class="num">' + escapeHtml(r.sel) + '</div><div class="lbl">اللوكيشن المفحوص</div></div>'
+    + '<div class="stat-card"><div class="num">' + r.expected + '</div><div class="lbl">الأكواد الموجودة في اللوكيشن</div></div>'
+    + '<div class="stat-card"><div class="num">' + r.totalEntered + '</div><div class="lbl">الأكواد المكتوبة</div></div>'
+    + '<div class="stat-card teal"><div class="num">' + r.correct + '</div><div class="lbl">الأكواد الصحيحة</div></div>'
+    + '<div class="stat-card"><div class="num">' + r.wrong + '</div><div class="lbl">الأكواد الخطأ</div></div>'
+    + '<div class="stat-card teal"><div class="num">' + r.accPct + '%</div><div class="lbl">نسبة صحة الأكواد</div></div>'
+    + '</div>'
+    + '<div class="panel" style="margin:16px 0 0;padding:14px 16px;border-radius:12px;">'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">'
+    + '<h3 style="font-size:16px;margin:0;">نسبة الأكواد الخطأ من إجمالي المكتوب: ' + r.wrongPct + '%</h3>'
+    + '<span style="font-weight:800;font-size:15px;color:' + (r.accPct >= 85 ? 'var(--teal)' : 'var(--brick)') + ';">التقييم: ' + grade + '</span>'
+    + '</div>'
+    + '<div style="background:#f1f5f9;border-radius:8px;height:12px;overflow:hidden;margin-top:10px;direction:ltr;">'
+    + '<div style="width:' + r.accPct + '%;height:100%;background:' + barColor + ';"></div>'
+    + '</div>'
+    + '</div>'
+    + '<table class="data-table" style="margin-top:14px;"><thead><tr><th>الكود</th><th>اللوكيشن المتوقع</th><th>اللوكيشن الفعلي</th><th>الحالة</th></tr></thead><tbody>' + details + '</tbody></table>';
+}
+
+function mapCheckExport(){
+  if(!mapCheckReport) return;
+  const r = mapCheckReport;
+  const branchName = currentBranch ? currentBranch.name : 'فرع';
+  const when = new Date();
+  const d = when.toISOString().slice(0,10) + '  ' + when.toTimeString().slice(0,5);
+  const wb = XLSX.utils.book_new();
+  const summaryData = [
+    ['ريبورت فحص اللوكيشن (Map Check)'],
+    ['الفرع', branchName],
+    ['اللوكيشن المفحوص', r.sel],
+    ['وقت التقرير', d],
+    [],
+    ['عدد الأكواد الموجودة في اللوكيشن', r.expected],
+    ['عدد الأكواد المكتوبة', r.totalEntered],
+    ['عدد الأكواد الصحيحة', r.correct],
+    ['عدد الأكواد الخطأ', r.wrong],
+    ['نسبة صحة الأكواد باللوكيشن', r.accPct + '%'],
+    ['نسبة الأكواد الخطأ من إجمالي المكتوب', r.wrongPct + '%']
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryData), 'الملخص');
+  const detailData = [['الكود', 'اللوكيشن المتوقع', 'اللوكيشن الفعلي', 'الحالة']];
+  mapCheckEntries.forEach(en=>{
+    const ok = !!r.sel && en.loc === r.sel;
+    detailData.push([en.code, r.sel, en.loc || 'مش موجود في الشيت', ok ? 'صح' : 'خطأ']);
+  });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(detailData), 'تفاصيل الأكواد');
+  XLSX.writeFile(wb, branchFname('ريبورت_Map_Check') + '.xlsx');
+}
+$('mapCheckExportBtn').addEventListener('click', mapCheckExport);
+
+// تنظيف بيانات Map Check عند المسح
+try{ localStorage.removeItem(mapCheckDBKey()); }catch(e){}
 
 })();
 </script>
