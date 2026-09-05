@@ -2389,9 +2389,30 @@ function handleInstallClick(){
 }
 $('installBtn').addEventListener('click', handleInstallClick);
 $('installBtnLogin').addEventListener('click', handleInstallClick);
-if('serviceWorker' in navigator && (location.protocol === 'https:' || location.hostname === 'localhost' || location.hostname === '127.0.0.1')){
-  navigator.serviceWorker.register('sw.js').catch(()=>{});
+
+// إلغاء أي Service Worker مسجّل — وجوده بيسبب تعطّل كاميرا التطبيق المثبّت على ايفون (خلل في WebKit)
+if('serviceWorker' in navigator){
+  navigator.serviceWorker.getRegistrations().then(rs=>{ rs.forEach(r=> r.unregister().catch(()=>{})); }).catch(()=>{});
 }
+
+// استيقاظ مبكر للكاميرا عند أول تفاعل من المستخدم — بيعلّق الإذن ويفك مشكلة فشل تشغيل الفيديو في وضع PWA الايفون
+let lastPrimeActive = true;
+function lpPrimeCamera(){
+  lastPrimeActive = false;
+  try{
+    if(navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(s=>{
+        setTimeout(()=>{ s.getTracks().forEach(t=> t.stop()); }, 1000);
+      }).catch(()=>{});
+    }
+  }catch(e){}
+}
+document.addEventListener('click', ()=>{
+  if(lastPrimeActive) lpPrimeCamera();
+}, { once: true });
+document.addEventListener('touchstart', ()=>{
+  if(lastPrimeActive) lpPrimeCamera();
+}, { once: true, passive: true });
 
 // ================= استيكر / ليبل تسعير (standalone) =================
 const LABEL_DB_KEY = 'labelStock_v1';
