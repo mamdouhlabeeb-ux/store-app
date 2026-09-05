@@ -2943,6 +2943,7 @@ let lpScannerState = null;
 function stopLastPriceScanner(){
   if(lpScannerState){
     clearInterval(lpScannerState.timer);
+    if(lpScannerState.noDetectTimer) clearTimeout(lpScannerState.noDetectTimer);
     if(lpScannerState.stream) lpScannerState.stream.getTracks().forEach(t=> t.stop());
     if(lpScannerState.h5){ try{ lpScannerState.h5.stop().catch(()=>{}); }catch(e){} }
     const video = $('scanVideo');
@@ -2982,11 +2983,19 @@ function openLastPriceScanner(onScan){
         video.play().catch(()=>{});
         statusEl.textContent = 'وجّه الكاميرا على الباركود...';
         lpScannerState = { timer: null, stream, useVideo: true };
+        const noDetectTimer = setTimeout(()=>{
+          if(lpScannerState && !lpScannerState.detected) statusEl.textContent = 'لم يُكتشف باركود — قرب/اضبط الكاميرا على الكود بوضوح.';
+        }, 10000);
+        lpScannerState.noDetectTimer = noDetectTimer;
+        lpScannerState.detected = false;
         lpScannerState.timer = setInterval(async ()=>{
           if(!lpScannerState || !modal.classList.contains('show')){ clearInterval(lpScannerState && lpScannerState.timer); return; }
           try{
             const codes = await det.detect(video);
-            if(codes && codes.length && codes[0].rawValue) done(codes[0].rawValue);
+            if(codes && codes.length && codes[0].rawValue){
+              lpScannerState.detected = true;
+              done(codes[0].rawValue);
+            }
           }catch(e){}
         }, 350);
       }).catch(()=>{ statusEl.textContent = 'تعذّر فتح الكاميرا.'; });
@@ -3018,9 +3027,11 @@ function startLastPriceLibScan(onScan){
     lpScannerState.useVideo = false;
     h5.start(
       { facingMode: 'environment' },
-      { fps: 10, qrbox: { width: 260, height: 90 } },
+      { fps: 15, qrbox: { width: 300, height: 120 } },
       (text)=>{ done(text); },
-      ()=>{}
+      ()=>{},
+      undefined,
+      { formatsToSupport: [ Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39, Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8 ] }
     ).catch(err=>{ statusEl.textContent = 'تعذّر فتح الكاميرا: ' + err; });
   }catch(e){ statusEl.textContent = 'حصل خطأ في تشغيل السكان.'; }
 }
