@@ -265,6 +265,7 @@ th.code-out-th{ width:96px; text-align:center; }
   .empty-state .big{ font-size:26px; }
   .tabs{ gap:4px; }
   .tab-btn{ padding:8px 10px; font-size:12px; }
+  #uploadCardReports > .upload-row{ grid-template-columns:1fr !important; }
 }
 </style>
 </head>
@@ -425,30 +426,38 @@ service cloud.firestore {
 
   <div class="container">
     <div class="upload-row">
-      <div class="upload-card" id="uploadCardStock">
-        <div class="step-tag">1 - شيت المخزون</div>
-        <h3>شيت المخزون (السورس)</h3>
-        <p>4 أعمدة بالترتيب: الكود-المقاس، الكمية، الدبارتمنت، اللوكيشن</p>
-        <label class="upload-btn" for="fileInputStock">اختيار ملف</label>
-        <input type="file" id="fileInputStock" accept=".xlsx,.xls,.csv">
-        <div class="upload-status" id="uploadStatusStock"></div>
+      <div class="panel" id="uploadCardReports" style="padding:18px;margin-bottom:22px;">
+      <div style="margin-bottom:12px;">
+        <h2 style="font-size:20px;margin:0;">📊 تقرير المبيعات</h2>
+        <p style="color:var(--muted);font-size:13px;margin:6px 0 0 0;">ارفع الشيتات الثلاثة (المخزون، المبيعات، اللوكيشن) لكل نتائج التقرير تظهر لك تحتها.</p>
       </div>
-      <div class="upload-card" id="uploadCardSales">
-        <div class="step-tag">2 - شيت المبيعات</div>
-        <h3>شيت المبيعات</h3>
-        <p>عمودين بالترتيب: الكود-المقاس، الكمية المباعة</p>
-        <label class="upload-btn" for="fileInputSales">اختيار ملف</label>
-        <input type="file" id="fileInputSales" accept=".xlsx,.xls,.csv">
-        <div class="upload-status" id="uploadStatusSales"></div>
+      <div class="upload-row" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:0;">
+        <div class="upload-card" id="uploadCardStock" style="margin:0;">
+          <div class="step-tag">1 - شيت المخزون</div>
+          <h3>شيت المخزون (السورس)</h3>
+          <p>4 أعمدة بالترتيب: الكود-المقاس، الكمية، الدبارتمنت، اللوكيشن</p>
+          <label class="upload-btn" for="fileInputStock">اختيار ملف</label>
+          <input type="file" id="fileInputStock" accept=".xlsx,.xls,.csv">
+          <div class="upload-status" id="uploadStatusStock"></div>
+        </div>
+        <div class="upload-card" id="uploadCardSales" style="margin:0;">
+          <div class="step-tag">2 - شيت المبيعات</div>
+          <h3>شيت المبيعات</h3>
+          <p>عمودين بالترتيب: الكود-المقاس، الكمية المباعة</p>
+          <label class="upload-btn" for="fileInputSales">اختيار ملف</label>
+          <input type="file" id="fileInputSales" accept=".xlsx,.xls,.csv">
+          <div class="upload-status" id="uploadStatusSales"></div>
+        </div>
+        <div class="upload-card" id="uploadCardLoc" style="margin:0;">
+          <div class="step-tag">3 - شيت اللوكيشن</div>
+          <h3>شيت اللوكيشن</h3>
+          <p>عمودين بالترتيب: الكود، اللوكيشن</p>
+          <label class="upload-btn" for="fileInputLoc">اختيار ملف</label>
+          <input type="file" id="fileInputLoc" accept=".xlsx,.xls,.csv">
+          <div class="upload-status" id="uploadStatusLoc"></div>
+        </div>
       </div>
-      <div class="upload-card" id="uploadCardLoc">
-        <div class="step-tag">3 - شيت اللوكيشن</div>
-        <h3>شيت اللوكيشن</h3>
-        <p>عمودين بالترتيب: الكود، اللوكيشن</p>
-        <label class="upload-btn" for="fileInputLoc">اختيار ملف</label>
-        <input type="file" id="fileInputLoc" accept=".xlsx,.xls,.csv">
-        <div class="upload-status" id="uploadStatusLoc"></div>
-      </div>
+    </div>
       <div class="upload-card" id="uploadCardTransfers">
         <div class="step-tag">4 - تحضير التحويلات</div>
         <h3>تحضير التحويلات</h3>
