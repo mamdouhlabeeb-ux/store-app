@@ -640,6 +640,14 @@ service cloud.firestore {
     .lp-limit{display:flex;gap:10px;align-items:center;margin-top:16px;flex-wrap:wrap;}
     .lp-limit label{font-weight:700;color:#111;}
     .lp-limit input{width:120px;padding:9px 12px;border:1px solid #e5e7eb;border-radius:10px;font-size:15px;}
+    .scan-btn{background:#14b8a6;color:#fff;border:none;border-radius:10px;padding:8px 12px;font-size:15px;cursor:pointer;}
+    .scan-btn:disabled{opacity:.45;}
+    .scan-modal{position:fixed;inset:0;background:rgba(15,23,42,.62);display:none;align-items:center;justify-content:center;z-index:2000;padding:16px;}
+    .scan-modal.show{display:flex;}
+    .scan-modal-box{background:#fff;border-radius:16px;padding:16px;max-width:420px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.35);}
+    #scanVideo{width:100%;border-radius:12px;background:#000;}
+    #scanStatus{font-size:13px;color:#6b7280;margin-top:10px;text-align:center;}
+    .scan-modal-actions{display:flex;justify-content:flex-end;margin-top:12px;gap:8px;}
   </style>
 
   <div class="lp-limit">
@@ -651,6 +659,14 @@ service cloud.firestore {
     <button type="button" class="warn-x" id="lastPriceWarnClose">✕</button>
   </div>
   <div id="lastPriceStream"></div>
+  <div id="scanModal" class="scan-modal">
+    <div class="scan-modal-box">
+      <div id="scanBox"><video id="scanVideo" playsinline muted></video><div id="scanStatus"></div></div>
+      <div class="scan-modal-actions">
+        <button type="button" class="btn-ghost" id="scanCloseBtn">إغلاق</button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ===== PRINT WINDOW (ليبل تسعير) ===== -->
@@ -2859,9 +2875,11 @@ function addLastPriceRow(){
   const row = document.createElement('div');
   row.className = 'lp-row';
   row.innerHTML = '<input class="search-input" placeholder="اكتب الكود أو سكان&hellip;" style="flex:0 1 auto;min-width:130px;max-width:210px;" inputmode="numeric" pattern="[0-9]*" autocomplete="off" autocorrect="off">'
+    + '<button type="button" class="scan-btn" title="سكان بالكاميرا">📷</button>'
     + '<div class="lp-result"></div>';
   wrap.appendChild(row);
   const inp = row.querySelector('input');
+  const scanBtn = row.querySelector('.scan-btn');
   const res = row.querySelector('.lp-result');
   let committed = false;
 
@@ -2899,11 +2917,19 @@ function addLastPriceRow(){
     if(q && lastPriceFind(q)){
       committed = true;
       disableRowInput(inp);
+      scanBtn.disabled = true;
       addLastPriceRow();
     }
   };
   inp.addEventListener('change', commit);
   inp.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); commit(); } });
+  scanBtn.addEventListener('click', ()=>{
+    openLastPriceScanner((raw)=>{
+      inp.value = String(raw || '').trim();
+      inp.dispatchEvent(new Event('input'));
+      commit();
+    });
+  });
   inp.focus();
 }
 
@@ -2911,6 +2937,92 @@ function openLastPriceStream(){
   const wrap = $('lastPriceStream');
   if(wrap) wrap.innerHTML = '';
   addLastPriceRow();
+}
+
+let lpScannerState = null;
+function stopLastPriceScanner(){
+  if(lpScannerState){
+    clearInterval(lpScannerState.timer);
+    if(lpScannerState.stream) lpScannerState.stream.getTracks().forEach(t=> t.stop());
+    if(lpScannerState.h5){ try{ lpScannerState.h5.stop().catch(()=>{}); }catch(e){} }
+    const video = $('scanVideo');
+    if(lpScannerState.useVideo && video) video.srcObject = null;
+    const box = $('scanBox');
+    if(box && lpScannerState.useLib){
+      box.innerHTML = '<video id="scanVideo" playsinline muted></video><div id="scanStatus"></div>';
+    }
+    lpScannerState = null;
+  }
+  const modal = $('scanModal');
+  if(modal) modal.classList.remove('show');
+}
+$('scanCloseBtn').addEventListener('click', stopLastPriceScanner);
+
+function openLastPriceScanner(onScan){
+  const modal = $('scanModal');
+  const video = $('scanVideo');
+  const statusEl = $('scanStatus');
+  if(!modal || !video || !statusEl) return;
+  modal.classList.add('show');
+  statusEl.textContent = 'جارِ فتح الكاميرا...';
+
+  const done = (raw)=>{
+    stopLastPriceScanner();
+    if(raw && typeof onScan === 'function') onScan(raw);
+  };
+
+  if('BarcodeDetector' in window){
+    try{
+      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then((stream)=>{
+        if(!modal.classList.contains('show')){ stream.getTracks().forEach(t=> t.stop()); return; }
+        let det;
+        try{ det = new BarcodeDetector({ formats: ['code_128','code_39','ean_13','ean_8','itf'] }); }
+        catch(e){ det = new BarcodeDetector(); }
+        video.srcObject = stream;
+        video.play().catch(()=>{});
+        statusEl.textContent = 'وجّه الكاميرا على الباركود...';
+        lpScannerState = { timer: null, stream, useVideo: true };
+        lpScannerState.timer = setInterval(async ()=>{
+          if(!lpScannerState || !modal.classList.contains('show')){ clearInterval(lpScannerState && lpScannerState.timer); return; }
+          try{
+            const codes = await det.detect(video);
+            if(codes && codes.length && codes[0].rawValue) done(codes[0].rawValue);
+          }catch(e){}
+        }, 350);
+      }).catch(()=>{ statusEl.textContent = 'تعذّر فتح الكاميرا.'; });
+      return;
+    }catch(e){}
+  }
+
+  startLastPriceLibScan(onScan);
+}
+function startLastPriceLibScan(onScan){
+  const statusEl = $('scanStatus');
+  const modal = $('scanModal');
+  if(!window.Html5Qrcode){
+    statusEl.textContent = 'جارِ تحميل مكتبة السكان...';
+    const s = document.createElement('script');
+    s.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
+    s.onload = ()=> startLastPriceLibScan(onScan);
+    s.onerror = ()=>{ statusEl.textContent = 'تعذّر تحميل مكتبة السكان — اتأكد من الإنترنت.'; };
+    document.head.appendChild(s);
+    return;
+  }
+  const box = $('scanBox');
+  if(!box) return;
+  box.innerHTML = '<div id="lpScanH5"></div>';
+  lpScannerState = { timer: null, h5: null, useVideo: false, useLib: true };
+  try{
+    const h5 = new Html5Qrcode('lpScanH5');
+    lpScannerState.h5 = h5;
+    lpScannerState.useVideo = false;
+    h5.start(
+      { facingMode: 'environment' },
+      { fps: 10, qrbox: { width: 260, height: 90 } },
+      (text)=>{ done(text); },
+      ()=>{}
+    ).catch(err=>{ statusEl.textContent = 'تعذّر فتح الكاميرا: ' + err; });
+  }catch(e){ statusEl.textContent = 'حصل خطأ في تشغيل السكان.'; }
 }
 
 })();
