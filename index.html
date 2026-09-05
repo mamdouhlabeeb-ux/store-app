@@ -663,8 +663,8 @@ service cloud.firestore {
     <div class="scan-modal-box">
       <div id="scanBox"><video id="scanVideo" playsinline muted></video><div id="scanStatus"></div><div id="scanDiag" style="font-size:11px;color:#9ca3af;margin-top:6px;text-align:center;"></div></div>
       <div class="scan-modal-actions">
-        <button type="button" class="scan-btn" id="scanPhotoBtn" style="background:var(--amber-deep);">📷 التقاط صورة للباركود</button>
         <input type="file" id="scanPhotoInput" accept="image/*" capture="environment" style="display:none;">
+        <button type="button" class="btn-ghost" id="scanPhotoFallback" style="color:var(--amber-deep);display:none;">📷 سكان من صورة (عند فشل الكاميرا)</button>
         <button type="button" class="btn-ghost" id="scanCloseBtn">إغلاق</button>
       </div>
     </div>
@@ -2966,10 +2966,13 @@ function lpScanFailMsg(){
   }
   return 'تعذّر فتح الكاميرا — اتحقق من إذن الكاميرا في المتصفح.';
 }
-const scanPhotoBtn = $('scanPhotoBtn');
+const scanPhotoFallback = $('scanPhotoFallback');
 const scanPhotoInput = $('scanPhotoInput');
-if(scanPhotoBtn && scanPhotoInput){
-  scanPhotoBtn.addEventListener('click', ()=>{
+function lpShowPhotoFallback(show){
+  if(scanPhotoFallback) scanPhotoFallback.style.display = show ? 'inline-block' : 'none';
+}
+if(scanPhotoFallback && scanPhotoInput){
+  scanPhotoFallback.addEventListener('click', ()=>{
     stopLastPriceScanner();
     scanPhotoInput.click();
   });
@@ -3029,6 +3032,7 @@ function openLastPriceScanner(onScan){
   if(!modal || !video || !statusEl) return;
   lpPendingScan = onScan;
   modal.classList.add('show');
+  lpShowPhotoFallback(false);
   statusEl.textContent = 'جارِ فتح الكاميرا...';
   if(diagEl) diagEl.textContent = 'الوضع: ' + (lpIsStandalone() ? 'تطبيق مثبّت' : 'متصفح') + ' • BarcodeDetector: ' + ('BarcodeDetector' in window ? 'متاح' : 'مش متاح') + ' • مكتبة: ' + (window.Html5Qrcode ? 'مثبّتة' : 'سيتم التحميل');
 
@@ -3066,7 +3070,7 @@ function openLastPriceScanner(onScan){
             }
           }catch(e){}
         }, 350);
-      }).catch(()=>{ statusEl.textContent = lpScanFailMsg(); });
+      }).catch(()=>{ statusEl.textContent = lpScanFailMsg(); lpShowPhotoFallback(true); });
       return;
     }catch(e){}
   }
@@ -3093,8 +3097,8 @@ function startLastPriceLibScan(onScan){
         ()=>{},
         undefined,
         { formatsToSupport: [ Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39, Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8 ] }
-      ).catch(err=>{ statusEl.textContent = lpScanFailMsg(); });
-    }catch(e){ statusEl.textContent = 'حصل خطأ في تشغيل السكان.'; }
+      ).catch(err=>{ statusEl.textContent = lpScanFailMsg(); lpShowPhotoFallback(true); });
+    }catch(e){ statusEl.textContent = 'حصل خطأ في تشغيل السكان.'; lpShowPhotoFallback(true); }
   });
 }
 
