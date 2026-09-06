@@ -3525,10 +3525,10 @@ let moneyMapRows = [];
 function moneyMapDBKey(){
   return 'moneyMap_v1_' + (currentBranch ? currentBranch.id : 'anon');
 }
-function moneyMapOpen(){
+async function moneyMapOpen(){
   if(!currentBranch){ return; }
   buildMoneyMapStockIndex();
-  loadMoneyMapDB();
+  await moneyMapLoadRemote();
   loadMoneyMapImgDB();
   renderMoneyMapList();
   const hasStock = moneyMapStockIndex.size > 0;
@@ -3674,6 +3674,32 @@ function loadMoneyMapDB(){
 function saveMoneyMapDB(){
   try{ localStorage.setItem(moneyMapDBKey(), JSON.stringify(moneyMapRows)); }catch(e){ console.error(e); }
 }
+function moneyMapSaveRemote(){
+  if(!currentBranch || !currentBranch.id || typeof db === 'undefined' || !db) return;
+  try{
+    db.collection('moneyMapData').doc(currentBranch.id).set({
+      rows: moneyMapRows,
+      updatedAt: new Date().toISOString()
+    });
+  }catch(e){ console.error('moneyMap save remote:', e); }
+}
+async function moneyMapLoadRemote(){
+  if(!currentBranch || !currentBranch.id || typeof db === 'undefined' || !db) return;
+  try{
+    const snap = await db.collection('moneyMapData').doc(currentBranch.id).get();
+    if(snap.exists){
+      const data = snap.data() || {};
+      if(Array.isArray(data.rows)) moneyMapRows = data.rows;
+    } else {
+      const localRows = localStorage.getItem(moneyMapDBKey());
+      if(localRows){
+        try{ moneyMapRows = JSON.parse(localRows) || []; }catch(e){ moneyMapRows = []; }
+      }
+      if(moneyMapRows.length) moneyMapSaveRemote();
+    }
+    saveMoneyMapDB();
+  }catch(e){ console.error('moneyMap load remote:', e); }
+}
 function playAlarm(){
   try{
     const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -3723,6 +3749,7 @@ function moneyMapAdd(rawFromScan){
   });
   renderMoneyMapList();
   saveMoneyMapDB();
+  moneyMapSaveRemote();
   input.value = '';
   input.focus();
 }
@@ -3748,6 +3775,7 @@ function renderMoneyMapList(){
     moneyMapRows.splice(parseInt(b.getAttribute('data-i'), 10), 1);
     renderMoneyMapList();
     saveMoneyMapDB();
+    moneyMapSaveRemote();
   }));
 }
 function moneyMapExport(){
@@ -3772,6 +3800,7 @@ $('moneyMapResetBtn') && $('moneyMapResetBtn').addEventListener('click', ()=>{
   moneyMapRows = [];
   renderMoneyMapList();
   saveMoneyMapDB();
+  moneyMapSaveRemote();
   showToast('تم مسح بيانات Money Map ✓');
   $('moneyMapCodeInput').focus();
 });
