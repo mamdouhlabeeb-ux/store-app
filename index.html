@@ -287,6 +287,16 @@ th.code-out-th{ width:96px; text-align:center; }
   </div>
 </div>
 
+<div class="modal-overlay" id="moneyMapImgModal">
+  <div class="modal-card" style="max-width:94vw;max-height:92vh;padding:14px;background:#0f172a;display:flex;flex-direction:column;">
+    <div style="display:flex;justify-content:flex-end;">
+      <button class="btn-ghost" id="moneyMapImgClose" type="button" style="color:#e2e8f0;border-color:#334155;">إغلاق ✕</button>
+    </div>
+    <img id="moneyMapImgBig" style="flex:1;min-height:0;width:100%;max-height:78vh;object-fit:contain;border-radius:10px;background:#0f172a;cursor:zoom-out;">
+    <a id="moneyMapImgOpenLink" href="#" target="_blank" rel="noopener" style="display:block;text-align:center;color:#94a3b8;font-size:12.5px;margin-top:10px;">فتح الصورة كاملة</a>
+  </div>
+</div>
+
 <!-- ================= CHANGE PASSWORD MODAL ================= -->
 <div class="modal-overlay" id="pwModal">
   <div class="modal-card">
@@ -783,7 +793,7 @@ service cloud.firestore {
     #moneyMapLocInput::placeholder{color:#94a3b8;font-size:15px;letter-spacing:1px;}
     #moneyMapLocInput:focus{border-color:#94a3b8;outline:none;}
     .mm-img-side{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
-    .mm-img{width:110px;height:110px;object-fit:cover;border-radius:12px;border:1px solid #cbd5e1;background:#fff;cursor:zoom-in;position:relative;z-index:1;transition:transform .2s ease;}
+    .mm-img{width:110px;height:130px;object-fit:contain;border-radius:12px;border:1px solid #cbd5e1;background:#fff;cursor:zoom-in;position:relative;z-index:1;transition:transform .2s ease;}
     .mm-img:hover{transform:scale(3.4);z-index:999;box-shadow:0 18px 44px rgba(27,34,49,.45);}
     .mm-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
     .mm-row{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:10px 14px;}
@@ -3549,15 +3559,16 @@ function moneyMapProcessImg(file){
     const img = new Image();
     img.onload = ()=>{
       try{
-        const maxDim = 800;
+        const maxDim = 1200;
         let w = img.width, h = img.height;
         if((w || 0) === 0 || (h || 0) === 0){ showToast('مفيش صورة صالحة.'); return; }
         if(w > maxDim || h > maxDim){ if(w >= h){ h = h * maxDim / w; w = maxDim; } else { w = w * maxDim / h; h = maxDim; } }
         const canvas = document.createElement('canvas');
         canvas.width = Math.round(w); canvas.height = Math.round(h);
         canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-        let dataUrl = canvas.toDataURL('image/jpeg', 0.8);
-        if(dataUrl.length > 450000) dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+        let dataUrl = canvas.toDataURL('image/jpeg', 0.9);
+        if(dataUrl.length > 450000) dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+        if(dataUrl.length > 800000) dataUrl = canvas.toDataURL('image/jpeg', 0.6);
         moneyMapImgData = dataUrl;
         moneyMapImgRender();
         saveMoneyMapImgDB();
@@ -3571,6 +3582,15 @@ function moneyMapProcessImg(file){
   reader.readAsDataURL(file);
 }
 $('moneyMapImgInput') && $('moneyMapImgInput').addEventListener('change', (e)=>{ if(e.target.files && e.target.files[0]) moneyMapProcessImg(e.target.files[0]); e.target.value = ''; });
+$('moneyMapImg') && $('moneyMapImg').addEventListener('click', ()=>{
+  if(!moneyMapImgData){ return; }
+  $('moneyMapImgBig').src = moneyMapImgData;
+  const link = $('moneyMapImgOpenLink'); if(link) link.href = moneyMapImgData;
+  $('moneyMapImgModal').classList.add('show');
+});
+const moneyMapCloseImgModal = ()=> $('moneyMapImgModal') && $('moneyMapImgModal').classList.remove('show');
+$('moneyMapImgClose') && $('moneyMapImgClose').addEventListener('click', moneyMapCloseImgModal);
+$('moneyMapImgModal') && $('moneyMapImgModal').addEventListener('click', (e)=>{ if(e.target === $('moneyMapImgModal') || e.target === $('moneyMapImgBig')) moneyMapCloseImgModal(); });
 
 function buildMoneyMapStockIndex(){
   moneyMapStockIndex = new Map();
