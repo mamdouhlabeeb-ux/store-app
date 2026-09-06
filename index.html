@@ -775,11 +775,16 @@ service cloud.firestore {
 <div class="screen" id="screen-moneymap" style="padding:28px 20px 60px;max-width:980px;margin:0 auto;">
   <style>
     .mm-wrap{display:flex;flex-direction:column;gap:12px;}
-    .mm-loc-box{background:#f1f5f9;border:1px solid #e2e8f0;border-radius:18px;padding:18px 20px;color:#1f2937;}
-    .mm-loc-label{font-weight:800;font-size:13px;letter-spacing:1px;color:#64748b;margin-bottom:8px;}
-    #moneyMapLocInput{width:100%;font-size:34px;font-weight:900;letter-spacing:6px;text-align:center;background:#fff;border:2px solid #cbd5e1;border-radius:14px;padding:8px 10px;color:#0f172a;direction:ltr;text-transform:uppercase;}
-    #moneyMapLocInput::placeholder{color:#94a3b8;}
+    .mm-loc-box{background:#f1f5f9;border:1px solid #e2e8f0;border-radius:18px;padding:16px 18px;color:#1f2937;}
+    .mm-loc-top{display:flex;align-items:center;gap:18px;flex-wrap:wrap;}
+    .mm-loc-input-wrap{flex:0 1 auto;min-width:150px;}
+    .mm-loc-label{font-weight:800;font-size:12.5px;letter-spacing:1px;color:#64748b;margin-bottom:6px;}
+    #moneyMapLocInput{width:200px;font-size:22px;font-weight:800;letter-spacing:3px;text-align:center;background:#fff;border:2px solid #cbd5e1;border-radius:12px;padding:5px 8px;color:#0f172a;direction:ltr;text-transform:uppercase;}
+    #moneyMapLocInput::placeholder{color:#94a3b8;font-size:15px;letter-spacing:1px;}
     #moneyMapLocInput:focus{border-color:#94a3b8;outline:none;}
+    .mm-img-side{display:flex;align-items:center;gap:12px;flex-wrap:wrap;}
+    .mm-img{width:110px;height:110px;object-fit:cover;border-radius:12px;border:1px solid #cbd5e1;background:#fff;cursor:zoom-in;position:relative;z-index:1;transition:transform .2s ease;}
+    .mm-img:hover{transform:scale(3.4);z-index:999;box-shadow:0 18px 44px rgba(27,34,49,.45);}
     .mm-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
     .mm-row{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:10px 14px;}
     .mm-code{font-family:'Cairo',sans-serif;font-weight:800;font-size:16px;flex:0 0 auto;min-width:150px;}
@@ -806,8 +811,17 @@ service cloud.firestore {
   <div class="panel" style="margin-top:16px;">
     <div class="mm-wrap">
       <div class="mm-loc-box">
-        <div class="mm-loc-label">اللوكيشن الحالي — كل أكواد السطور الجديدة هتتسجل بيه</div>
-        <input id="moneyMapLocInput" placeholder="location name" autocomplete="off">
+        <div class="mm-loc-top">
+          <div class="mm-loc-input-wrap">
+            <div class="mm-loc-label">اللوكيشن الحالي — الأكواد الجديدة هتتسجل بيه</div>
+            <input id="moneyMapLocInput" placeholder="location name" autocomplete="off">
+          </div>
+          <div class="mm-img-side">
+            <label class="upload-btn" for="moneyMapImgInput">ارفع الصورة</label>
+            <input type="file" id="moneyMapImgInput" accept="image/*" style="display:none;">
+            <div id="moneyMapImgWrap" style="display:none;"><img id="moneyMapImg" class="mm-img" alt="صورة اللوكيشن"></div>
+          </div>
+        </div>
       </div>
       <div class="mm-actions">
         <input class="search-input" id="moneyMapCodeInput" placeholder="اكتب أو سكان الكود..." inputmode="numeric" style="flex:0 1 auto;min-width:180px;max-width:260px;">
@@ -3497,6 +3511,7 @@ function moneyMapOpen(){
   if(!currentBranch){ return; }
   buildMoneyMapStockIndex();
   loadMoneyMapDB();
+  loadMoneyMapImgDB();
   renderMoneyMapList();
   const hasStock = moneyMapStockIndex.size > 0;
   setMoneyMapStockStatus(hasStock
@@ -3505,6 +3520,58 @@ function moneyMapOpen(){
   switchScreen('screen-moneymap');
   $('moneyMapCodeInput').focus();
 }
+// ---- صورة اللوكيشن (بيتم حفظها للفرع، مقلمة عبر canvas) ----
+let moneyMapImgData = '';
+function moneyMapImgDBKey(){
+  return 'moneyMap_img_v1_' + (currentBranch ? currentBranch.id : 'anon');
+}
+function moneyMapImgRender(){
+  const wrap = $('moneyMapImgWrap'); const img = $('moneyMapImg');
+  if(!wrap || !img) return;
+  if(moneyMapImgData){
+    img.onerror = ()=>{ wrap.style.display = 'none'; };
+    img.src = moneyMapImgData;
+    wrap.style.display = 'block';
+  } else {
+    wrap.style.display = 'none';
+  }
+}
+function loadMoneyMapImgDB(){
+  try{ moneyMapImgData = localStorage.getItem(moneyMapImgDBKey()) || ''; }catch(e){ moneyMapImgData = ''; }
+  moneyMapImgRender();
+}
+function saveMoneyMapImgDB(){
+  try{ localStorage.setItem(moneyMapImgDBKey(), moneyMapImgData); }catch(e){ console.error(e); }
+}
+function moneyMapProcessImg(file){
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    const img = new Image();
+    img.onload = ()=>{
+      try{
+        const maxDim = 800;
+        let w = img.width, h = img.height;
+        if((w || 0) === 0 || (h || 0) === 0){ showToast('مفيش صورة صالحة.'); return; }
+        if(w > maxDim || h > maxDim){ if(w >= h){ h = h * maxDim / w; w = maxDim; } else { w = w * maxDim / h; h = maxDim; } }
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.round(w); canvas.height = Math.round(h);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        let dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+        if(dataUrl.length > 450000) dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+        moneyMapImgData = dataUrl;
+        moneyMapImgRender();
+        saveMoneyMapImgDB();
+        showToast('تم حفظ صورة اللوكيشن ✓ — قف عليها عشان تكبّر.');
+      }catch(err){ console.error(err); showToast('حصلت مشكلة في معالجة الصورة.'); }
+    };
+    img.onerror = ()=> showToast('الملف مش صورة صالحة.');
+    img.src = e.target.result;
+  };
+  reader.onerror = ()=> showToast('تعذر قراءة الصورة.');
+  reader.readAsDataURL(file);
+}
+$('moneyMapImgInput') && $('moneyMapImgInput').addEventListener('change', (e)=>{ if(e.target.files && e.target.files[0]) moneyMapProcessImg(e.target.files[0]); e.target.value = ''; });
+
 function buildMoneyMapStockIndex(){
   moneyMapStockIndex = new Map();
   stockSummary.forEach(r=>{
