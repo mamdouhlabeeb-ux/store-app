@@ -486,6 +486,13 @@ service cloud.firestore {
         <button class="upload-btn" id="openMapCheckBtn">فتح Map Check</button>
         <div class="upload-status" id="uploadStatusMapCheckCard"></div>
       </div>
+      <div class="upload-card" id="uploadCardMoneyMap">
+        <div class="step-tag">8 - Money Map</div>
+        <h3>Money Map</h3>
+        <p>اكتب لوكيشن فوق واكتب/سكان الأكواد تحت — كل سطر بيتسجل باللوكيشن الحالي مباشرةً من شيت المخزون (من غير رفع)</p>
+        <button class="upload-btn" id="openMoneyMapBtn">فتح Money Map</button>
+        <div class="upload-status" id="uploadStatusMoneyMapCard"></div>
+      </div>
     </div>
 
     <div class="panel" id="drivePanel" style="padding:16px;margin-bottom:22px;">
@@ -762,6 +769,56 @@ service cloud.firestore {
       </div>
     </div>
     <div id="mapCheckReportBody"></div>
+  </div>
+</div>
+
+<div class="screen" id="screen-moneymap" style="padding:28px 20px 60px;max-width:980px;margin:0 auto;">
+  <style>
+    .mm-wrap{display:flex;flex-direction:column;gap:12px;}
+    .mm-loc-box{background:linear-gradient(135deg,#0f3a66,#1d5fa0);border-radius:18px;padding:18px 20px;color:#fff;}
+    .mm-loc-label{font-weight:800;font-size:13px;letter-spacing:1px;opacity:.85;margin-bottom:8px;}
+    #moneyMapLocInput{width:100%;font-size:34px;font-weight:900;letter-spacing:6px;text-align:center;background:rgba(255,255,255,.14);border:2px solid rgba(255,255,255,.35);border-radius:14px;padding:8px 10px;color:#fff;direction:ltr;text-transform:uppercase;}
+    #moneyMapLocInput::placeholder{color:rgba(255,255,255,.5);}
+    .mm-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+    .mm-row{display:flex;align-items:center;gap:10px;background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:10px 14px;}
+    .mm-code{font-family:'Cairo',sans-serif;font-weight:800;font-size:16px;flex:0 0 auto;min-width:150px;}
+    .mm-stock{font-size:11.5px;color:#047857;background:#d1fae5;padding:2px 9px;border-radius:999px;font-weight:800;direction:ltr;}
+    .mm-loc{margin-inline-start:auto;font-weight:800;font-size:14.5px;padding:4px 12px;border-radius:999px;background:#eef2ff;color:#3730a3;}
+    .mm-time{font-size:11px;color:#9ca3af;direction:ltr;}
+    .mm-del{background:transparent;border:none;color:#9ca3af;font-size:16px;cursor:pointer;line-height:1;padding:4px;}
+    .mm-del:hover{color:var(--brick);}
+    .mm-hint{color:#475569;font-size:13px;line-height:1.9;}
+  </style>
+  <div class="panel-head" style="margin-bottom:6px;">
+    <h2 style="font-family:'Cairo',sans-serif;">Money Map</h2>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <button class="link-btn" id="moneyMapBackBtn">رجوع للفرع</button>
+    </div>
+  </div>
+  <p class="mm-hint">
+    <b>اكتب اللوكيشن فوق</b> (زي <b>L15</b>)، وبعدها اكتب أو اعمل سكان للأكواد تحت — كل سطر بيتسجل باللوكيشن الحالي.
+    الكود بيتحول لكود الشيت من المخزون (مثلاً <b>217166 → R217166</b>) ولو بدأ بـ <b>0</b> بيبقى <b>O</b>.
+    لو غيَّرت اللوكيشن فوق وابتديت تكتب/تسكان تاني، السطور الجديدة بتاخد اللوكيشن الجديد.
+  </p>
+  <div class="upload-status" id="mmStockStatus"></div>
+
+  <div class="panel" style="margin-top:16px;">
+    <div class="mm-wrap">
+      <div class="mm-loc-box">
+        <div class="mm-loc-label">اللوكيشن الحالي — كل أكواد السطور الجديدة هتتسجل بيه</div>
+        <input id="moneyMapLocInput" placeholder="L15" autocomplete="off">
+      </div>
+      <div class="mm-actions">
+        <input class="search-input" id="moneyMapCodeInput" placeholder="اكتب أو سكان الكود..." inputmode="numeric" style="flex:0 1 auto;min-width:180px;max-width:260px;">
+        <button class="export-btn" id="moneyMapAddBtn">+ إضافة</button>
+        <button class="scan-btn" id="moneyMapScanBtn">📷 سكان</button>
+      </div>
+      <div id="moneyMapList" style="display:flex;flex-direction:column;gap:8px;"></div>
+      <div class="mm-actions" style="margin-top:4px;">
+        <button class="export-btn" id="moneyMapExportBtn">تنزيل Excel</button>
+        <button class="export-btn" id="moneyMapResetBtn" style="background:var(--paper);color:var(--brick);border-color:var(--line);">مسح بيانات Money Map</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -3428,6 +3485,129 @@ function mapCheckExport(){
   XLSX.writeFile(wb, branchFname('ريبورت_Map_Check') + '.xlsx');
 }
 $('mapCheckExportBtn').addEventListener('click', mapCheckExport);
+
+// =============== Money Map — بياخد من شيت المخزون المحفوظ مباشرةً (من غير رفع) ===============
+let moneyMapStockIndex = new Map(); // norm -> شكل الكود من شيت المخزون (زي R217166)
+let moneyMapRows = [];
+function moneyMapDBKey(){
+  return 'moneyMap_v1_' + (currentBranch ? currentBranch.id : 'anon');
+}
+function moneyMapOpen(){
+  if(!currentBranch){ return; }
+  buildMoneyMapStockIndex();
+  loadMoneyMapDB();
+  renderMoneyMapList();
+  const hasStock = moneyMapStockIndex.size > 0;
+  setMoneyMapStockStatus(hasStock
+    ? 'المخزون جاهز (' + moneyMapStockIndex.size + ' موديل) — أي كود هيكتب/يتسكان هيتحول لكود الشيت أوتوماتيك ✓'
+    : 'ارفع شيت المخزون من «تقرير المبيعات» الأول عشان الأكواد تترجم لكود الشيت.');
+  switchScreen('screen-moneymap');
+  $('moneyMapCodeInput').focus();
+}
+function buildMoneyMapStockIndex(){
+  moneyMapStockIndex = new Map();
+  stockSummary.forEach(r=>{
+    const norm = normalizeLastPriceCode(r.code);
+    if(norm && !moneyMapStockIndex.has(norm)) moneyMapStockIndex.set(norm, r.code);
+  });
+}
+function moneyMapStockOf(raw){
+  const { code } = splitCodeSize(String(raw || ''));
+  const fixed = String(code).toUpperCase().trim();
+  const fixedZero = fixLeadingZero(fixed);
+  const norm = normalizeLastPriceCode(fixedZero);
+  if(!norm) return { norm: fixedZero, display: fixedZero || String(raw || '') };
+  const stock = moneyMapStockIndex.get(norm);
+  return { norm: norm, display: stock || fixedZero };
+}
+function setMoneyMapStockStatus(msg, type){
+  const el = $('mmStockStatus'); if(!el) return;
+  el.className = 'upload-status'; if(type) el.classList.add(type); el.textContent = msg;
+}
+function loadMoneyMapDB(){
+  try{
+    const rawItems = localStorage.getItem(moneyMapDBKey());
+    moneyMapRows = rawItems ? (JSON.parse(rawItems) || []) : [];
+  }catch(e){ moneyMapRows = []; }
+}
+function saveMoneyMapDB(){
+  try{ localStorage.setItem(moneyMapDBKey(), JSON.stringify(moneyMapRows)); }catch(e){ console.error(e); }
+}
+function moneyMapAdd(rawFromScan){
+  const input = $('moneyMapCodeInput');
+  const rawVal = String(rawFromScan || input.value || '').trim();
+  if(!rawVal){ return; }
+  const loc = String($('moneyMapLocInput').value || '').trim().toUpperCase();
+  const conv = moneyMapStockOf(rawVal);
+  if(!conv.norm){ showToast('اكتب كود صحيح.'); input.value = ''; input.focus(); return; }
+  const dup = moneyMapRows.find(en=> en.norm === conv.norm);
+  if(dup){
+    showToast('⚠️ الكود ده متاخد قبل كده في ' + (dup.loc || '؟') + ' — عمره ما اتسجل تاني.');
+    input.value = '';
+    input.focus();
+    return;
+  }
+  moneyMapRows.push({
+    norm: conv.norm,
+    typed: rawVal,
+    stockCode: conv.display,
+    loc: loc || '—',
+    time: new Date().toTimeString().slice(0,5)
+  });
+  renderMoneyMapList();
+  saveMoneyMapDB();
+  input.value = '';
+  input.focus();
+}
+function renderMoneyMapList(){
+  const list = $('moneyMapList');
+  if(!list) return;
+  let html = '';
+  if(!moneyMapRows.length){
+    html = '<div class="empty-state"><div class="big">🗺️</div><div>لسه مفيش أكواد — اكتب كود أو اعمل سكان.</div></div>';
+  } else {
+    moneyMapRows.forEach((en, i)=>{
+      html += '<div class="mm-row">'
+        + '<span class="mm-code">' + escapeHtml(en.typed) + '</span>'
+        + (en.stockCode && en.stockCode !== en.typed ? '<span class="mm-stock">← ' + escapeHtml(en.stockCode) + '</span>' : '')
+        + '<span class="mm-loc">' + escapeHtml(en.loc) + '</span>'
+        + '<span class="mm-time">' + escapeHtml(en.time) + '</span>'
+        + '<button type="button" class="mm-del" data-i="' + i + '">✕</button>'
+        + '</div>';
+    });
+  }
+  list.innerHTML = html;
+  list.querySelectorAll('.mm-del').forEach(b=> b.addEventListener('click', ()=>{
+    moneyMapRows.splice(parseInt(b.getAttribute('data-i'), 10), 1);
+    renderMoneyMapList();
+    saveMoneyMapDB();
+  }));
+}
+function moneyMapExport(){
+  if(!moneyMapRows.length){ showToast('لسه مفيش سطور لتصديرها.'); return; }
+  const branchName = currentBranch ? currentBranch.name : 'فرع';
+  const when = new Date();
+  const d = when.toISOString().slice(0,10) + '  ' + when.toTimeString().slice(0,5);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['Money Map'], ['الفرع', branchName], ['وقت التقرير', d], []]), 'الملخص');
+  const rowsData = [['الكود', 'اللوكيشن', 'الكود المكتوب', 'الوقت']];
+  moneyMapRows.forEach(en=> rowsData.push([en.stockCode || en.typed, en.loc, en.typed, en.time]));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rowsData), 'الأكواد واللوكيشنات');
+  XLSX.writeFile(wb, branchFname('Money_Map') + '.xlsx');
+}
+$('openMoneyMapBtn') && $('openMoneyMapBtn').addEventListener('click', moneyMapOpen);
+$('moneyMapBackBtn') && $('moneyMapBackBtn').addEventListener('click', ()=>{ stopLastPriceScanner(); switchScreen('screen-dashboard'); });
+$('moneyMapAddBtn') && $('moneyMapAddBtn').addEventListener('click', ()=> moneyMapAdd());
+$('moneyMapCodeInput') && $('moneyMapCodeInput').addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); moneyMapAdd(); } });
+$('moneyMapScanBtn') && $('moneyMapScanBtn').addEventListener('click', ()=> openLastPriceScanner((text)=>{ moneyMapAdd(text); }));
+$('moneyMapExportBtn') && $('moneyMapExportBtn').addEventListener('click', moneyMapExport);
+$('moneyMapResetBtn') && $('moneyMapResetBtn').addEventListener('click', ()=>{
+  moneyMapRows = [];
+  renderMoneyMapList();
+  saveMoneyMapDB();
+  showToast('تم مسح بيانات Money Map ✓');
+  $('moneyMapCodeInput').focus();
+});
 
 // تنظيف بيانات Map Check عند المسح
 try{ localStorage.removeItem(mapCheckDBKey()); }catch(e){}
