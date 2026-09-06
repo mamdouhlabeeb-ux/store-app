@@ -305,6 +305,12 @@ th.code-out-th{ width:96px; text-align:center; }
   </div>
 </div>
 
+<!-- شريط إدخال فوق الكيبورد (للكيبورد الرقمي في الموبايل) -->
+<div id="kbBar" style="display:none;position:fixed;left:8px;right:8px;z-index:100000;background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 -6px 24px rgba(15,23,42,.18);padding:8px 10px;gap:8px;font-family:'Cairo',sans-serif;">
+  <button type="button" id="kbBarEnter" style="flex:1;background:#b45309;color:#fff;border:none;border-radius:10px;padding:12px 8px;font-size:16px;font-weight:800;font-family:'Cairo',sans-serif;">إدخال ↵</button>
+  <button type="button" id="kbBarClose" style="flex:0 0 auto;background:#f1f5f9;color:#0f172a;border:none;border-radius:10px;padding:12px 16px;font-size:16px;font-weight:800;font-family:'Cairo',sans-serif;">✕</button>
+</div>
+
 <!-- ================= CHANGE PASSWORD MODAL ================= -->
 <div class="modal-overlay" id="pwModal">
   <div class="modal-card">
@@ -3837,6 +3843,73 @@ $('moneyMapResetBtn') && $('moneyMapResetBtn').addEventListener('click', ()=>{
   showToast('تم مسح بيانات Money Map ✓');
   $('moneyMapCodeInput').focus();
 });
+
+// شريط إدخال فوق الكيبورد الرقمي في الموبايل
+(function(){
+  const kbBar = $('kbBar');
+  if(!kbBar) return;
+  const enterBtn = $('kbBarEnter');
+  const closeBtn = $('kbBarClose');
+  let kbActive = null;
+  let kbPinned = false;
+  function kbFixPos(){
+    if(!kbBar.style.display || kbBar.style.display === 'none') return;
+    const vvp = window.visualViewport;
+    const shift = vvp ? (window.innerHeight - vvp.height) : 0;
+    kbBar.style.bottom = (shift > 0 ? shift + 4 : 12) + 'px';
+  }
+  function kbShow(el){
+    kbActive = el;
+    kbPinned = false;
+    kbBar.style.display = 'flex';
+    kbFixPos();
+  }
+  function kbHideSoon(){
+    setTimeout(()=>{
+      if(kbPinned) return;
+      if(kbActive && kbActive.matches(':focus')) return;
+      kbBar.style.display = 'none';
+      kbActive = null;
+    }, 250);
+  }
+  document.addEventListener('focusin', (e)=>{
+    const el = e.target;
+    if(!el || el.tagName !== 'INPUT' || el.type === 'file') return;
+    const isNum = el.getAttribute('inputmode') === 'numeric'
+      || el.id === 'moneyMapCodeInput'
+      || el.id === 'mapCheckCodeInput'
+      || (el.classList && el.classList.contains('search-input') && /\d/.test(el.value || ''));
+    if(isNum) kbShow(el);
+  });
+  document.addEventListener('focusout', kbHideSoon);
+  const vvp = window.visualViewport;
+  if(vvp){
+    vvp.addEventListener('resize', kbFixPos);
+    vvp.addEventListener('scroll', kbFixPos);
+  }
+  if(enterBtn){
+    enterBtn.addEventListener('pointerdown', ()=>{ kbPinned = true; });
+    enterBtn.addEventListener('click', ()=>{
+      const el = kbActive;
+      if(!el) return;
+      setTimeout(()=>{ kbPinned = false; }, 0);
+      if(el.id === 'moneyMapCodeInput'){ moneyMapAdd(); return; }
+      if(el.id === 'mapCheckCodeInput'){ mapCheckAddCode(); return; }
+      const kd = new KeyboardEvent('keydown', { key:'Enter', code:'Enter', bubbles:true, cancelable:true });
+      el.dispatchEvent(kd);
+      el.blur();
+    });
+  }
+  if(closeBtn){
+    closeBtn.addEventListener('pointerdown', ()=>{ kbPinned = true; });
+    closeBtn.addEventListener('click', ()=>{
+      kbPinned = false;
+      setTimeout(()=>{ kbBar.style.display = 'none'; }, 0);
+      if(kbActive) kbActive.blur();
+      kbActive = null;
+    });
+  }
+})();
 
 // تنظيف بيانات Map Check عند المسح
 try{ localStorage.removeItem(mapCheckDBKey()); }catch(e){}
