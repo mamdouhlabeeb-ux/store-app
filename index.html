@@ -3043,14 +3043,7 @@ function showLastPriceWarn(msg){
   if(!bar || !txt) return;
   txt.textContent = msg;
   bar.classList.add('show');
-  try{
-    const ctx = new (window.AudioContext || window.webkitAudioContext)();
-    const o = ctx.createOscillator();
-    const g = ctx.createGain();
-    o.connect(g); g.connect(ctx.destination);
-    o.frequency.value = 880; g.gain.value = 0.6;
-    o.start(); setTimeout(()=>{ o.stop(); ctx.close(); }, 200);
-  }catch(e){}
+  if(typeof playAlarm === 'function') playAlarm();
   clearTimeout(lpWarnTimer);
   lpWarnTimer = setTimeout(()=>{ bar.classList.remove('show'); }, 2500);
 }
