@@ -306,7 +306,7 @@ th.code-out-th{ width:96px; text-align:center; }
 </div>
 
 <!-- شريط إدخال صغير أعلى يمين الشاشة (للكيبورد الرقمي في الموبايل) -->
-<div id="kbBar" style="display:none;position:fixed;bottom:14px;left:12px;width:max-content;z-index:100000;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 4px 16px rgba(15,23,42,.18);padding:4px;gap:6px;transition:bottom .15s ease;font-family:'Cairo',sans-serif;">
+<div id="kbBar" style="display:none;position:fixed;bottom:14px;right:12px;width:max-content;z-index:100000;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 4px 16px rgba(15,23,42,.18);padding:4px;gap:6px;transition:bottom .15s ease;font-family:'Cairo',sans-serif;">
   <button type="button" id="kbBarEnter" title="إدخال" style="background:#b45309;color:#fff;border:none;border-radius:8px;width:36px;height:36px;font-size:18px;font-weight:800;font-family:'Cairo',sans-serif;cursor:pointer;line-height:1;">↵</button>
   <button type="button" id="kbBarClose" title="إخفاء الكيبورد" style="background:#f1f5f9;color:#0f172a;border:none;border-radius:8px;width:32px;height:32px;font-size:13px;font-weight:800;font-family:'Cairo',sans-serif;cursor:pointer;">✕</button>
 </div>
@@ -3852,7 +3852,7 @@ $('moneyMapResetBtn') && $('moneyMapResetBtn').addEventListener('click', ()=>{
     const vvp = window.visualViewport;
     const shift = vvp ? (window.innerHeight - vvp.height) : 0;
     kbBar.style.bottom = (shift > 0 ? shift + 6 : 14) + 'px';
-    kbBar.style.left = '12px';
+    kbBar.style.right = '12px';
   }
   function kbShow(el){
     if(!isIOS) return;
