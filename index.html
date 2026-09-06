@@ -963,6 +963,15 @@ function initFirebase(){
   try{
     if(!firebase.apps || firebase.apps.length === 0){ firebase.initializeApp(firebaseConfig); }
     db = firebase.firestore();
+    try{
+      if(typeof firebase.firestore.enableIndexedDbPersistence === 'function'){
+        firebase.firestore.enableIndexedDbPersistence(db).catch(err=>{
+          if(!err || err.code !== 'already-exists') console.warn('Firestore persistence:', err && (err.message || err.code));
+        });
+      } else if(typeof db.enableIndexedDbPersistence === 'function'){
+        db.enableIndexedDbPersistence().catch(()=>{});
+      }
+    }catch(e){ console.warn(e); }
     return true;
   }catch(e){ console.error('Firebase init failed', e); return false; }
 }
@@ -1007,8 +1016,22 @@ async function saveBranchPasswordOnly(branchId, npw){
     return true;
   }catch(e){ console.error(e); return false; }
 }
+function localBranchKey(branchId){ return 'branchDataLocal_' + branchId; }
+function saveBranchLocal(branchId, data){
+  try{ localStorage.setItem(localBranchKey(branchId), JSON.stringify(data)); }catch(e){}
+}
+function loadBranchLocal(branchId){
+  try{ const j = localStorage.getItem(localBranchKey(branchId)); return j ? JSON.parse(j) : null; }catch(e){ return null; }
+}
 async function loadBranchData(branchId){
-  try{ const snap = await db.collection('branchData').doc(branchId).get(); if(snap.exists) return snap.data(); }catch(e){ console.error(e); }
+  try{
+    const snap = await db.collection('branchData').doc(branchId).get();
+    if(snap.exists){ const d = snap.data(); saveBranchLocal(branchId, d); return d; }
+  }catch(e){
+    console.error('loadBranchData (offline?)', e);
+    const local = loadBranchLocal(branchId);
+    if(local){ showToast('النت مشتغلش – بيتم عرض آخر نسخة محفوظة على الجهاز'); return local; }
+  }
   return null;
 }
 async function saveBranchData(branchId, data){
