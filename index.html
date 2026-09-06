@@ -305,10 +305,10 @@ th.code-out-th{ width:96px; text-align:center; }
   </div>
 </div>
 
-<!-- شريط إدخال فوق الكيبورد (للكيبورد الرقمي في الموبايل) -->
-<div id="kbBar" style="display:none;position:fixed;left:8px;right:8px;z-index:100000;background:#f8fafc;border:1px solid #e2e8f0;border-radius:14px;box-shadow:0 -6px 24px rgba(15,23,42,.18);padding:8px 10px;gap:8px;font-family:'Cairo',sans-serif;">
-  <button type="button" id="kbBarEnter" style="flex:1;background:#b45309;color:#fff;border:none;border-radius:10px;padding:12px 8px;font-size:16px;font-weight:800;font-family:'Cairo',sans-serif;">إدخال ↵</button>
-  <button type="button" id="kbBarClose" style="flex:0 0 auto;background:#f1f5f9;color:#0f172a;border:none;border-radius:10px;padding:12px 16px;font-size:16px;font-weight:800;font-family:'Cairo',sans-serif;">✕</button>
+<!-- شريط إدخال صغير أعلى يمين الشاشة (للكيبورد الرقمي في الموبايل) -->
+<div id="kbBar" style="display:none;position:fixed;top:12px;right:14px;z-index:100000;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;box-shadow:0 4px 16px rgba(15,23,42,.18);padding:4px;gap:6px;font-family:'Cairo',sans-serif;">
+  <button type="button" id="kbBarEnter" title="إدخال" style="background:#b45309;color:#fff;border:none;border-radius:8px;width:36px;height:36px;font-size:18px;font-weight:800;font-family:'Cairo',sans-serif;cursor:pointer;line-height:1;">↵</button>
+  <button type="button" id="kbBarClose" title="إخفاء الكيبورد" style="background:#f1f5f9;color:#0f172a;border:none;border-radius:8px;width:32px;height:32px;font-size:13px;font-weight:800;font-family:'Cairo',sans-serif;cursor:pointer;">✕</button>
 </div>
 
 <!-- ================= CHANGE PASSWORD MODAL ================= -->
@@ -3847,9 +3847,8 @@ $('moneyMapResetBtn') && $('moneyMapResetBtn').addEventListener('click', ()=>{
   let kbPinned = false;
   function kbFixPos(){
     if(!kbBar.style.display || kbBar.style.display === 'none') return;
-    const vvp = window.visualViewport;
-    const shift = vvp ? (window.innerHeight - vvp.height) : 0;
-    kbBar.style.bottom = (shift > 0 ? shift + 4 : 12) + 'px';
+    kbBar.style.top = '12px';
+    kbBar.style.right = '14px';
   }
   function kbShow(el){
     kbActive = el;
