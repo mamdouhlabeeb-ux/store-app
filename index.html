@@ -963,15 +963,6 @@ function initFirebase(){
   try{
     if(!firebase.apps || firebase.apps.length === 0){ firebase.initializeApp(firebaseConfig); }
     db = firebase.firestore();
-    try{
-      if(typeof firebase.firestore.enableIndexedDbPersistence === 'function'){
-        firebase.firestore.enableIndexedDbPersistence(db).catch(err=>{
-          if(!err || err.code !== 'already-exists') console.warn('Firestore persistence:', err && (err.message || err.code));
-        });
-      } else if(typeof db.enableIndexedDbPersistence === 'function'){
-        db.enableIndexedDbPersistence().catch(()=>{});
-      }
-    }catch(e){ console.warn(e); }
     return true;
   }catch(e){ console.error('Firebase init failed', e); return false; }
 }
@@ -1016,26 +1007,20 @@ async function saveBranchPasswordOnly(branchId, npw){
     return true;
   }catch(e){ console.error(e); return false; }
 }
-function localBranchKey(branchId){ return 'branchDataLocal_' + branchId; }
-function saveBranchLocal(branchId, data){
-  try{ localStorage.setItem(localBranchKey(branchId), JSON.stringify(data)); }catch(e){}
-}
-function loadBranchLocal(branchId){
-  try{ const j = localStorage.getItem(localBranchKey(branchId)); return j ? JSON.parse(j) : null; }catch(e){ return null; }
-}
 async function loadBranchData(branchId){
-  try{
-    const snap = await db.collection('branchData').doc(branchId).get();
-    if(snap.exists){ const d = snap.data(); saveBranchLocal(branchId, d); return d; }
-  }catch(e){
-    console.error('loadBranchData (offline?)', e);
-    const local = loadBranchLocal(branchId);
-    if(local){ showToast('النت مشتغلش – بيتم عرض آخر نسخة محفوظة على الجهاز'); return local; }
-  }
+  try{ const snap = await db.collection('branchData').doc(branchId).get(); if(snap.exists) return snap.data(); }catch(e){ console.error(e); }
   return null;
 }
+let lastSaveError = '';
+function saveErrHint(){
+  if(!lastSaveError) return '';
+  const txt = String(lastSaveError);
+  const cut = Math.min(txt.length, 160);
+  return ' — ' + txt.slice(0, cut);
+}
 async function saveBranchData(branchId, data){
-  try{ await db.collection('branchData').doc(branchId).set(data); return true; }catch(e){ console.error(e); return false; }
+  try{ await db.collection('branchData').doc(branchId).set(data); lastSaveError = ''; return true; }
+  catch(e){ lastSaveError = (e && e.code) ? (e.code + (e.message ? ': ' + e.message : '')) : String(e); console.error('saveBranchData:', e); return false; }
 }
 
 // ---------------- login ----------------
@@ -1808,7 +1793,7 @@ function handleStockFile(file){
       const ok = await saveBranchData(currentBranch.id, existing);
       clearCodeOutMarks();
       $('lastUpdateLabel').textContent = 'آخر تحديث: ' + formatDate(nowIso);
-      setStatus(statusEl, ok ? ('تم ✓ (' + summary.length + ' موديل)') : 'اتعالج لكن حصلت مشكلة في الحفظ.', ok?'ok':'err');
+      setStatus(statusEl, ok ? ('تم ✓ (' + summary.length + ' موديل)') : ('اتعالج لكن لم يُحفظ' + saveErrHint()), ok?'ok':'err');
     }catch(err){ console.error(err); setStatus(statusEl, 'حصل خطأ في قراءة الملف.', 'err'); }
     $('fileInputStock').value = '';
   };
@@ -1878,7 +1863,7 @@ function handleSalesFile(file){
       const ok = await saveBranchData(currentBranch.id, existing);
       clearCodeOutMarks();
       $('lastUpdateLabel').textContent = 'آخر تحديث: ' + formatDate(nowIso);
-      setStatus(statusEl, ok ? ('تم ✓ (' + rowsOut.length + ' صنف)') : 'اتعالج لكن حصلت مشكلة في الحفظ.', ok?'ok':'err');
+      setStatus(statusEl, ok ? ('تم ✓ (' + rowsOut.length + ' صنف)') : ('اتعالج لكن لم يُحفظ' + saveErrHint()), ok?'ok':'err');
     }catch(err){ console.error(err); setStatus(statusEl, 'حصل خطأ في قراءة الملف.', 'err'); }
     $('fileInputSales').value = '';
   };
@@ -1957,7 +1942,7 @@ function handleLocFile(file){
       const ok = await saveBranchData(currentBranch.id, existing);
       clearCodeOutMarks();
       $('lastUpdateLabel').textContent = 'آخر تحديث: ' + formatDate(nowIso);
-      setStatus(statusEl, ok ? ('تم ✓ (' + parsed.length + ' كود)') : 'اتعالج لكن حصلت مشكلة في الحفظ.', ok?'ok':'err');
+      setStatus(statusEl, ok ? ('تم ✓ (' + parsed.length + ' كود)') : ('اتعالج لكن لم يُحفظ' + saveErrHint()), ok?'ok':'err');
     }catch(err){ console.error(err); setStatus(statusEl, 'حصل خطأ في قراءة الملف.', 'err'); }
     $('fileInputLoc').value = '';
   };
