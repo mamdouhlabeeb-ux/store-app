@@ -767,7 +767,7 @@ service cloud.firestore {
     </div>
     <div class="mc-wrap">
       <div class="mc-actions">
-        <input class="search-input" id="mapCheckCodeInput" placeholder="اكتب الكود..." inputmode="numeric" style="flex:0 1 auto;min-width:160px;max-width:240px;">
+        <input class="search-input" id="mapCheckCodeInput" placeholder="اكتب الكود..." inputmode="numeric" enterkeyhint="enter" style="flex:0 1 auto;min-width:160px;max-width:240px;">
         <button class="export-btn" id="mapCheckAddBtn">+ إضافة</button>
         <button class="scan-btn" id="mapCheckScanBtn">📷 سكان</button>
       </div>
@@ -842,7 +842,7 @@ service cloud.firestore {
         </div>
       </div>
       <div class="mm-actions">
-        <input class="search-input" id="moneyMapCodeInput" placeholder="اكتب أو سكان الكود..." inputmode="numeric" style="flex:0 1 auto;min-width:180px;max-width:260px;">
+        <input class="search-input" id="moneyMapCodeInput" placeholder="اكتب أو سكان الكود..." inputmode="numeric" enterkeyhint="enter" style="flex:0 1 auto;min-width:180px;max-width:260px;">
         <button class="export-btn" id="moneyMapAddBtn">+ إضافة</button>
         <button class="scan-btn" id="moneyMapScanBtn">📷 سكان</button>
       </div>
@@ -3059,7 +3059,7 @@ function addLastPriceRow(){
   if(!wrap) return;
   const row = document.createElement('div');
   row.className = 'lp-row';
-  row.innerHTML = '<input class="search-input" placeholder="اكتب الكود أو سكان&hellip;" style="flex:0 1 auto;min-width:130px;max-width:210px;" inputmode="numeric" pattern="[0-9]*" autocomplete="off" autocorrect="off">'
+  row.innerHTML = '<input class="search-input" placeholder="اكتب الكود أو سكان&hellip;" style="flex:0 1 auto;min-width:130px;max-width:210px;" inputmode="numeric" enterkeyhint="enter" pattern="[0-9]*" autocomplete="off" autocorrect="off">'
     + '<button type="button" class="scan-btn" title="سكان بالكاميرا">📷</button>'
     + '<div class="lp-result"></div>';
   wrap.appendChild(row);
@@ -3639,7 +3639,7 @@ $('moneyMapImgBig') && $('moneyMapImgBig').addEventListener('dblclick', ()=>{
   moneyMapZoomLvl = moneyMapZoomLvl > 1.05 ? 1 : 2;
   moneyMapZoomApply();
 });
-$('moneyMapImg') && $('moneyMapImg').addEventListener('click', ()=>{
+function moneyMapOpenImgModal(){
   if(!moneyMapImgData){ return; }
   moneyMapZoomLvl = 1;
   $('moneyMapImgBig').src = moneyMapImgData;
@@ -3662,7 +3662,9 @@ $('moneyMapImg') && $('moneyMapImg').addEventListener('click', ()=>{
     }catch(err){ console.error(err); }
   }
   $('moneyMapImgModal').classList.add('show');
-});
+}
+$('moneyMapImg') && $('moneyMapImg').addEventListener('click', moneyMapOpenImgModal);
+$('moneyMapImg') && $('moneyMapImg').addEventListener('touchend', (e)=>{ e.preventDefault(); moneyMapOpenImgModal(); }, { passive: false });
 const moneyMapReleaseObjUrl = ()=>{
   const link = $('moneyMapImgOpenLink');
   if(!link) return;
