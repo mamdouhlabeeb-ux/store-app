@@ -3525,16 +3525,22 @@ function handleMapCheckLocFile(file){
       mapCheckEntries = [];
       mapCheckReport = null;
       $('mapCheckReportPanel').style.display = 'none';
-      refreshMapCheckLocs();
-      renderMapCheckList();
-      refreshMapCheckSummary();
-      persistMapCheck();
+      try{
+        refreshMapCheckLocs();
+        renderMapCheckList();
+        refreshMapCheckSummary();
+        persistMapCheck();
+      }catch(e2){
+        console.error('mapCheck apply:', e2);
+        mapCheckSaveRemote();
+      }
       setMapCheckLocStatus('تم رفع شيت MAP LOC (' + m.size + ' كود) ✓', 'ok');
       $('mapCheckPanel').style.display = 'block';
       $('mapCheckCodeInput').focus();
     }catch(err){
       console.error(err);
-      setMapCheckLocStatus('حصل خطأ في قراءة الملف. تيقن إنه xlsx/xls/csv.', 'err');
+      const em = (err && err.message) ? err.message : String(err);
+      setMapCheckLocStatus('خطأ القراءة: ' + em, 'err');
     }
   };
   reader.readAsArrayBuffer(file);
