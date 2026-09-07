@@ -695,8 +695,8 @@ service cloud.firestore {
     .scan-modal{position:fixed;inset:0;background:rgba(15,23,42,.62);display:none;align-items:center;justify-content:center;z-index:2000;padding:16px;}
     .scan-modal.show{display:flex;}
     .scan-modal-box{background:#fff;border-radius:16px;padding:16px;max-width:420px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.35);}
-    #scanVideo{width:100%;border-radius:12px;background:#000;}
-    #scanStatus{font-size:13px;color:#6b7280;margin-top:10px;text-align:center;}
+    #scViewport{position:relative;overflow:hidden;}
+    #scH5{width:100%;}
     .scan-modal-actions{display:flex;justify-content:flex-end;margin-top:12px;gap:8px;}
   </style>
 
@@ -709,13 +709,16 @@ service cloud.firestore {
     <button type="button" class="warn-x" id="lastPriceWarnClose">✕</button>
   </div>
   <div id="lastPriceStream"></div>
-  <div id="scanModal" class="scan-modal">
+  <div id="scModal" class="scan-modal">
     <div class="scan-modal-box">
-      <div id="scanBox"><video id="scanVideo" playsinline muted></video><div id="scanStatus"></div><div id="scanErrDetail"></div></div>
+      <div id="scViewport" style="min-height:180px;display:flex;flex-direction:column;">
+        <div id="scStatus" style="min-height:40px;line-height:40px;color:#8a7f72;text-align:center;font-size:14px;"></div>
+        <div id="scErr" style="min-height:20px;font-size:13px;color:#d33;text-align:center;padding:2px 8px;"></div>
+      </div>
       <div class="scan-modal-actions">
-        <span id="scanVerBadge" style="align-self:center;font-size:13px;color:#8a7f72;margin-right:auto;">v2.9-scanfix</span>
-        <button type="button" class="btn-primary" id="scanRetryBtn">إعادة المحاولة</button>
-        <button type="button" class="btn-ghost" id="scanCloseBtn">إغلاق</button>
+        <span id="scVer" style="align-self:center;font-size:13px;color:#8a7f72;margin-right:auto;">v2.9-scanfix</span>
+        <button type="button" class="btn-primary" id="scRetryBtn">إعادة المحاولة</button>
+        <button type="button" class="btn-ghost" id="scCloseBtn">إغلاق</button>
       </div>
     </div>
   </div>
@@ -3135,7 +3138,7 @@ function addLastPriceRow(){
   inp.addEventListener('change', commit);
   inp.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); commit(); } });
   scanBtn.addEventListener('click', ()=>{
-    openLastPriceScanner((raw)=>{
+    scOpen((raw)=>{
       inp.value = String(raw || '').trim();
       inp.dispatchEvent(new Event('input'));
       commit();
@@ -3150,151 +3153,116 @@ function openLastPriceStream(){
   addLastPriceRow();
 }
 
-let lpScannerState = null;
-let lpPendingScan = null;
-function lpEnsureLib(cb){
-  if(window.Html5Qrcode){ cb(); return; }
-  const statusEl = $('scanStatus');
-  const errEl = $('scanErrDetail');
-  const setErr = (m)=>{
-    if(statusEl) statusEl.textContent = 'تعذّر تحميل مكتبة السكان';
-    if(errEl) errEl.textContent = m;
-  };
-  if(errEl) errEl.textContent = '';
-  if(statusEl) statusEl.textContent = 'جارِ تحميل مكتبة السكان...';
-  const loadSrc = (src, onErr)=>{
-    const s = document.createElement('script');
-    s.src = src;
-    s.onload = ()=>{ if(errEl) errEl.textContent = ''; cb(); };
-    s.onerror = ()=>{
-      if(onErr) onErr();
-      else setErr('فشل تحميل مكتبة السكان من ' + src + ' — تأكد من الإنترنت أو اضغط «إعادة المحاولة».');
+/* ================== SCANNER موحّد (Last Piece + Money Map + Map Check) ==================
+   يفتح الكاميرا ويقرا كل الباركود تلقائياً (Code39 و Code128 و EAN و QR...) */
+let scState = null;         // حالة التشغيل الحالية { h5, noDetect }
+let scPending = null;       // دالة استقبال الكود بعد القراءة
+let scLoadPromise = null;   // وعد تحميل مكتبة السكان
+
+function scSetStatus(m){
+  const s = $('scStatus'); if(s) s.textContent = m;
+}
+function scSetErr(m){
+  const e = $('scErr'); if(e) e.textContent = m || '';
+}
+
+function scLoadLib(cb){
+  if(window.Html5Qrcode){ if(cb) cb(); return; }
+  if(scLoadPromise){ scLoadPromise.then(()=>{ if(cb) cb(); }).catch(()=>{}); return; }
+  scSetStatus('جارِ تحميل مكتبة السكان...');
+  scSetErr('');
+  scLoadPromise = new Promise((res, rej)=>{
+    const urls = [
+      'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js',
+      'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js'
+    ];
+    const tryAt = (i)=>{
+      if(window.Html5Qrcode){ res(); return; }
+      if(i >= urls.length){
+        scSetStatus('تعذّر تحميل مكتبة السكان');
+        scSetErr('تأكد من الإنترنت أو اضغط «إعادة المحاولة».');
+        rej();
+        return;
+      }
+      const s = document.createElement('script');
+      s.src = urls[i];
+      s.onload = ()=>{ res(); };
+      s.onerror = ()=>{ s.remove(); tryAt(i + 1); };
+      document.head.appendChild(s);
     };
-    document.head.appendChild(s);
-  };
-  loadSrc('https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js', ()=>{
-    loadSrc('https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js', null);
+    tryAt(0);
+  });
+  scLoadPromise.then(()=>{ if(cb) cb(); }).catch(()=>{});
+}
+
+function scStop(){
+  if(!scState) return;
+  clearTimeout(scState.noDetect);
+  if(scState.h5){ try{ scState.h5.stop().catch(()=>{}); }catch(e){} }
+  scState = null;
+}
+
+function scClose(openedAgain){
+  scStop();
+  const m = $('scModal');
+  if(m && !openedAgain) m.classList.remove('show');
+}
+
+function scAccept(raw){
+  const cb = scPending;
+  scClose(false);
+  if(raw && cb){
+    scPending = null;
+    cb(String(raw).trim());
+  }
+}
+
+function scStart(){
+  const m = $('scModal');
+  if(!m || scState || !window.Html5Qrcode) return;
+  const vp = $('scViewport');
+  if(vp) vp.innerHTML = '<div id="scH5"></div>';
+  scSetStatus('');
+  scSetErr('');
+  const h5 = new Html5Qrcode('scH5');
+  scState = { h5 };
+  h5.start(
+    { facingMode: 'environment' },
+    { fps: 12, qrbox: (window.matchMedia && window.matchMedia('(pointer:coarse)').matches) ? { width: 300, height: 220 } : { width: 320, height: 150 } },
+    (text)=>{ scAccept(text); },
+    ()=>{}
+  ).then(()=>{
+    if(!scState) return;
+    scState.noDetect = setTimeout(()=>{
+      if(scState && !scState.detected){
+        scSetStatus('لم يُكتشف باركود — قرب الكاميرا على الكود وثبّتها ثانية (يدعم Code39 وCode128).');
+      }
+    }, 9000);
+  }).catch(err=>{
+    if(scState && err && err.name === 'NotFoundException'){ return; }
+    scState = null;
+    scSetStatus('تعذّر تشغيل الكاميرا');
+    scSetErr('فعّل إذن الكاميرا للموقع من إعدادات المتصفح ثم اضغط «إعادة المحاولة».' + (err && err.message ? ' — ' + err.message : ''));
   });
 }
-function lpIsStandalone(){
-  try{
-    if(window.navigator.standalone === true) return true;
-    if(window.matchMedia && matchMedia('(display-mode: standalone)').matches) return true;
-  }catch(e){}
-  return false;
+
+function scOpen(onScan){
+  scPending = onScan || scPending;
+  scSetErr('');
+  const m = $('scModal');
+  if(!m) return;
+  scClose(false);
+  m.classList.add('show');
+  scSetStatus('جارِ تجهيز الكاميرا...');
+  scLoadLib(()=>{ scStart(); });
 }
-function lpScanFailMsg(){
-  if(lpIsStandalone()){
-    return 'الكاميرا المباشرة مش متاحة داخل التطبيق المثبّت على ايفون (قيود Apple) — استخدم زر «📷 التقاط صورة للباركود» بالأعلى.';
-  }
-  return 'تعذّر فتح الكاميرا - فعّل إذن الكاميرا للموقع من إعدادات المتصفح ثم اضغط «إعادة المحاولة».';
-}
-function stopLastPriceScanner(){
-  if(lpScannerState){
-    clearInterval(lpScannerState.timer);
-    if(lpScannerState.noDetectTimer) clearTimeout(lpScannerState.noDetectTimer);
-    if(lpScannerState.stream) lpScannerState.stream.getTracks().forEach(t=> t.stop());
-    if(lpScannerState.h5){ try{ lpScannerState.h5.stop().catch(()=>{}); }catch(e){} }
-    const video = $('scanVideo');
-    if(lpScannerState.useVideo && video) video.srcObject = null;
-    const box = $('scanBox');
-    if(box && lpScannerState.useLib){
-      box.innerHTML = '<video id="scanVideo" playsinline muted></video><div id="scanStatus"></div>';
-    }
-    lpScannerState = null;
-  }
-  const modal = $('scanModal');
-  if(modal) modal.classList.remove('show');
-}
-$('scanCloseBtn').addEventListener('click', stopLastPriceScanner);
-$('scanRetryBtn') && $('scanRetryBtn').addEventListener('click', ()=>{
-  const pend = lpPendingScan;
-  stopLastPriceScanner();
-  setTimeout(()=>{ if(pend) openLastPriceScanner(pend); }, 60);
+
+$('scCloseBtn') && $('scCloseBtn').addEventListener('click', ()=> scClose(false));
+$('scRetryBtn') && $('scRetryBtn').addEventListener('click', ()=>{
+  const pend = scPending;
+  scClose(true);
+  setTimeout(()=>{ scPending = pend; scOpen(pend); }, 80);
 });
-
-function openLastPriceScanner(onScan){
-  const modal = $('scanModal');
-  const video = $('scanVideo');
-  const statusEl = $('scanStatus');
-  if(!modal || !video || !statusEl) return;
-  lpPendingScan = onScan;
-  modal.classList.add('show');
-  statusEl.textContent = 'جارِ فتح الكاميرا...';
-
-  const done = (raw)=>{
-    stopLastPriceScanner();
-    if(raw && onScan){
-      const c = onScan; lpPendingScan = null;
-      c(raw);
-    }
-  };
-
-  const isTouch = window.matchMedia && window.matchMedia('(pointer:coarse)').matches;
-  if(!isTouch && 'BarcodeDetector' in window){
-    try{
-      navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then((stream)=>{
-        if(!modal.classList.contains('show')){ stream.getTracks().forEach(t=> t.stop()); return; }
-        let det;
-        try{ det = new BarcodeDetector({ formats: ['code_128','code_39','code_93','ean_13','ean_8','itf','upc_a','upc_e','qr_code'] }); }
-        catch(e){ det = new BarcodeDetector(); }
-        video.srcObject = stream;
-        video.play().catch(()=>{});
-        statusEl.textContent = 'وجّه الكاميرا على الباركود...';
-        lpScannerState = { timer: null, stream, useVideo: true };
-        const noDetectTimer = setTimeout(()=>{
-          if(lpScannerState && !lpScannerState.detected) statusEl.textContent = 'لم يُكتشف باركود — قرب/اضبط الكاميرا على الكود بوضوح.';
-        }, 10000);
-        lpScannerState.noDetectTimer = noDetectTimer;
-        lpScannerState.detected = false;
-        lpScannerState.timer = setInterval(async ()=>{
-          if(!lpScannerState || !modal.classList.contains('show')){ clearInterval(lpScannerState && lpScannerState.timer); return; }
-          try{
-            const codes = await det.detect(video);
-            if(codes && codes.length && codes[0].rawValue){
-              lpScannerState.detected = true;
-              done(codes[0].rawValue);
-            }
-          }catch(e){}
-        }, 350);
-      }).catch(()=>{ statusEl.textContent = lpScanFailMsg(); startLastPriceLibScan(onScan); });
-      return;
-    }catch(e){}
-  }
-
-  startLastPriceLibScan(onScan);
-}
-function startLastPriceLibScan(onScan){
-  const statusEl = $('scanStatus');
-  const modal = $('scanModal');
-  lpEnsureLib(()=>{
-    if(!modal.classList.contains('show')) return;
-    const box = $('scanBox');
-    if(!box) return;
-    box.innerHTML = '<div id="lpScanH5"></div>';
-    lpScannerState = { timer: null, h5: null, useVideo: false, useLib: true };
-    try{
-      const h5 = new Html5Qrcode('lpScanH5');
-      lpScannerState.h5 = h5;
-      lpScannerState.useVideo = false;
-      h5.start(
-        { facingMode: 'environment' },
-        { fps: 15, qrbox: (window.matchMedia && window.matchMedia('(pointer:coarse)').matches) ? { width: 280, height: 200 } : { width: 300, height: 120 } },
-        (text)=>{ done(text); },
-        ()=>{}
-      ).then(()=>{
-        const ndt = setTimeout(()=>{
-          if(lpScannerState && lpScannerState.h5 && !lpScannerState.detected) statusEl.textContent = 'لم يُكتشف باركود — قرب/اضبط الكاميرا على الكود بوضوح.';
-        }, 9000);
-        lpScannerState.noDetectTimer = ndt;
-      }).catch(err=>{
-        statusEl.textContent = lpScanFailMsg();
-        const errEl = $('scanErrDetail');
-        if(errEl && err && err.name !== 'NotFoundException') errEl.textContent = 'سبب الخطأ: ' + (err.message || String(err));
-      });
-    }catch(e){ statusEl.textContent = 'حصل خطأ في تشغيل السكان.'; }
-  });
-}
 
 // ================= MAP CHECK (فحص اللوكيشن) =================
 const mapCheckDBKey = ()=> 'mapCheck_v1_' + (currentBranch ? currentBranch.id : 'anon');
@@ -3345,7 +3313,7 @@ function openMapCheckScreen(){
   }
 }
 $('openMapCheckBtn') && $('openMapCheckBtn').addEventListener('click', openMapCheckScreen);
-$('mapCheckBackBtn') && $('mapCheckBackBtn').addEventListener('click', ()=>{ stopLastPriceScanner(); switchScreen('screen-dashboard'); });
+$('mapCheckBackBtn') && $('mapCheckBackBtn').addEventListener('click', ()=>{ scStop(); switchScreen('screen-dashboard'); });
 
 const dropMapCheckLoc = $('dropMapCheckLoc');
 ['dragover','dragenter'].forEach(evt=> dropMapCheckLoc.addEventListener(evt, (e)=>{ e.preventDefault(); dropMapCheckLoc.classList.add('dragover'); }));
@@ -3446,7 +3414,7 @@ function mapCheckAddCode(raw){
 }
 $('mapCheckAddBtn').addEventListener('click', ()=> mapCheckAddCode());
 $('mapCheckCodeInput').addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); mapCheckAddCode(); } });
-$('mapCheckScanBtn').addEventListener('click', ()=> openLastPriceScanner((text)=>{ mapCheckAddCode(text); }));
+$('mapCheckScanBtn').addEventListener('click', ()=> scOpen((text)=>{ mapCheckAddCode(text); }));
 
 function renderMapCheckList(){
   const list = $('mapCheckList');
@@ -3883,20 +3851,14 @@ function moneyMapExport(){
   XLSX.writeFile(wb, branchFname('Money_Map') + '.xlsx');
 }
 $('openMoneyMapBtn') && $('openMoneyMapBtn').addEventListener('click', moneyMapOpen);
-$('moneyMapBackBtn') && $('moneyMapBackBtn').addEventListener('click', ()=>{ stopLastPriceScanner(); switchScreen('screen-dashboard'); });
+$('moneyMapBackBtn') && $('moneyMapBackBtn').addEventListener('click', ()=>{ scStop(); switchScreen('screen-dashboard'); });
 $('moneyMapAddBtn') && $('moneyMapAddBtn').addEventListener('click', ()=> moneyMapAdd());
 $('moneyMapCodeInput') && $('moneyMapCodeInput').addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); moneyMapAdd(); } });
 $('moneyMapScanBtn') && (function(){
   const b = $('moneyMapScanBtn');
   if(b.dataset.mmSc) return;
   b.dataset.mmSc = '1';
-  let fireLock = false;
-  const fire = ()=>{
-    if(fireLock) return;
-    fireLock = true;
-    setTimeout(()=>{ fireLock = false; }, 300);
-    openLastPriceScanner((text)=>{ moneyMapAdd(text); });
-  };
+  const fire = ()=>{ scOpen((text)=>{ moneyMapAdd(text); }); };
   b.addEventListener('click', fire);
   b.addEventListener('touchend', (e)=>{ e.preventDefault(); fire(); }, { passive: false });
 })();
