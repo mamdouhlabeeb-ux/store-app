@@ -1138,10 +1138,34 @@ function startLiveSync(){
         renderTransfersTable();
       }
     }
-  }, err=> console.error('liveSync:', err));
+    }, err=> console.error('liveSync:', err));
+  // استماع حي لشيتات Map Check — أي رفع على أي جهاز بيظهر ويسمّع فوراً على الموبايلات
+  if(id){
+    mapCheckLiveSub = db.collection('mapCheckData').doc(id).onSnapshot(function(s){
+      const mc = s.exists ? s.data() : null;
+      if(!mc || !Array.isArray(mc.rows)) return;
+      if(mc.updatedAt && mc.updatedAt === mapCheckLastAt) return;
+      mapCheckLastAt = mc.updatedAt || '';
+      mapCheckMap = new Map(mc.rows.map(p=>[p[0], typeof p[1] === 'string' ? { loc: p[1], raw: '' } : { loc: (p[1] && p[1].loc) || '', raw: (p[1] && p[1].raw) || '' }]));
+      mapCheckEntries = (Array.isArray(mc.entries)) ? mc.entries.map(en=>({ code: en.code, norm: en.norm, loc: en.loc })) : [];
+      if(typeof mc.sel === 'string') mapCheckSelectedLoc = mc.sel;
+      saveMapCheckDB();
+      const scr = $('screen-mapcheck');
+      if(scr && scr.classList.contains('active')){
+        mapCheckReport = null;
+        const rp = $('mapCheckReportPanel'); if(rp) rp.style.display = 'none';
+        $('mapCheckPanel').style.display = 'block';
+        refreshMapCheckLocs();
+        renderMapCheckList();
+        refreshMapCheckSummary();
+        setMapCheckLocStatus('الشيت اتعمل تحديث (' + mapCheckMap.size + ' كود) ✓', 'ok');
+      }
+    }, function(err){ console.error('mapCheck live:', err); });
+  }
 }
 function stopLiveSync(){
   if(liveSync){ liveSync(); liveSync = null; }
+  if(mapCheckLiveSub){ try{ mapCheckLiveSub(); }catch(e){} mapCheckLiveSub = null; }
 }
 
 $('resetDataBtn').addEventListener('click', async ()=>{
@@ -3370,6 +3394,8 @@ let mapCheckMap = new Map();          // كود مُطبّع -> لوكيشن
 let mapCheckEntries = [];             // { code, norm, loc }
 let mapCheckSelectedLoc = '';
 let mapCheckReport = null;
+let mapCheckLiveSub = null;
+let mapCheckLastAt = null;   // أخر تحديث وصل ده الجهاز (عشان متكررش العرض بنفس النسخة)
 
 function saveMapCheckDB(){
   try{
@@ -3395,11 +3421,13 @@ function loadMapCheckDB(){
 function mapCheckSaveRemote(){
   if(!currentBranch || !currentBranch.id || typeof db === 'undefined' || !db) return;
   try{
+    const at = new Date().toISOString();
+    mapCheckLastAt = at;
     db.collection('mapCheckData').doc(currentBranch.id).set({
       rows: Array.from(mapCheckMap.entries()),
       entries: mapCheckEntries,
       sel: mapCheckSelectedLoc,
-      updatedAt: new Date().toISOString()
+      updatedAt: at
     });
   }catch(e){ console.error('mapCheck save remote:', e); }
 }
