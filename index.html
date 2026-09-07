@@ -704,13 +704,14 @@ service cloud.firestore {
     .scan-btn{background:#14b8a6;color:#fff;border:none;border-radius:10px;padding:8px 12px;font-size:15px;cursor:pointer;}
     .scan-btn:disabled{opacity:.45;}
     .ios-no-scan .scan-btn{ display:none !important; }
-    .ios-no-scan #moneyMapScanBtn{ display:none !important; }
+    .ios-no-scan #moneyMapCam{ display:none !important; }
     .ios-no-scan #mapCheckScanBtn{ display:none !important; }
     .scan-modal{position:fixed;inset:0;background:rgba(15,23,42,.62);display:none;align-items:center;justify-content:center;z-index:2000;padding:16px;}
     .scan-modal.show{display:flex;}
     .scan-modal-box{background:#fff;border-radius:16px;padding:16px;max-width:420px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.35);}
-    #scViewport{position:relative;overflow:hidden;}
-    #scH5{width:100%;}
+    #camViewport{position:relative;overflow:hidden;}
+    #camH5{width:100%;}
+    #camVideo{width:100%;max-height:46vh;border-radius:12px;background:#000;}
     .scan-modal-actions{display:flex;justify-content:flex-end;margin-top:12px;gap:8px;}
   </style>
 
@@ -723,16 +724,17 @@ service cloud.firestore {
     <button type="button" class="warn-x" id="lastPriceWarnClose">✕</button>
   </div>
   <div id="lastPriceStream"></div>
-  <div id="scModal" class="scan-modal">
+  <div id="camModal" class="scan-modal">
     <div class="scan-modal-box">
-      <div id="scViewport" style="min-height:180px;display:flex;flex-direction:column;">
-        <div id="scStatus" style="min-height:40px;line-height:40px;color:#8a7f72;text-align:center;font-size:14px;"></div>
-        <div id="scErr" style="min-height:20px;font-size:13px;color:#d33;text-align:center;padding:2px 8px;"></div>
+      <div id="camViewport" style="min-height:200px;display:flex;flex-direction:column;">
+        <div id="camStatus" style="min-height:40px;line-height:40px;color:#8a7f72;text-align:center;font-size:14px;"></div>
+        <div id="camErr" style="min-height:20px;font-size:13px;color:#d33;text-align:center;"></div>
       </div>
       <div class="scan-modal-actions">
-        <span id="scVer" style="align-self:center;font-size:13px;color:#8a7f72;margin-right:auto;">v2.9-scanfix</span>
-        <button type="button" class="btn-primary" id="scRetryBtn">إعادة المحاولة</button>
-        <button type="button" class="btn-ghost" id="scCloseBtn">إغلاق</button>
+        <label class="btn-primary" id="camSnapLabel" style="cursor:pointer;margin-right:auto;">التقاط صورة</label>
+        <input type="file" id="camSnapInput" accept="image/*" capture="environment" style="display:none;">
+        <button type="button" class="btn-primary" id="camRetryBtn">إعادة المحاولة</button>
+        <button type="button" class="btn-ghost" id="camCloseBtn">إغلاق</button>
       </div>
     </div>
   </div>
@@ -856,7 +858,6 @@ service cloud.firestore {
 
   <div class="panel" style="margin-top:16px;">
     <div class="mm-wrap">
-      <div id="mmVerPin" style="text-align:center;font-size:12px;color:#8a7f72;margin:-6px 0 6px;">v2.9-scanfix — Money Map</div>
       <div class="mm-loc-box">
         <div class="mm-loc-top">
           <div class="mm-loc-input-wrap">
@@ -873,7 +874,7 @@ service cloud.firestore {
       <div class="mm-actions">
         <input class="search-input" id="moneyMapCodeInput" placeholder="اكتب أو سكان الكود..." inputmode="numeric" enterkeyhint="enter" style="flex:0 1 auto;min-width:180px;max-width:260px;">
         <button class="export-btn" id="moneyMapAddBtn">+ إضافة</button>
-        <span id="moneyMapScanHolder" style="display:inline-flex;"></span>
+        <button type="button" class="scan-btn" id="moneyMapCam">📷</button>
       </div>
       <div id="moneyMapList" style="display:flex;flex-direction:column;gap:8px;"></div>
       <div class="mm-actions" style="margin-top:4px;">
@@ -3153,7 +3154,7 @@ function addLastPriceRow(){
   inp.addEventListener('change', commit);
   inp.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); commit(); } });
   scanBtn.addEventListener('click', ()=>{
-    scOpen((raw)=>{
+    camOpen((raw)=>{
       inp.value = String(raw || '').trim();
       inp.dispatchEvent(new Event('input'));
       commit();
@@ -3168,139 +3169,188 @@ function openLastPriceStream(){
   addLastPriceRow();
 }
 
-/* ================== SCANNER موحّد (Last Piece + Money Map + Map Check) ==================
-   يفتح الكاميرا ويقرا كل الباركود تلقائياً (Code39 و Code128 و EAN و QR...) */
-let scState = null;         // حالة التشغيل الحالية { h5, noDetect }
-let scPending = null;       // دالة استقبال الكود بعد القراءة
-let scLoadPromise = null;   // وعد تحميل مكتبة السكان
+/* ====================== CAM - سكان جديد من الصفر (Last Piece + Money Map + Map Check) ======================
+   يفتح الكاميرا الحية ويقرا Code39 وCode128 وكل الرموز، مع زر «التقاط صورة» كبديل مضمون على الموبايل. */
+let camState = null;
+let camPending = null;
 
-function scSetStatus(m){
-  const s = $('scStatus'); if(s) s.textContent = m;
+function camSet(msg){
+  const e = $('camStatus');
+  if(e) e.textContent = msg;
 }
-function scSetErr(m){
-  const e = $('scErr'); if(e) e.textContent = m || '';
+function camErr(msg){
+  const e = $('camErr');
+  if(e) e.textContent = msg || '';
 }
 
-function scLoadLib(cb){
-  if(window.Html5Qrcode){ if(cb) cb(); return; }
-  if(scLoadPromise){ scLoadPromise.then(()=>{ if(cb) cb(); }).catch(()=>{}); return; }
-  scSetStatus('جارِ تحميل مكتبة السكان...');
-  scSetErr('');
-  scLoadPromise = new Promise((res, rej)=>{
-    const urls = [
-      'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js',
-      'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js'
-    ];
-    const tryAt = (i)=>{
-      if(window.Html5Qrcode){ res(); return; }
-      if(i >= urls.length){
-        scSetStatus('تعذّر تحميل مكتبة السكان');
-        scSetErr('تأكد من الإنترنت أو اضغط «إعادة المحاولة».');
-        rej();
-        return;
-      }
-      const s = document.createElement('script');
-      s.src = urls[i];
-      s.onload = ()=>{ res(); };
-      s.onerror = ()=>{ s.remove(); tryAt(i + 1); };
-      document.head.appendChild(s);
+function camOpen(onScan){
+  camPending = onScan || camPending;
+  camErr('');
+  const m = $('camModal');
+  if(!m) return;
+  camClose();
+  m.classList.add('show');
+  camSet('ثواني ويبدأ السكن...');
+  camEnsureLib(function(){ camStart(); });
+}
+
+function camEnsureLib(cb){
+  if(window.BarcodeDetector || window.Html5Qrcode){ cb(); return; }
+  camSet('ثواني ويبدأ السكن...');
+  const urls = [
+    'https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js',
+    'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js'
+  ];
+  const s = document.createElement('script');
+  s.src = urls[0];
+  s.onload = cb;
+  s.onerror = function(){
+    const s2 = document.createElement('script');
+    s2.src = urls[1];
+    s2.onload = cb;
+    s2.onerror = function(){
+      camSet('تعذّر تجهيز السكن');
+      camErr('تأكد من الإنترنت أو استخدم «التقاط صورة».');
     };
-    tryAt(0);
-  });
-  scLoadPromise.then(()=>{ if(cb) cb(); }).catch(()=>{});
+    document.head.appendChild(s2);
+  };
+  document.head.appendChild(s);
 }
 
-function scStop(){
-  if(!scState) return;
-  clearTimeout(scState.noDetect);
-  if(scState.h5){ try{ scState.h5.stop().catch(()=>{}); }catch(e){} }
-  scState = null;
-}
-
-function scClose(openedAgain){
-  scStop();
-  const m = $('scModal');
-  if(m && !openedAgain) m.classList.remove('show');
-}
-
-function scAccept(raw){
-  const cb = scPending;
-  scClose(false);
-  if(raw && cb){
-    scPending = null;
-    cb(String(raw).trim());
+function camStart(){
+  const m = $('camModal');
+  if(!m || camState) return;
+  if(window.BarcodeDetector && navigator.mediaDevices && navigator.mediaDevices.getUserMedia){
+    camStartLive();
+    return;
   }
+  if(window.Html5Qrcode){
+    camStartLib();
+    return;
+  }
+  camSet('السكن غير متاح على المتصفح');
+  camErr('استخدم زر «التقاط صورة» الموجود بالأسفل.');
 }
 
-function scStart(){
-  const m = $('scModal');
-  if(!m || scState) return;
-  if(!window.Html5Qrcode){ scSetStatus('تعذّر تحميل مكتبة السكان'); scSetErr('اضغط «إعادة المحاولة» أو تأكد من الإنترنت.'); return; }
-  const vp = $('scViewport');
-  if(vp) vp.innerHTML = '<div id="scH5"></div>';
-  scSetStatus('2 - تشغيل الكاميرا...');
-  scSetErr('');
-  const h5 = new Html5Qrcode('scH5');
-  scState = { h5 };
+function camStartLive(){
+  const m = $('camModal');
+  if(!m) return;
+  navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then(function(stream){
+    if(!m.classList.contains('show')){ stream.getTracks().forEach(function(t){ t.stop(); }); return; }
+    const vp = $('camViewport');
+    if(!vp){ stream.getTracks().forEach(function(t){ t.stop(); }); return; }
+    vp.innerHTML = '<video id="camVideo" playsinline muted autoplay></video>';
+    const video = $('camVideo');
+    video.srcObject = stream;
+    video.play().catch(function(){});
+    let det;
+    try{
+      det = new BarcodeDetector({ formats: ['code_39','code_128','code_93','ean_13','ean_8','itf','upc_a','upc_e','qr_code'] });
+    }catch(e){
+      try{ det = new BarcodeDetector(); }catch(e2){ det = null; }
+    }
+    if(!det){
+      stream.getTracks().forEach(function(t){ t.stop(); });
+      camSet('قراءة الباركود غير مدعومة');
+      camErr('استخدم زر «التقاط صورة».');
+      return;
+    }
+    camState = { stream: stream, det: det, timer: null };
+    camSet('وجّه الكاميرا على الباركود وثبّت ثانية.');
+    camState.timer = setInterval(async function(){
+      if(!camState || !m.classList.contains('show')){ clearInterval(camState && camState.timer); return; }
+      try{
+        const codes = await camState.det.detect(video);
+        if(codes && codes.length && codes[0].rawValue){ camAccept(codes[0].rawValue); }
+      }catch(e){}
+    }, 280);
+  }).catch(function(){
+    camSet('تعذّر فتح الكاميرا الحية');
+    camErr('فعّل إذن الكاميرا للموقع ثم اضغط «إعادة المحاولة»، أو استخدم «التقاط صورة».');
+    if(window.Html5Qrcode){ camStartLib(); }
+  });
+}
+
+function camStartLib(){
+  const m = $('camModal');
+  const vp = $('camViewport');
+  if(!m || !vp) return;
+  vp.innerHTML = '<div id="camH5"></div>';
+  camSet('تشغيل مكتبة السكان...');
+  const h5 = new Html5Qrcode('camH5');
+  camState = { lib: h5 };
   h5.start(
     { facingMode: 'environment' },
     { fps: 12, qrbox: (window.matchMedia && window.matchMedia('(pointer:coarse)').matches) ? { width: 300, height: 220 } : { width: 320, height: 150 } },
-    (text)=>{ scAccept(text); },
-    ()=>{}
-  ).then(()=>{
-    if(!scState) return;
-    scSetStatus('3 - وجّه الكاميرا على الكود (Code39/Code128) — ثبّت الكاميرا ثانية.');
-    scState.noDetect = setTimeout(()=>{
-      if(scState && !scState.detected){
-        scSetStatus('لم يُكتشف باركود — قرب الكاميرا على الكود وثبّتها (Code39/Code128).');
-      }
-    }, 9000);
-  }).catch(err=>{
-    if(scState && err && err.name === 'NotFoundException'){ return; }
-    scState = null;
-    scSetStatus('تعذّر تشغيل الكاميرا');
-    scSetErr('الخطأ: ' + (err && err.message ? err.message : String(err)) + ' — فعّل إذن الكاميرا من المتصفح ثم اضغط «إعادة المحاولة».');
+    function(text){ camAccept(text); },
+    function(){}
+  ).then(function(){
+    if(!camState) return;
+    camSet('وجّه الكاميرا على الباركود (Code39/Code128) وثبّت ثانية.');
+  }).catch(function(err){
+    camState = null;
+    camSet('تعذّر تشغيل مكتبة السكان');
+    camErr('الخطأ: ' + (err && err.message ? err.message : String(err)) + ' — استخدم «التقاط صورة» أو اضغط «إعادة المحاولة».');
   });
 }
 
-function scOpen(onScan){
-  try{ showToast('جارِ فتح السكان...'); }catch(e){}
-  scPending = onScan || scPending;
-  scSetErr('');
-  const m = $('scModal');
-  if(!m) return;
-  scClose(false);
-  m.classList.add('show');
-  scSetStatus('جارِ تجهيز الكاميرا...');
-  scLoadLib(()=>{ scStart(); });
-}
-
-$('scCloseBtn') && $('scCloseBtn').addEventListener('click', ()=> scClose(false));
-$('scRetryBtn') && $('scRetryBtn').addEventListener('click', ()=>{
-  const pend = scPending;
-  scClose(true);
-  setTimeout(()=>{ scPending = pend; scOpen(pend); }, 80);
-});
-
-/* زر سكان Money Map — معاد إنشاؤه زي زرار الـ Last Piece بالظبط (إنشاء + addEventListener + نفس scOpen) */
-function buildMoneyMapScanBtn(){
-  const holder = $('moneyMapScanHolder');
-  if(!holder) return;
-  let b = $('moneyMapScanBtn');
-  if(!b){
-    b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'scan-btn';
-    b.id = 'moneyMapScanBtn';
-    b.textContent = '📷';
-    holder.appendChild(b);
+function camAccept(raw){
+  const c = camPending;
+  camClose();
+  if(c && raw){
+    camPending = null;
+    c(String(raw).trim());
   }
-  if(b.dataset.mmBound) return;
-  b.dataset.mmBound = '1';
-  b.addEventListener('click', ()=>{
-    scOpen((raw)=>{ moneyMapAdd(raw); });
-  });
 }
+
+function camClose(){
+  if(camState){
+    clearInterval(camState.timer);
+    if(camState.stream){ try{ camState.stream.getTracks().forEach(function(t){ t.stop(); }); }catch(e){} }
+    if(camState.lib){ try{ camState.lib.stop().catch(function(){}); }catch(e){} }
+    camState = null;
+  }
+  const m = $('camModal');
+  if(m) m.classList.remove('show');
+}
+
+function camDecodeFile(file){
+  camSet('قراءة الباركود من الصورة...');
+  camErr('');
+  const vp = $('camViewport');
+  if(vp) vp.innerHTML = '<div id="camDecodeBox" style="display:none;"></div>';
+  const img = new Image();
+  img.onload = function(){
+    if(window.BarcodeDetector){
+      new BarcodeDetector({ formats: ['code_39','code_128','code_93','ean_13','ean_8','itf'] }).detect(img).then(function(codes){
+        if(codes && codes.length && codes[0].rawValue){ camAccept(codes[0].rawValue); }
+        else{
+          camSet('الباركود غير واضح بالصورة');
+          camErr('خد صورة أقرب وأوضح للكود.');
+        }
+      }).catch(function(){ camSet('تعذّر قراءة الصورة'); });
+    } else if(window.Html5Qrcode){
+      const h5 = new Html5Qrcode('camDecodeBox', false);
+      h5.decodeFile(file).then(function(t){ camAccept(t); }).catch(function(){ camSet('الباركود غير واضح بالصورة'); });
+    } else {
+      camSet('قراءة الصور غير مدعومة على المتصفح');
+    }
+  };
+  img.onerror = function(){ camSet('تعذّر فتح الصورة'); };
+  img.src = URL.createObjectURL(file);
+}
+
+$('camCloseBtn') && $('camCloseBtn').addEventListener('click', camClose);
+$('camRetryBtn') && $('camRetryBtn').addEventListener('click', function(){
+  const pend = camPending;
+  camClose();
+  setTimeout(function(){ if(pend) camOpen(pend); }, 80);
+});
+$('camSnapInput') && $('camSnapInput').addEventListener('change', function(e){
+  const f = e.target.files && e.target.files[0];
+  if(f) camDecodeFile(f);
+  e.target.value = '';
+});
 
 // ================= MAP CHECK (فحص اللوكيشن) =================
 const mapCheckDBKey = ()=> 'mapCheck_v1_' + (currentBranch ? currentBranch.id : 'anon');
@@ -3351,7 +3401,7 @@ function openMapCheckScreen(){
   }
 }
 $('openMapCheckBtn') && $('openMapCheckBtn').addEventListener('click', openMapCheckScreen);
-$('mapCheckBackBtn') && $('mapCheckBackBtn').addEventListener('click', ()=>{ scStop(); switchScreen('screen-dashboard'); });
+$('mapCheckBackBtn') && $('mapCheckBackBtn').addEventListener('click', ()=>{ camClose(); switchScreen('screen-dashboard'); });
 
 const dropMapCheckLoc = $('dropMapCheckLoc');
 ['dragover','dragenter'].forEach(evt=> dropMapCheckLoc.addEventListener(evt, (e)=>{ e.preventDefault(); dropMapCheckLoc.classList.add('dragover'); }));
@@ -3452,7 +3502,7 @@ function mapCheckAddCode(raw){
 }
 $('mapCheckAddBtn').addEventListener('click', ()=> mapCheckAddCode());
 $('mapCheckCodeInput').addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); mapCheckAddCode(); } });
-$('mapCheckScanBtn').addEventListener('click', ()=> scOpen((text)=>{ mapCheckAddCode(text); }));
+$('mapCheckScanBtn').addEventListener('click', ()=> camOpen((text)=>{ mapCheckAddCode(text); }));
 
 function renderMapCheckList(){
   const list = $('mapCheckList');
@@ -3889,11 +3939,11 @@ function moneyMapExport(){
   XLSX.writeFile(wb, branchFname('Money_Map') + '.xlsx');
 }
 $('openMoneyMapBtn') && $('openMoneyMapBtn').addEventListener('click', moneyMapOpen);
-$('moneyMapBackBtn') && $('moneyMapBackBtn').addEventListener('click', ()=>{ scStop(); switchScreen('screen-dashboard'); });
+$('moneyMapBackBtn') && $('moneyMapBackBtn').addEventListener('click', ()=>{ camClose(); switchScreen('screen-dashboard'); });
 $('moneyMapAddBtn') && $('moneyMapAddBtn').addEventListener('click', ()=> moneyMapAdd());
-buildMoneyMapScanBtn();
+$('moneyMapCam') && $('moneyMapCam').addEventListener('click', ()=> camOpen((raw)=>{ moneyMapAdd(raw); }));
 $('moneyMapCodeInput') && $('moneyMapCodeInput').addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); moneyMapAdd(); } });
-/* زر سكان Money Map مربوط inline داخل الـ HTML بنفس دالة السكن scOpen المستخدمة في Last Piece */
+/* زر سكان Money Map مربوط بـ camOpen مع moneyMapAdd */
 $('moneyMapExportBtn') && $('moneyMapExportBtn').addEventListener('click', moneyMapExport);
 $('moneyMapResetBtn') && $('moneyMapResetBtn').addEventListener('click', ()=>{
   moneyMapRows = [];
