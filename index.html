@@ -3301,11 +3301,31 @@ function camStartLib(){
 
 function camAccept(raw){
   const c = camPending;
-  camClose();
   if(c && raw){
     camPending = null;
+    playBeep();
     c(String(raw).trim());
   }
+  camClose();
+}
+
+function playBeep(){
+  try{
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if(!AC) return;
+    const ctx = new AC();
+    if(ctx.state === 'suspended'){ ctx.resume().catch(function(){}); }
+    const g = ctx.createGain();
+    g.gain.value = 0.5;
+    const o = ctx.createOscillator();
+    o.type = 'sine';
+    o.frequency.value = 1568;
+    o.connect(g);
+    g.connect(ctx.destination);
+    o.start();
+    o.stop(ctx.currentTime + 0.18);
+    setTimeout(function(){ try{ ctx.close(); }catch(e){} }, 300);
+  }catch(e){}
 }
 
 function camClose(){
