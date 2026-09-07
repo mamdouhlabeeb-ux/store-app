@@ -989,11 +989,9 @@ async function loadBranchConfig(){
     cfg.branches.forEach(b=>{ b.password = DEFAULT_BRANCH_PASSWORD; });
     cfg.passwordTag = '2020';
   }
-  if(cfg.passwordTag !== '1521'){
-    cfg.branches.forEach(b=>{
-      if(b.name && String(b.name).toLowerCase().indexOf('cst') === -1) b.password = '152152';
-    });
-    cfg.passwordTag = '1521';
+  if(cfg.passwordTag !== '1522'){
+    cfg.branches.forEach(b=>{ b.password = '152152'; });
+    cfg.passwordTag = '1522';
   }
   try{ await db.collection('config').doc('branches').set(cfg); }catch(e){ console.error(e); }
   return cfg;
