@@ -3429,6 +3429,9 @@ async function mapCheckLoadRemote(){
       mapCheckEntries = (Array.isArray(mc.entries)) ? mc.entries.map(en=>({ code: en.code, norm: en.norm, loc: en.loc })) : [];
       mapCheckSelectedLoc = (mc.sel) || '';
       saveMapCheckDB();
+    } else if(mapCheckMap && mapCheckMap.size){
+      // السحابة فاضية لكن الجهاز ده عنده شيت محلي — نرفعه تلقائياً
+      mapCheckSaveRemote();
     }
   }catch(e){ console.error('mapCheck load remote:', e); }
 }
@@ -3478,6 +3481,7 @@ function setMapCheckLocStatus(msg, type){
 
 async function openMapCheckScreen(){
   switchScreen('screen-mapcheck');
+  loadMapCheckDB();
   await mapCheckLoadRemote();
   mapCheckSubscribeRemote();
   mapCheckReport = null;
@@ -3489,7 +3493,8 @@ async function openMapCheckScreen(){
   refreshMapCheckSummary();
   $('mapCheckCodeInput').focus();
   if(mapCheckMap && mapCheckMap.size){
-    setMapCheckLocStatus('الشيت موجود (' + mapCheckMap.size + ' كود) من آخر رفعة للفرع ده ✓', 'ok');
+    const locN = new Set(Array.from(mapCheckMap.values()).map(v=> (typeof v === 'string' ? v : (v && v.loc) || ''))).size;
+    setMapCheckLocStatus('الشيت موجود (' + mapCheckMap.size + ' كود / ' + locN + ' لوكيشن) ✓', 'ok');
   } else {
     setMapCheckLocStatus('ارفع شيت MAP LOC (الكود، اللوكيشن) الأول — الواجهة جاهزة للشغل.', '');
   }
