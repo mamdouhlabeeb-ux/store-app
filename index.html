@@ -859,7 +859,7 @@ service cloud.firestore {
       <div class="mm-actions">
         <input class="search-input" id="moneyMapCodeInput" placeholder="اكتب أو سكان الكود..." inputmode="numeric" enterkeyhint="enter" style="flex:0 1 auto;min-width:180px;max-width:260px;">
         <button class="export-btn" id="moneyMapAddBtn">+ إضافة</button>
-        <button type="button" class="scan-btn" id="moneyMapScanBtn" onclick="if(window.scOpen){ scOpen(function(r){ moneyMapAdd(r); }); }">📷 سكان</button>
+        <span id="moneyMapScanHolder" style="display:inline-flex;"></span>
       </div>
       <div id="moneyMapList" style="display:flex;flex-direction:column;gap:8px;"></div>
       <div class="mm-actions" style="margin-top:4px;">
@@ -3265,6 +3265,26 @@ $('scRetryBtn') && $('scRetryBtn').addEventListener('click', ()=>{
   setTimeout(()=>{ scPending = pend; scOpen(pend); }, 80);
 });
 
+/* زر سكان Money Map — معاد إنشاؤه زي زرار الـ Last Piece بالظبط (إنشاء + addEventListener + نفس scOpen) */
+function buildMoneyMapScanBtn(){
+  const holder = $('moneyMapScanHolder');
+  if(!holder) return;
+  let b = $('moneyMapScanBtn');
+  if(!b){
+    b = document.createElement('button');
+    b.type = 'button';
+    b.className = 'scan-btn';
+    b.id = 'moneyMapScanBtn';
+    b.textContent = '📷 سكان';
+    holder.appendChild(b);
+  }
+  if(b.dataset.mmBound) return;
+  b.dataset.mmBound = '1';
+  b.addEventListener('click', ()=>{
+    scOpen((raw)=>{ moneyMapAdd(raw); });
+  });
+}
+
 // ================= MAP CHECK (فحص اللوكيشن) =================
 const mapCheckDBKey = ()=> 'mapCheck_v1_' + (currentBranch ? currentBranch.id : 'anon');
 let mapCheckMap = new Map();          // كود مُطبّع -> لوكيشن
@@ -3854,6 +3874,7 @@ function moneyMapExport(){
 $('openMoneyMapBtn') && $('openMoneyMapBtn').addEventListener('click', moneyMapOpen);
 $('moneyMapBackBtn') && $('moneyMapBackBtn').addEventListener('click', ()=>{ scStop(); switchScreen('screen-dashboard'); });
 $('moneyMapAddBtn') && $('moneyMapAddBtn').addEventListener('click', ()=> moneyMapAdd());
+buildMoneyMapScanBtn();
 $('moneyMapCodeInput') && $('moneyMapCodeInput').addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); moneyMapAdd(); } });
 /* زر سكان Money Map مربوط inline داخل الـ HTML بنفس دالة السكن scOpen المستخدمة في Last Piece */
 $('moneyMapExportBtn') && $('moneyMapExportBtn').addEventListener('click', moneyMapExport);
