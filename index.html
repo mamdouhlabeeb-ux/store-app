@@ -711,8 +711,9 @@ service cloud.firestore {
   <div id="lastPriceStream"></div>
   <div id="scanModal" class="scan-modal">
     <div class="scan-modal-box">
-      <div id="scanBox"><video id="scanVideo" playsinline muted></video><div id="scanStatus"></div></div>
+      <div id="scanBox"><video id="scanVideo" playsinline muted></video><div id="scanStatus"></div><div id="scanErrDetail"></div></div>
       <div class="scan-modal-actions">
+        <span id="scanVerBadge" style="align-self:center;font-size:13px;color:#8a7f72;margin-right:auto;">v2.9-scanfix</span>
         <button type="button" class="btn-primary" id="scanRetryBtn">إعادة المحاولة</button>
         <button type="button" class="btn-ghost" id="scanCloseBtn">إغلاق</button>
       </div>
@@ -3154,14 +3155,20 @@ let lpPendingScan = null;
 function lpEnsureLib(cb){
   if(window.Html5Qrcode){ cb(); return; }
   const statusEl = $('scanStatus');
+  const errEl = $('scanErrDetail');
+  const setErr = (m)=>{
+    if(statusEl) statusEl.textContent = 'تعذّر تحميل مكتبة السكان';
+    if(errEl) errEl.textContent = m;
+  };
+  if(errEl) errEl.textContent = '';
   if(statusEl) statusEl.textContent = 'جارِ تحميل مكتبة السكان...';
   const loadSrc = (src, onErr)=>{
     const s = document.createElement('script');
     s.src = src;
-    s.onload = ()=> cb();
+    s.onload = ()=>{ if(errEl) errEl.textContent = ''; cb(); };
     s.onerror = ()=>{
       if(onErr) onErr();
-      else if(statusEl) statusEl.textContent = 'تعذّر تحميل مكتبة السكان — تأكد من اتصال الإنترنت.';
+      else setErr('فشل تحميل مكتبة السكان من ' + src + ' — تأكد من الإنترنت أو اضغط «إعادة المحاولة».');
     };
     document.head.appendChild(s);
   };
@@ -3274,25 +3281,17 @@ function startLastPriceLibScan(onScan){
         { facingMode: 'environment' },
         { fps: 15, qrbox: (window.matchMedia && window.matchMedia('(pointer:coarse)').matches) ? { width: 280, height: 200 } : { width: 300, height: 120 } },
         (text)=>{ done(text); },
-        ()=>{},
-        undefined,
-        { formatsToSupport: [
-          Html5QrcodeSupportedFormats.CODE_128,
-          Html5QrcodeSupportedFormats.CODE_39,
-          Html5QrcodeSupportedFormats.CODE_93,
-          Html5QrcodeSupportedFormats.EAN_13,
-          Html5QrcodeSupportedFormats.EAN_8,
-          Html5QrcodeSupportedFormats.ITF,
-          Html5QrcodeSupportedFormats.UPC_A,
-          Html5QrcodeSupportedFormats.UPC_E,
-          Html5QrcodeSupportedFormats.QR_CODE
-        ] }
+        ()=>{}
       ).then(()=>{
         const ndt = setTimeout(()=>{
           if(lpScannerState && lpScannerState.h5 && !lpScannerState.detected) statusEl.textContent = 'لم يُكتشف باركود — قرب/اضبط الكاميرا على الكود بوضوح.';
         }, 9000);
         lpScannerState.noDetectTimer = ndt;
-      }).catch(err=>{ statusEl.textContent = lpScanFailMsg(); });
+      }).catch(err=>{
+        statusEl.textContent = lpScanFailMsg();
+        const errEl = $('scanErrDetail');
+        if(errEl && err && err.name !== 'NotFoundException') errEl.textContent = 'سبب الخطأ: ' + (err.message || String(err));
+      });
     }catch(e){ statusEl.textContent = 'حصل خطأ في تشغيل السكان.'; }
   });
 }
