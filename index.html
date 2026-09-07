@@ -3229,7 +3229,7 @@ function openLastPriceScanner(onScan){
       navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then((stream)=>{
         if(!modal.classList.contains('show')){ stream.getTracks().forEach(t=> t.stop()); return; }
         let det;
-        try{ det = new BarcodeDetector({ formats: ['code_128','code_39','ean_13','ean_8','itf'] }); }
+        try{ det = new BarcodeDetector({ formats: ['code_128','code_39','code_93','ean_13','ean_8','itf','upc_a','upc_e','qr_code'] }); }
         catch(e){ det = new BarcodeDetector(); }
         video.srcObject = stream;
         video.play().catch(()=>{});
@@ -3276,8 +3276,23 @@ function startLastPriceLibScan(onScan){
         (text)=>{ done(text); },
         ()=>{},
         undefined,
-        { formatsToSupport: [ Html5QrcodeSupportedFormats.CODE_128, Html5QrcodeSupportedFormats.CODE_39, Html5QrcodeSupportedFormats.EAN_13, Html5QrcodeSupportedFormats.EAN_8 ] }
-      ).catch(err=>{ statusEl.textContent = lpScanFailMsg(); });
+        { formatsToSupport: [
+          Html5QrcodeSupportedFormats.CODE_128,
+          Html5QrcodeSupportedFormats.CODE_39,
+          Html5QrcodeSupportedFormats.CODE_93,
+          Html5QrcodeSupportedFormats.EAN_13,
+          Html5QrcodeSupportedFormats.EAN_8,
+          Html5QrcodeSupportedFormats.ITF,
+          Html5QrcodeSupportedFormats.UPC_A,
+          Html5QrcodeSupportedFormats.UPC_E,
+          Html5QrcodeSupportedFormats.QR_CODE
+        ] }
+      ).then(()=>{
+        const ndt = setTimeout(()=>{
+          if(lpScannerState && lpScannerState.h5 && !lpScannerState.detected) statusEl.textContent = 'لم يُكتشف باركود — قرب/اضبط الكاميرا على الكود بوضوح.';
+        }, 9000);
+        lpScannerState.noDetectTimer = ndt;
+      }).catch(err=>{ statusEl.textContent = lpScanFailMsg(); });
     }catch(e){ statusEl.textContent = 'حصل خطأ في تشغيل السكان.'; }
   });
 }
@@ -3872,7 +3887,20 @@ $('openMoneyMapBtn') && $('openMoneyMapBtn').addEventListener('click', moneyMapO
 $('moneyMapBackBtn') && $('moneyMapBackBtn').addEventListener('click', ()=>{ stopLastPriceScanner(); switchScreen('screen-dashboard'); });
 $('moneyMapAddBtn') && $('moneyMapAddBtn').addEventListener('click', ()=> moneyMapAdd());
 $('moneyMapCodeInput') && $('moneyMapCodeInput').addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); moneyMapAdd(); } });
-$('moneyMapScanBtn') && $('moneyMapScanBtn').addEventListener('click', ()=> openLastPriceScanner((text)=>{ moneyMapAdd(text); }));
+$('moneyMapScanBtn') && (function(){
+  const b = $('moneyMapScanBtn');
+  if(b.dataset.mmSc) return;
+  b.dataset.mmSc = '1';
+  let fireLock = false;
+  const fire = ()=>{
+    if(fireLock) return;
+    fireLock = true;
+    setTimeout(()=>{ fireLock = false; }, 300);
+    openLastPriceScanner((text)=>{ moneyMapAdd(text); });
+  };
+  b.addEventListener('click', fire);
+  b.addEventListener('touchend', (e)=>{ e.preventDefault(); fire(); }, { passive: false });
+})();
 $('moneyMapExportBtn') && $('moneyMapExportBtn').addEventListener('click', moneyMapExport);
 $('moneyMapResetBtn') && $('moneyMapResetBtn').addEventListener('click', ()=>{
   moneyMapRows = [];
