@@ -729,20 +729,7 @@ service cloud.firestore {
     <button type="button" class="warn-x" id="lastPriceWarnClose">✕</button>
   </div>
   <div id="lastPriceStream"></div>
-  <div id="camModal" class="scan-modal">
-    <div class="scan-modal-head">
-      <div class="scan-modal-title">سكان الباركود (Code39/Code128)</div>
-      <button type="button" class="scan-x" id="camCloseBtn" title="إغلاق">✕</button>
-    </div>
-    <div class="cam-bar" id="camStatus"></div>
-    <div class="cam-bar" id="camErr"></div>
-    <div id="camViewport"></div>
-    <div class="scan-modal-foot">
-      <label class="btn-primary" id="camSnapLabel" style="cursor:pointer;">التقاط صورة</label>
-      <input type="file" id="camSnapInput" accept="image/*" capture="environment" style="display:none;">
-      <button type="button" class="btn-primary" id="camRetryBtn">إعادة المحاولة</button>
-    </div>
-  </div>
+  
 </div>
 
 <!-- ===== PRINT WINDOW (ليبل تسعير) ===== -->
@@ -4078,5 +4065,19 @@ try{ localStorage.removeItem(mapCheckDBKey()); }catch(e){}
 
 })();
 </script>
+  <div id="camModal" class="scan-modal">
+    <div class="scan-modal-head">
+      <div class="scan-modal-title">سكان الباركود (Code39/Code128)</div>
+      <button type="button" class="scan-x" id="camCloseBtn" title="إغلاق">✕</button>
+    </div>
+    <div class="cam-bar" id="camStatus"></div>
+    <div class="cam-bar" id="camErr"></div>
+    <div id="camViewport"></div>
+    <div class="scan-modal-foot">
+      <label class="btn-primary" id="camSnapLabel" style="cursor:pointer;">التقاط صورة</label>
+      <input type="file" id="camSnapInput" accept="image/*" capture="environment" style="display:none;">
+      <button type="button" class="btn-primary" id="camRetryBtn">إعادة المحاولة</button>
+    </div>
+  </div>
 </body>
 </html>
