@@ -689,6 +689,9 @@ service cloud.firestore {
     .lp-limit input{width:120px;padding:9px 12px;border:1px solid #e5e7eb;border-radius:10px;font-size:15px;}
     .scan-btn{background:#14b8a6;color:#fff;border:none;border-radius:10px;padding:8px 12px;font-size:15px;cursor:pointer;}
     .scan-btn:disabled{opacity:.45;}
+    .ios-no-scan .scan-btn{ display:none !important; }
+    .ios-no-scan #moneyMapScanBtn{ display:none !important; }
+    .ios-no-scan #mapCheckScanBtn{ display:none !important; }
     .scan-modal{position:fixed;inset:0;background:rgba(15,23,42,.62);display:none;align-items:center;justify-content:center;z-index:2000;padding:16px;}
     .scan-modal.show{display:flex;}
     .scan-modal-box{background:#fff;border-radius:16px;padding:16px;max-width:420px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,.35);}
@@ -3221,7 +3224,7 @@ function openLastPriceScanner(onScan){
             }
           }catch(e){}
         }, 350);
-      }).catch(()=>{ statusEl.textContent = lpScanFailMsg(); });
+      }).catch(()=>{ statusEl.textContent = lpScanFailMsg(); startLastPriceLibScan(onScan); });
       return;
     }catch(e){}
   }
@@ -3835,6 +3838,9 @@ function moneyMapExport(){
   const rowsData = [['الكود', 'اللوكيشن', 'الكود المكتوب', 'الوقت']];
   moneyMapRows.forEach(en=> rowsData.push([en.stockCode || en.typed, en.loc, en.typed, en.time]));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rowsData), 'الأكواد واللوكيشنات');
+  const noLocData = [['الكود', 'توتال الموديل', 'الديبارتمنت']];
+  stockSummary.forEach(r=>{ if(!locationMap.has(r.code)) noLocData.push([r.code, r.totalQty, r.department]); });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(noLocData), 'أكواد بدون مكان');
   XLSX.writeFile(wb, branchFname('Money_Map') + '.xlsx');
 }
 $('openMoneyMapBtn') && $('openMoneyMapBtn').addEventListener('click', moneyMapOpen);
@@ -3860,8 +3866,9 @@ $('moneyMapResetBtn') && $('moneyMapResetBtn').addEventListener('click', ()=>{
   const closeBtn = $('kbBarClose');
   let kbActive = null;
   let kbPinned = false;
-  const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent)
-    || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  window.deviceIsIOS = /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isIOS = window.deviceIsIOS;
+  if(isIOS) document.body.classList.add('ios-no-scan');
   function kbFixPos(){
     if(!kbBar.style.display || kbBar.style.display === 'none') return;
     const vvp = window.visualViewport;
