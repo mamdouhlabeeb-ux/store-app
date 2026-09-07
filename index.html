@@ -713,6 +713,7 @@ service cloud.firestore {
     <div class="scan-modal-box">
       <div id="scanBox"><video id="scanVideo" playsinline muted></video><div id="scanStatus"></div></div>
       <div class="scan-modal-actions">
+        <button type="button" class="btn-primary" id="scanRetryBtn">إعادة المحاولة</button>
         <button type="button" class="btn-ghost" id="scanCloseBtn">إغلاق</button>
       </div>
     </div>
@@ -2480,11 +2481,16 @@ wrap.innerHTML = html;
 }
 
 function codesWithoutLocArr(head){
+  const taken = new Set();
+  moneyMapRows.forEach(m=>{
+    if(m.norm) taken.add(m.norm);
+    if(m.stockCode){ try{ taken.add(normalizeLastPriceCode(String(m.stockCode))); }catch(e){ taken.add(m.stockCode); } }
+  });
   const out = [ head.length ? head : ['code','qty','dpt'] ];
   stockSummary.forEach(r=>{
-    const sizes = r.sizes || [];
-    const hasLoc = sizes.some(s=> (s.location || '').toString().trim() !== '');
-    if(!hasLoc) out.push([r.code, r.totalQty, r.department]);
+    let rm = false;
+    try{ rm = taken.has(normalizeLastPriceCode(String(r.code))); }catch(e){ rm = taken.has(r.code); }
+    if(!rm) out.push([r.code, r.totalQty, r.department]);
   });
   return out;
 }
@@ -3149,11 +3155,19 @@ function lpEnsureLib(cb){
   if(window.Html5Qrcode){ cb(); return; }
   const statusEl = $('scanStatus');
   if(statusEl) statusEl.textContent = 'جارِ تحميل مكتبة السكان...';
-  const s = document.createElement('script');
-  s.src = 'https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js';
-  s.onload = ()=> cb();
-  s.onerror = ()=>{ if(statusEl) statusEl.textContent = 'تعذّر تحميل مكتبة السكان — اتأكد من الإنترنت.'; };
-  document.head.appendChild(s);
+  const loadSrc = (src, onErr)=>{
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload = ()=> cb();
+    s.onerror = ()=>{
+      if(onErr) onErr();
+      else if(statusEl) statusEl.textContent = 'تعذّر تحميل مكتبة السكان — تأكد من اتصال الإنترنت.';
+    };
+    document.head.appendChild(s);
+  };
+  loadSrc('https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js', ()=>{
+    loadSrc('https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js', null);
+  });
 }
 function lpIsStandalone(){
   try{
@@ -3166,7 +3180,7 @@ function lpScanFailMsg(){
   if(lpIsStandalone()){
     return 'الكاميرا المباشرة مش متاحة داخل التطبيق المثبّت على ايفون (قيود Apple) — استخدم زر «📷 التقاط صورة للباركود» بالأعلى.';
   }
-  return 'تعذّر فتح الكاميرا — اتحقق من إذن الكاميرا في المتصفح.';
+  return 'تعذّر فتح الكاميرا - فعّل إذن الكاميرا للموقع من إعدادات المتصفح ثم اضغط «إعادة المحاولة».';
 }
 function stopLastPriceScanner(){
   if(lpScannerState){
@@ -3186,6 +3200,11 @@ function stopLastPriceScanner(){
   if(modal) modal.classList.remove('show');
 }
 $('scanCloseBtn').addEventListener('click', stopLastPriceScanner);
+$('scanRetryBtn') && $('scanRetryBtn').addEventListener('click', ()=>{
+  const pend = lpPendingScan;
+  stopLastPriceScanner();
+  setTimeout(()=>{ if(pend) openLastPriceScanner(pend); }, 60);
+});
 
 function openLastPriceScanner(onScan){
   const modal = $('scanModal');
