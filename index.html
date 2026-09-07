@@ -1138,28 +1138,7 @@ function startLiveSync(){
         renderTransfersTable();
       }
     }
-    // تزامن Map Check الحي: أي رفع شيت على أي جهاز بيظهر ويسمّع فوراً على كل الموبايلات
-    if(d.mapCheck && typeof d.mapCheck === 'object' && Array.isArray(d.mapCheck.rows)){
-      const mc = d.mapCheck;
-      const at2 = (typeof mc.updatedAt === 'string') ? mc.updatedAt : '';
-      if(at2 && at2 === mapCheckLastAt) return;
-      mapCheckLastAt = at2;
-      mapCheckMap = new Map(mc.rows.map(p=>[p[0], typeof p[1] === 'string' ? { loc: p[1], raw: '' } : { loc: (p[1] && p[1].loc) || '', raw: (p[1] && p[1].raw) || '' }]));
-      mapCheckEntries = (Array.isArray(mc.entries)) ? mc.entries.map(en=>({ code: en.code, norm: en.norm, loc: en.loc })) : [];
-      if(typeof mc.sel === 'string') mapCheckSelectedLoc = mc.sel;
-      saveMapCheckDB();
-      const scr = $('screen-mapcheck');
-      if(scr && scr.classList.contains('active')){
-        mapCheckReport = null;
-        const rp = $('mapCheckReportPanel'); if(rp) rp.style.display = 'none';
-        $('mapCheckPanel').style.display = 'block';
-        refreshMapCheckLocs();
-        renderMapCheckList();
-        refreshMapCheckSummary();
-        setMapCheckLocStatus('الشيت اتعمل تحديث (' + mapCheckMap.size + ' كود) ✓', 'ok');
-      }
-    }
-  }, err=> console.error('liveSync:', err));
+    }, err=> console.error('liveSync:', err));
 }
 function stopLiveSync(){
   if(liveSync){ liveSync(); liveSync = null; }
@@ -3391,7 +3370,6 @@ let mapCheckMap = new Map();          // كود مُطبّع -> لوكيشن
 let mapCheckEntries = [];             // { code, norm, loc }
 let mapCheckSelectedLoc = '';
 let mapCheckReport = null;
-let mapCheckLastAt = null;   // أخر تحديث وصل ده الجهاز (عشان متكررش العرض بنفس النسخة)
 
 function saveMapCheckDB(){
   try{
@@ -3413,40 +3391,23 @@ function loadMapCheckDB(){
   }catch(e){ mapCheckMap = new Map(); mapCheckEntries = []; mapCheckSelectedLoc = ''; }
 }
 
-/* تزامن Map Check — محفوظ جوه وثيقة الفرع نفسها (نفس قناة بقية الشيتات) لضمان الشغل على كل الجهاز */
-async function mapCheckSaveRemote(){
-  if(!currentBranch || !currentBranch.id || typeof db === 'undefined' || !db) return false;
+/* ---------- نفس ميكانيزم اللاست بيس بالظبط: حفظ كامل في وثيقة الفرع + سحب عند فتح الشاشة ---------- */
+async function saveMapCheckRows(branchId){
+  if(!branchId) return;
   try{
-    const at = new Date().toISOString();
-    mapCheckLastAt = at;
-    await db.collection('branchData').doc(currentBranch.id).set({
-      mapCheck: {
-        rows: Array.from(mapCheckMap.entries()),
-        entries: mapCheckEntries,
-        sel: mapCheckSelectedLoc,
-        updatedAt: at
-      }
-    }, { merge: true });
-    return true;
-  }catch(e){ console.error('mapCheck save remote:', e); return false; }
+    const existing = await loadBranchData(branchId) || {};
+    existing.mapCheck = {
+      uploadedAt: new Date().toISOString(),
+      rows: Array.from(mapCheckMap.entries()),
+      entries: mapCheckEntries,
+      sel: mapCheckSelectedLoc
+    };
+    await saveBranchData(branchId, existing);
+  }catch(e){ console.error(e); }
 }
-async function mapCheckLoadRemote(){
-  if(!currentBranch || !currentBranch.id || typeof db === 'undefined' || !db) return;
-  try{
-    const snap = await db.collection('branchData').doc(currentBranch.id).get();
-    const data = snap.exists ? (snap.data() || {}) : {};
-    const mc = (data && data.mapCheck) ? data.mapCheck : null;
-    if(mc && Array.isArray(mc.rows)){
-      mapCheckMap = new Map(mc.rows.map(p=>[p[0], typeof p[1] === 'string' ? { loc: p[1], raw: '' } : { loc: (p[1] && p[1].loc) || '', raw: (p[1] && p[1].raw) || '' }]));
-      mapCheckEntries = (Array.isArray(mc.entries)) ? mc.entries.map(en=>({ code: en.code, norm: en.norm, loc: en.loc })) : [];
-      mapCheckSelectedLoc = (mc.sel) || '';
-    }
-    saveMapCheckDB();
-  }catch(e){ console.error('mapCheck load remote:', e); }
-}
-async function persistMapCheck(){
+function persistMapCheck(){
   saveMapCheckDB();
-  return await mapCheckSaveRemote();
+  if(currentBranch && currentBranch.id) saveMapCheckRows(currentBranch.id);
 }
 
 function setMapCheckLocStatus(msg, type){
@@ -3454,21 +3415,34 @@ function setMapCheckLocStatus(msg, type){
   el.className = 'upload-status'; if(type) el.classList.add(type); el.textContent = msg;
 }
 
-async function openMapCheckScreen(){
+function openMapCheckScreen(){
   switchScreen('screen-mapcheck');
-  await mapCheckLoadRemote();
+  $('mapCheckPanel').style.display = 'none';
   mapCheckReport = null;
   const rp = $('mapCheckReportPanel'); if(rp) rp.style.display = 'none';
-  if(mapCheckMap && mapCheckMap.size){
-    setMapCheckLocStatus('الشيت موجود (' + mapCheckMap.size + ' كود) من آخر رفعة للفرع ده ✓', 'ok');
-    $('mapCheckPanel').style.display = 'block';
-    refreshMapCheckLocs();
-    renderMapCheckList();
-    refreshMapCheckSummary();
-    $('mapCheckCodeInput').focus();
-  } else {
-    setMapCheckLocStatus('ارفع شيت MAP LOC (الكود، اللوكيشن) الأول.', '');
-  }
+  (async ()=>{
+    if(currentBranch && currentBranch.id){
+      try{
+        const doc = await loadBranchData(currentBranch.id);
+        const mc = (doc && doc.mapCheck) || null;
+        if(mc && Array.isArray(mc.rows)){
+          mapCheckMap = new Map(mc.rows.map(p=>[p[0], typeof p[1] === 'string' ? { loc: p[1], raw: '' } : { loc: (p[1] && p[1].loc) || '', raw: (p[1] && p[1].raw) || '' }]));
+          mapCheckEntries = (Array.isArray(mc.entries)) ? mc.entries.map(en=>({ code: en.code, norm: en.norm, loc: en.loc })) : [];
+          mapCheckSelectedLoc = (mc.sel) || '';
+        }
+      }catch(e){ console.error(e); mapCheckMap = new Map(); mapCheckEntries = []; }
+    } else { mapCheckMap = new Map(); mapCheckEntries = []; }
+    if(mapCheckMap && mapCheckMap.size){
+      setMapCheckLocStatus('الشيت موجود (' + mapCheckMap.size + ' كود) من آخر رفعة للفرع ده ✓', 'ok');
+      $('mapCheckPanel').style.display = 'block';
+      refreshMapCheckLocs();
+      renderMapCheckList();
+      refreshMapCheckSummary();
+      $('mapCheckCodeInput').focus();
+    } else {
+      setMapCheckLocStatus('ارفع شيت (الكود، اللوكيشن) الأول.', '');
+    }
+  })();
 }
 $('openMapCheckBtn') && $('openMapCheckBtn').addEventListener('click', openMapCheckScreen);
 $('mapCheckBackBtn') && $('mapCheckBackBtn').addEventListener('click', ()=>{
@@ -3507,8 +3481,8 @@ function handleMapCheckLocFile(file){
       refreshMapCheckLocs();
       renderMapCheckList();
       refreshMapCheckSummary();
-      const ok = await persistMapCheck();
-      setMapCheckLocStatus(ok ? 'تم رفع شيت MAP LOC (' + m.size + ' كود) ✓ — محفوظ على السحابة' : 'الشيت اتحفظ محلي — فشل الحفظ على السحابة! شوف رسالة الخطأ في الكونسول', ok ? 'ok' : 'err');
+      if(currentBranch && currentBranch.id) await saveMapCheckRows(currentBranch.id);
+      setMapCheckLocStatus('تم رفع شيت MAP LOC (' + m.size + ' كود) للفرع ' + (currentBranch ? escapeHtml(currentBranch.name || '') : '') + ' ✓', 'ok');
       $('mapCheckPanel').style.display = 'block';
       $('mapCheckCodeInput').focus();
     }catch(err){
