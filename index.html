@@ -3452,13 +3452,15 @@ function mapCheckSubscribeRemote(){
       if(scr && scr.classList.contains('active')){
         mapCheckReport = null;
         const rp = $('mapCheckReportPanel'); if(rp) rp.style.display = 'none';
-        if(mapCheckMap && mapCheckMap.size){
-          setMapCheckLocStatus('الشيت محدّث (' + mapCheckMap.size + ' كود) ✓', 'ok');
-          $('mapCheckPanel').style.display = 'block';
+        $('mapCheckPanel').style.display = 'block';
           refreshMapCheckLocs();
           renderMapCheckList();
           refreshMapCheckSummary();
-        }
+          if(mapCheckMap && mapCheckMap.size){
+            setMapCheckLocStatus('الشيت محدّث (' + mapCheckMap.size + ' كود) ✓', 'ok');
+          } else {
+            setMapCheckLocStatus('ارفع شيت MAP LOC — الواجهة جاهزة للشغل.', '');
+          }
       }
     });
   }catch(e){ console.error('mapCheck subscribe:', e); }
@@ -3479,15 +3481,16 @@ async function openMapCheckScreen(){
   mapCheckSubscribeRemote();
   mapCheckReport = null;
   const rp = $('mapCheckReportPanel'); if(rp) rp.style.display = 'none';
+  // لوحة الفحص بتظهر دايمًا على أي جهاز عشان تبقى جاهزة للشغل
+  $('mapCheckPanel').style.display = 'block';
+  refreshMapCheckLocs();
+  renderMapCheckList();
+  refreshMapCheckSummary();
+  $('mapCheckCodeInput').focus();
   if(mapCheckMap && mapCheckMap.size){
     setMapCheckLocStatus('الشيت موجود (' + mapCheckMap.size + ' كود) من آخر رفعة للفرع ده ✓', 'ok');
-    $('mapCheckPanel').style.display = 'block';
-    refreshMapCheckLocs();
-    renderMapCheckList();
-    refreshMapCheckSummary();
-    $('mapCheckCodeInput').focus();
   } else {
-    setMapCheckLocStatus('ارفع شيت MAP LOC (الكود، اللوكيشن) الأول.', '');
+    setMapCheckLocStatus('ارفع شيت MAP LOC (الكود، اللوكيشن) الأول — الواجهة جاهزة للشغل.', '');
   }
 }
 $('openMapCheckBtn') && $('openMapCheckBtn').addEventListener('click', openMapCheckScreen);
