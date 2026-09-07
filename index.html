@@ -2479,6 +2479,15 @@ wrap.innerHTML = html;
   });
 }
 
+function codesWithoutLocArr(head){
+  const out = [ head.length ? head : ['code','qty','dpt'] ];
+  stockSummary.forEach(r=>{
+    const sizes = r.sizes || [];
+    const hasLoc = sizes.some(s=> (s.location || '').toString().trim() !== '');
+    if(!hasLoc) out.push([r.code, r.totalQty, r.department]);
+  });
+  return out;
+}
 $('exportStockBtn').addEventListener('click', ()=>{
   if(stockSummary.length === 0) return;
   const wb = XLSX.utils.book_new();
@@ -2486,9 +2495,6 @@ $('exportStockBtn').addEventListener('click', ()=>{
   const summaryData = [ ['code','qty','dpt'] ];
   rows.forEach(r=> summaryData.push([r.code, r.totalQty, r.department]));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryData), 'الملخص');
-  const noLocData = [ ['code','qty','dpt'] ];
-  stockSummary.forEach(r=>{ if(!locationMap.has(r.code)) noLocData.push([r.code, r.totalQty, r.department]); });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(noLocData), 'أكواد بدون مكان');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(getFilteredStockData()), 'تفاصيل المقاسات');
   XLSX.writeFile(wb, branchFname('ملخص_مخزون') + '.xlsx');
 });
@@ -3198,7 +3204,8 @@ function openLastPriceScanner(onScan){
     }
   };
 
-  if('BarcodeDetector' in window){
+  const isTouch = window.matchMedia && window.matchMedia('(pointer:coarse)').matches;
+  if(!isTouch && 'BarcodeDetector' in window){
     try{
       navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } }).then((stream)=>{
         if(!modal.classList.contains('show')){ stream.getTracks().forEach(t=> t.stop()); return; }
@@ -3246,7 +3253,7 @@ function startLastPriceLibScan(onScan){
       lpScannerState.useVideo = false;
       h5.start(
         { facingMode: 'environment' },
-        { fps: 15, qrbox: { width: 300, height: 120 } },
+        { fps: 15, qrbox: (window.matchMedia && window.matchMedia('(pointer:coarse)').matches) ? { width: 280, height: 200 } : { width: 300, height: 120 } },
         (text)=>{ done(text); },
         ()=>{},
         undefined,
@@ -3838,8 +3845,7 @@ function moneyMapExport(){
   const rowsData = [['الكود', 'اللوكيشن', 'الكود المكتوب', 'الوقت']];
   moneyMapRows.forEach(en=> rowsData.push([en.stockCode || en.typed, en.loc, en.typed, en.time]));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rowsData), 'الأكواد واللوكيشنات');
-  const noLocData = [['الكود', 'توتال الموديل', 'الديبارتمنت']];
-  stockSummary.forEach(r=>{ if(!locationMap.has(r.code)) noLocData.push([r.code, r.totalQty, r.department]); });
+  const noLocData = codesWithoutLocArr(['الكود', 'توتال الموديل', 'الديبارتمنت']);
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(noLocData), 'أكواد بدون مكان');
   XLSX.writeFile(wb, branchFname('Money_Map') + '.xlsx');
 }
