@@ -2453,7 +2453,7 @@ function renderStockTable(){
     + '<th class="sortable-th">code <span class="sort-arrow" data-tab="stock" data-col="code">' + arrowGlyph('stock','code') + '</span><div class="sort-menu" data-for="code">' + sortMenuHtml('stock','code') + '</div></th>'
     + '<th class="sortable-th">qty <span class="sort-arrow" data-tab="stock" data-col="qty">' + arrowGlyph('stock','qty') + '</span><div class="sort-menu" data-for="qty">' + sortMenuHtml('stock','qty') + '</div></th>'
     + '<th class="sortable-th">dpt <span class="sort-arrow" data-tab="stock" data-col="dept">' + arrowGlyph('stock','dept') + '</span><div class="sort-menu" data-for="dept">' + sortMenuHtml('stock','dept') + '</div></th>'
-    + '<th>sizes</th><th>loc</th></tr></thead><tbody>';
+    + '<th>loc</th><th>sizes</th></tr></thead><tbody>';
   rows.forEach((r, idx)=>{
     const sizesHtml = r.sizes.map(s=>`<span class="size-chip">${escapeHtml(s.size)} — ${s.qty} (${escapeHtml(s.location)})</span>`).join('');
     html += `<tr>
@@ -2483,6 +2483,9 @@ $('exportStockBtn').addEventListener('click', ()=>{
   const summaryData = [ ['code','qty','dpt'] ];
   rows.forEach(r=> summaryData.push([r.code, r.totalQty, r.department]));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryData), 'الملخص');
+  const noLocData = [ ['code','qty','dpt'] ];
+  stockSummary.forEach(r=>{ if(!locationMap.has(r.code)) noLocData.push([r.code, r.totalQty, r.department]); });
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(noLocData), 'أكواد بدون مكان');
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(getFilteredStockData()), 'تفاصيل المقاسات');
   XLSX.writeFile(wb, branchFname('ملخص_مخزون') + '.xlsx');
 });
@@ -3780,7 +3783,8 @@ function moneyMapAdd(rawFromScan){
     input.focus();
     return;
   }
-  moneyMapRows.push({
+  const known = moneyMapStockIndex.has(conv.norm) || moneyMapStockIndex.has(conv.display);
+  moneyMapRows.unshift({
     norm: conv.norm,
     typed: rawVal,
     stockCode: conv.display,
@@ -3792,6 +3796,9 @@ function moneyMapAdd(rawFromScan){
   moneyMapSaveRemote();
   input.value = '';
   input.focus();
+  if(!known){
+    setTimeout(()=> showToast('⚠️ الكود ده مالوش مخزون في شيت المخزون (المصدر) — اتضاف في نفس اللوكيشن برضه (راجع إنه صحيح أو اشيله من علامة ✕).'), 100);
+  }
 }
 function renderMoneyMapList(){
   const list = $('moneyMapList');
