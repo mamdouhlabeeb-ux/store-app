@@ -3234,10 +3234,11 @@ function scAccept(raw){
 
 function scStart(){
   const m = $('scModal');
-  if(!m || scState || !window.Html5Qrcode) return;
+  if(!m || scState) return;
+  if(!window.Html5Qrcode){ scSetStatus('تعذّر تحميل مكتبة السكان'); scSetErr('اضغط «إعادة المحاولة» أو تأكد من الإنترنت.'); return; }
   const vp = $('scViewport');
   if(vp) vp.innerHTML = '<div id="scH5"></div>';
-  scSetStatus('');
+  scSetStatus('2 - تشغيل الكاميرا...');
   scSetErr('');
   const h5 = new Html5Qrcode('scH5');
   scState = { h5 };
@@ -3248,16 +3249,17 @@ function scStart(){
     ()=>{}
   ).then(()=>{
     if(!scState) return;
+    scSetStatus('3 - وجّه الكاميرا على الكود (Code39/Code128) — ثبّت الكاميرا ثانية.');
     scState.noDetect = setTimeout(()=>{
       if(scState && !scState.detected){
-        scSetStatus('لم يُكتشف باركود — قرب الكاميرا على الكود وثبّتها ثانية (يدعم Code39 وCode128).');
+        scSetStatus('لم يُكتشف باركود — قرب الكاميرا على الكود وثبّتها (Code39/Code128).');
       }
     }, 9000);
   }).catch(err=>{
     if(scState && err && err.name === 'NotFoundException'){ return; }
     scState = null;
     scSetStatus('تعذّر تشغيل الكاميرا');
-    scSetErr('فعّل إذن الكاميرا للموقع من إعدادات المتصفح ثم اضغط «إعادة المحاولة».' + (err && err.message ? ' — ' + err.message : ''));
+    scSetErr('الخطأ: ' + (err && err.message ? err.message : String(err)) + ' — فعّل إذن الكاميرا من المتصفح ثم اضغط «إعادة المحاولة».');
   });
 }
 
