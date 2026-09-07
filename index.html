@@ -271,6 +271,20 @@ th.code-out-th{ width:96px; text-align:center; }
 </head>
 <body>
 
+<div id="errReport" style="display:none;position:fixed;top:6px;left:50%;transform:translateX(-50%);max-width:94%;z-index:9999;background:#7f1d1d;color:#fff;padding:8px 12px;border-radius:10px;font-size:13px;line-height:1.5;box-shadow:0 6px 20px rgba(0,0,0,.35);"></div>
+<script>
+window.__errs=[];
+window.addEventListener('error', function(e){
+  try{
+    window.__errs.push(e.message||String(e));
+    var d=document.getElementById('errReport');
+    if(!d) return;
+    d.style.display='block';
+    d.textContent = '⚠️ خطأ: ' + (e.message||String(e)) + (e.lineno ? ' (سطر ' + e.lineno + ')' : '');
+  }catch(_){}
+});
+</script>
+
 <div class="loading-overlay" id="loadingOverlay"><span class="spinner"></span><span id="loadingText">جاري التحميل...</span></div>
 
 <div class="toast" id="toast"></div>
@@ -3248,6 +3262,7 @@ function scStart(){
 }
 
 function scOpen(onScan){
+  try{ showToast('جارِ فتح السكان...'); }catch(e){}
   scPending = onScan || scPending;
   scSetErr('');
   const m = $('scModal');
