@@ -3502,7 +3502,7 @@ function mapCheckAddCode(raw){
   if(!rawCode){ return; }
   const norm = normalizeLastPriceCode(rawCode);
   if(!norm){ showToast('اكتب كود صحيح.'); input.value = ''; return; }
-  if(mapCheckEntries.some(en=> en.norm === norm)){ showToast('الكود ده مضاف قبل كده.'); input.value = ''; return; }
+  if(mapCheckEntries.some(en=> en.norm === norm)){ playBeep(); showToast('الكود ده مضاف قبل كده.'); input.value = ''; return; }
   mapCheckReport = null;
   $('mapCheckReportPanel').style.display = 'none';
   mapCheckEntries.push({ code: rawCode, norm, loc: mapCheckLocOf(norm), sheetCode: mapCheckRawOf(norm) });
