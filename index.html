@@ -1118,27 +1118,10 @@ $('logoutBtn').addEventListener('click', ()=>{
 
 // ---------------- Live sync بين الأجهزة المفتوحة ----------------
 let liveSync = null;
-let mapCheckUnsub = null;
 function startLiveSync(){
   stopLiveSync();
   const id = currentBranch ? currentBranch.id : '';
   if(!id) return;
-  const applyMapCheck = (mc)=>{
-    mapCheckMap = new Map(mc.rows.map(p=>[p[0], typeof p[1] === 'string' ? { loc: p[1], raw: '' } : { loc: (p[1] && p[1].loc) || '', raw: (p[1] && p[1].raw) || '' }]));
-    mapCheckEntries = (Array.isArray(mc.entries)) ? mc.entries.map(en=>({ code: en.code, norm: en.norm, loc: en.loc })) : [];
-    if(typeof mc.sel === 'string') mapCheckSelectedLoc = mc.sel;
-    saveMapCheckDB();
-    const scr = $('screen-mapcheck');
-    if(scr && scr.classList.contains('active')){
-      mapCheckReport = null;
-      const rp = $('mapCheckReportPanel'); if(rp) rp.style.display = 'none';
-      $('mapCheckPanel').style.display = 'block';
-      refreshMapCheckLocs();
-      renderMapCheckList();
-      refreshMapCheckSummary();
-      setMapCheckLocStatus('الشيت اتعمل تحديث (' + mapCheckMap.size + ' كود) ✓', 'ok');
-    }
-  };
   liveSync = db.collection('branchData').doc(id).onSnapshot(snap=>{
     const d = snap.exists ? snap.data() : null;
     if(!d) return;
@@ -1158,14 +1141,9 @@ function startLiveSync(){
       }
     }
     }, err=> console.error('liveSync:', err));
-  mapCheckUnsub = db.collection('mapCheckData').doc(id).onSnapshot(snap=>{
-    const mc = snap.exists ? snap.data() : null;
-    if(mc && Array.isArray(mc.rows) && mc.rows.length) applyMapCheck(mc);
-  }, err=> console.error('mapCheckLive:', err));
 }
 function stopLiveSync(){
   if(liveSync){ liveSync(); liveSync = null; }
-  if(mapCheckUnsub){ mapCheckUnsub(); mapCheckUnsub = null; }
 }
 
 $('resetDataBtn').addEventListener('click', async ()=>{
@@ -3397,11 +3375,14 @@ let mapCheckEntries = [];             // { code, norm, loc }
 let mapCheckSelectedLoc = '';
 let mapCheckReport = null;
 
+function mapCheckFlatRows(){
+  return Array.from(mapCheckMap, ([k,v])=> ({ code: k, loc: (typeof v === 'string' ? v : (v && v.loc) || ''), raw: (typeof v === 'string' ? '' : (v && v.raw) || '') }));
+}
 function saveMapCheckDB(){
   try{
     localStorage.setItem(mapCheckDBKey(), JSON.stringify({
       at: Date.now(),
-      rows: Array.from(mapCheckMap.entries()),
+      rows: mapCheckFlatRows(),
       entries: mapCheckEntries,
       sel: mapCheckSelectedLoc
     }));
@@ -3410,31 +3391,54 @@ function saveMapCheckDB(){
 function loadMapCheckDB(){
   try{
     const j = JSON.parse(localStorage.getItem(mapCheckDBKey()) || 'null');
-    if(j && j.rows && Array.isArray(j.rows)) mapCheckMap = new Map(j.rows.map(p=>[p[0], typeof p[1] === 'string' ? { loc: p[1], raw: '' } : { loc: (p[1] && p[1].loc) || '', raw: (p[1] && p[1].raw) || '' }]));
-    else mapCheckMap = new Map();
+    if(j && Array.isArray(j.rows) && j.rows.length){
+      const first = j.rows[0];
+      if(Array.isArray(first)){
+        mapCheckMap = new Map(j.rows.map(p=>[p[0], typeof p[1] === 'string' ? { loc: p[1], raw: '' } : { loc: (p[1] && p[1].loc) || '', raw: (p[1] && p[1].raw) || '' }]));
+      } else {
+        mapCheckMap = new Map(j.rows.map(p=>[String(p.code), { loc: (p.loc) || '', raw: (p.raw) || '' }]));
+      }
+    } else mapCheckMap = new Map();
     mapCheckEntries = (j && Array.isArray(j.entries)) ? j.entries.map(en=>({ code: en.code, norm: en.norm, loc: en.loc })) : [];
     mapCheckSelectedLoc = (j && j.sel) || '';
   }catch(e){ mapCheckMap = new Map(); mapCheckEntries = []; mapCheckSelectedLoc = ''; }
 }
 
-/* ---------- تزامن بسيط (نفس نمط اللاست بيس): حفظ في وثيقة الفرع + سحب عند فتح الشاشة ---------- */
+/* ---------- تزامن بيحاكي الـ Money Map حرفيًا: وثيقة مستقلة + سحب واستبدال عند فتح الشاشة ---------- */
 let mapCheckCloudErr = '';
-async function saveMapCheckRows(branchId){
-  if(!branchId) return false;
+function mapCheckSaveRemote(){
+  if(!currentBranch || !currentBranch.id || typeof db === 'undefined' || !db){ mapCheckCloudErr = 'مفيش فرع أو اتصال Firestore.'; return Promise.resolve(false); }
   try{
-    await db.collection('mapCheckData').doc(branchId).set({
-      uploadedAt: new Date().toISOString(),
-      rows: Array.from(mapCheckMap.entries()),
+    return db.collection('mapCheckData').doc(currentBranch.id).set({
+      rows: mapCheckFlatRows(),
       entries: mapCheckEntries,
-      sel: mapCheckSelectedLoc
-    }, { merge: true });
-    mapCheckCloudErr = '';
-    return true;
-  }catch(e){ mapCheckCloudErr = (e && e.code) ? (e.code + (e.message ? ': ' + e.message : '')) : String(e); console.error(e); return false; }
+      sel: mapCheckSelectedLoc,
+      updatedAt: new Date().toISOString()
+    }, { merge: true }).then(()=>{ mapCheckCloudErr = ''; return true; }, (e)=>{ mapCheckCloudErr = (e && e.code) ? (e.code + (e.message ? ': ' + e.message : '')) : String(e); console.error(e); return false; });
+  }catch(e){ mapCheckCloudErr = String(e); return Promise.resolve(false); }
+}
+async function mapCheckLoadRemote(){
+  if(!currentBranch || !currentBranch.id || typeof db === 'undefined' || !db){ loadMapCheckDB(); return false; }
+  try{
+    const snap = await db.collection('mapCheckData').doc(currentBranch.id).get();
+    if(snap.exists){
+      const mc = snap.data() || {};
+      if(Array.isArray(mc.rows) && mc.rows.length){
+        mapCheckMap = new Map(mc.rows.map(p=>[String(p.code), { loc: (p.loc) || '', raw: (p.raw) || '' }]));
+        mapCheckEntries = (Array.isArray(mc.entries)) ? mc.entries.map(en=>({ code: en.code, norm: en.norm, loc: en.loc })) : [];
+        if(typeof mc.sel === 'string') mapCheckSelectedLoc = mc.sel;
+        saveMapCheckDB();
+        return true;
+      }
+    }
+    loadMapCheckDB();
+    if(mapCheckMap.size) mapCheckSaveRemote();
+    return false;
+  }catch(e){ console.error(e); loadMapCheckDB(); return false; }
 }
 async function persistMapCheck(){
   saveMapCheckDB();
-  if(currentBranch && currentBranch.id) return await saveMapCheckRows(currentBranch.id);
+  if(currentBranch && currentBranch.id) return await mapCheckSaveRemote();
   return false;
 }
 
@@ -3450,32 +3454,17 @@ function openMapCheckScreen(){
   const rp = $('mapCheckReportPanel'); if(rp) rp.style.display = 'none';
   setMapCheckLocStatus('بيجيب آخر شيت من السحابة...', '');
   (async ()=>{
-    let src = '';
-    if(currentBranch && currentBranch.id){
-      try{
-        const snap = await db.collection('mapCheckData').doc(currentBranch.id).get();
-        const mc = (snap.exists) ? snap.data() : null;
-        if(mc && Array.isArray(mc.rows) && mc.rows.length){
-          mapCheckMap = new Map(mc.rows.map(p=>[p[0], typeof p[1] === 'string' ? { loc: p[1], raw: '' } : { loc: (p[1] && p[1].loc) || '', raw: (p[1] && p[1].raw) || '' }]));
-          mapCheckEntries = (Array.isArray(mc.entries)) ? mc.entries.map(en=>({ code: en.code, norm: en.norm, loc: en.loc })) : [];
-          mapCheckSelectedLoc = (mc.sel) || '';
-          src = 'السحابة';
-        } else {
-          src = 'مفيش شيت في السحابة';
-          loadMapCheckDB();
-        }
-      }catch(e){ console.error(e); src = 'فشل قراءة السحابة: ' + ((e && e.message) ? e.message : String(e)); loadMapCheckDB(); }
-    } else { loadMapCheckDB(); }
+    const fromCloud = await mapCheckLoadRemote();
     const total = mapCheckMap ? mapCheckMap.size : 0;
     if(total){
-      setMapCheckLocStatus('الشيت موجود (' + total + ' كود) ✓  —  المصدر: ' + src, 'ok');
+      setMapCheckLocStatus('الشيت موجود (' + total + ' كود) ✓' + (fromCloud ? ' — آخر نسخة من السحابة' : (mapCheckCloudErr ? ' — لا يمكن النسخة السحابية: ' + mapCheckCloudErr.slice(0, 80) : '')), 'ok');
       $('mapCheckPanel').style.display = 'block';
       refreshMapCheckLocs();
       renderMapCheckList();
       refreshMapCheckSummary();
       $('mapCheckCodeInput').focus();
     } else {
-      setMapCheckLocStatus(src === 'مفيش شيت في السحابة' ? 'مفيش شيت في السحابة على الفرع ده — لو رافعت من اللاب وطلعت «محفوظ على السحابة» يبقى أعد فتح الشاشة دي.' : (src.indexOf('فشل') === 0 ? src : 'ارفع شيت (الكود، اللوكيشن) الأول.'), src.indexOf('فشل') === 0 ? 'err' : '');
+      setMapCheckLocStatus('ارفع شيت MAP LOC (الكود، اللوكيشن) — أول شيت.', '');
     }
   })();
 }
