@@ -936,14 +936,16 @@ service cloud.firestore {
     .cnt-search{flex:1 1 auto;min-width:180px;}
     .cnt-code-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 2px 10px rgba(15,23,42,.05);}
     .cnt-head{display:flex;gap:14px;align-items:flex-start;margin-bottom:12px;}
-    .cnt-thumb{width:72px;height:72px;object-fit:cover;border-radius:12px;background:#f1f5f9;flex:0 0 auto;}
+    .cnt-thumb{width:72px;height:72px;object-fit:cover;border-radius:12px;background:#f1f5f9;flex:0 0 auto;transition:transform .25s ease,box-shadow .25s ease;position:relative;z-index:3;cursor:zoom-in;}
+    .cnt-thumb:hover{transform:scale(2.7);box-shadow:0 14px 34px rgba(0,0,0,.28);transform-origin:top right;}
     .cnt-thumb-missing{width:72px;height:72px;border-radius:12px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:11px;text-align:center;flex:0 0 auto;padding:4px;}
     .cnt-code{font-size:22px;font-weight:800;font-family:'Cairo',sans-serif;}
     .cnt-dept{font-size:12.5px;color:var(--muted);font-weight:700;}
     .cnt-sizes{border-collapse:collapse;width:100%;}
-    .cnt-sizes th{background:#f1f5f9;font-size:12.5px;color:#475569;padding:8px 6px;border:1px solid var(--line);font-weight:700;}
-    .cnt-sizes td{padding:8px 6px;border:1px solid var(--line);text-align:center;font-weight:800;font-size:14px;}
-    .cnt-sizes input{width:64px;padding:7px 8px;border:1px solid #cbd5e1;border-radius:8px;text-align:center;font-weight:800;font-size:14px;font-family:'Cairo',sans-serif;}
+    .cnt-sizes th{background:#f1f5f9;font-size:13px;color:#475569;padding:10px 8px;border:1px solid var(--line);font-weight:700;text-align:center;}
+    .cnt-sizes td{padding:11px 8px;border:1px solid var(--line);text-align:center;font-weight:800;font-size:17px;}
+    .cnt-sizes td:first-child{font-size:19px;}
+    .cnt-sizes input{width:76px;padding:9px 8px;border:1px solid #cbd5e1;border-radius:8px;text-align:center;font-weight:800;font-size:17px;font-family:'Cairo',sans-serif;}
     .cnt-result{margin-inline-start:auto;font-weight:900;font-size:16px;min-width:40px;}
     .cnt-result.neg{color:#047857;}
     .cnt-result.pos{color:#b91c1c;}
@@ -956,6 +958,9 @@ service cloud.firestore {
     .cnt-addline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px dashed #e2e8f0;}
     .cnt-addline input{width:130px;}
     .cnt-missing{color:var(--muted);font-size:14px;font-weight:700;}
+    .cnt-dept-chip{display:inline-flex;gap:5px;align-items:center;background:#f1f5f9;border:1px solid var(--line);border-radius:999px;padding:4px 11px;font-size:12.5px;font-weight:700;color:#334155;cursor:pointer;user-select:none;}
+    .cnt-dept-chip input{width:15px;height:15px;accent-color:#1d4ed8;margin:0;cursor:pointer;}
+    .cnt-dept-chip.on{background:#dbeafe;border-color:#93c5fd;color:#1e3a8a;}
   </style>
   <div class="panel-head">
     <h2 style="font-family:'Cairo',sans-serif;">جرد / ترصيد</h2>
@@ -982,11 +987,10 @@ service cloud.firestore {
     <div class="cnt-bar">
       <div class="cnt-tools">
         <label style="font-weight:700;font-size:13.5px;">الدبارتمنت:</label>
-        <div style="position:relative;width:220px;">
-          <select class="search-input" id="cntDeptSelect" multiple size="4" style="width:220px;height:auto;min-height:44px;">
-            <option value="">الكل (كل الدبارتمنتات)</option>
-          </select>
-          <div style="position:absolute;bottom:-16px;right:0;font-size:11px;color:var(--muted);font-weight:600;white-space:nowrap;">اضغط سطر (أو Ctrl/تاب) لاختيار أكتر من دبارتمنت</div>
+        <div id="cntDeptChips" class="cnt-dept-chips" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;flex:1 1 auto;">
+          <label class="cnt-dept-chip cnt-all" style="cursor:pointer;">
+            <input type="checkbox" class="cnt-dept-check" value="" checked> كل الدبارتمنتات
+          </label>
         </div>
         <input class="search-input cnt-search" id="cntSearchInput" placeholder="اكتب الكود..." inputmode="numeric" enterkeyhint="search" autocomplete="off">
       </div>
@@ -4171,21 +4175,22 @@ function clearCntDone(){
 }
 
 function cntSelectedDepts(){
-  const sel = $('cntDeptSelect');
+  const chips = $('cntDeptChips');
   const out = [];
-  if(!sel) return out;
-  Array.from(sel.selectedOptions || []).forEach(o=>{
-    const v = o.value;
-    if(v && v !== '') out.push(v);
-  });
+  if(!chips) return out;
+  const checks = Array.from(chips.querySelectorAll('.cnt-dept-check'));
+  const all = checks.find(c=> c.value === '');
+  const anySpecific = checks.some(c=> c.value !== '' && c.checked);
+  if(!anySpecific || (all && all.checked)){
+    return cntDeptList.slice();
+  }
+  checks.forEach(c=>{ if(c.value !== '' && c.checked) out.push(c.value); });
   return out;
 }
 
-// هل الدبارتمنت مطلوب؟ (لو مفيش تحديد => كلهم)
+// هل الدبارتمنت مطلوب؟ (الكل => كلهم)
 function cntDeptWanted(dept){
-  const sel = $('cntDeptSelect');
-  if(!sel || !sel.selectedOptions || sel.selectedOptions.length === 0) return true;
-  return Array.from(sel.selectedOptions).some(o=> o.value && (o.value === dept));
+  return cntSelectedDepts().indexOf(dept) !== -1;
 }
 
 function handleCountFile(file){
@@ -4221,6 +4226,13 @@ function handleCountFile(file){
   reader.readAsArrayBuffer(file);
 }
 
+// قص الدبارتمنت لأول 3 حروف بس (MSTB/MSTF/MSTG => MST)
+function shortDept(d){
+  const s = String(d || '').trim().toUpperCase();
+  if(!s) return '-';
+  return s.slice(0, 3);
+}
+
 function processCountRows(rows){
   const index = new Map();    // code -> {depts:Map<dept,{total, loc}>}
   const rowIndex = new Map(); // dept -> [{code,size,qty,loc}]
@@ -4235,13 +4247,14 @@ function processCountRows(rows){
     const rawCodeSize = row[0];
     if(rawCodeSize === undefined || rawCodeSize === '' || rawCodeSize === null) continue;
     const qty = parseFloat(row[1]) || 0;
-    const dept = (row[2] !== undefined && row[2] !== null) ? String(row[2]).trim() : '';
+    const deptRaw = (row[2] !== undefined && row[2] !== null) ? String(row[2]).trim() : '';
+    const dept = shortDept(deptRaw);
     const loc = (row[3] !== undefined && row[3] !== null) ? String(row[3]).trim() : '-';
     const { code: rawCode, size } = splitCodeSize(rawCodeSize);
     const code = fixLeadingZero(rawCode);
     if(!code) continue;
     const deptKey = dept || '-';
-    if(dept) deptSet.add(dept);
+    if(dept && dept !== '-') deptSet.add(dept);
     if(!index.has(code)) index.set(code, { depts:new Map() });
     const entry = index.get(code);
     if(!entry.depts.has(deptKey)) entry.depts.set(deptKey, { total:0, loc: loc === '-' ? '-' : loc });
@@ -4253,19 +4266,60 @@ function processCountRows(rows){
 }
 
 function populateCountDepts(){
-  const sel = $('cntDeptSelect');
-  if(!sel) return;
-  sel.innerHTML = '';
-  const allOpt = document.createElement('option');
-  allOpt.value = '';
-  allOpt.textContent = 'الكل (كل الدبارتمنتات)';
-  sel.appendChild(allOpt);
+  const chips = $('cntDeptChips');
+  if(!chips) return;
+  // احتفظ بالحالة الحالية (الكل + المحددين) ثم نبني الـ chips من جديد
+  const prev = new Set();
+  chips.querySelectorAll('.cnt-dept-check').forEach(c=>{ if(c.checked) prev.add(c.value); });
+  const allChecked = prev.has('');
+  chips.innerHTML = '';
+  const mk = (label, value, checked)=>{
+    const lb = document.createElement('label');
+    lb.className = 'cnt-dept-chip' + (checked ? ' on' : '');
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.className = 'cnt-dept-check';
+    cb.value = value;
+    cb.checked = checked;
+    const sp = document.createElement('span');
+    sp.textContent = label;
+    lb.appendChild(cb);
+    lb.appendChild(sp);
+    lb.addEventListener('click', (e)=>{
+      if(e.target === cb) return;
+      cb.checked = !cb.checked;
+      syncCntChips();
+      renderCountResults();
+    });
+    cb.addEventListener('change', ()=>{ syncCntChips(); renderCountResults(); });
+    return lb;
+  };
+  const allLb = mk('كل الدبارتمنتات', '', allChecked);
+  chips.appendChild(allLb);
   cntDeptList.forEach(d=>{
-    const o = document.createElement('option');
-    o.value = d;
-    o.textContent = d;
-    sel.appendChild(o);
+    chips.appendChild(mk(d, d, prev.has(d)));
   });
+  syncCntChips();
+}
+
+function syncCntChips(){
+  const chips = $('cntDeptChips');
+  if(!chips) return;
+  const checks = Array.from(chips.querySelectorAll('.cnt-dept-check'));
+  const all = checks.find(c=> c.value === '');
+  checks.forEach(c=>{
+    const lb = c.closest('.cnt-dept-chip');
+    if(lb) lb.classList.toggle('on', c.checked);
+  });
+  const anySpecific = checks.some(c=> c.value !== '' && c.checked);
+  if(all){
+    // لو حددت دبارتمنت محدد => افتح "الكل"
+    if(anySpecific) all.checked = false;
+    // لو كل المحددين اتلغوا => رجع "الكل" تلقائيًا
+    if(!anySpecific) all.checked = true;
+    const allLb = all.closest('.cnt-dept-chip');
+    if(allLb) allLb.classList.toggle('on', all.checked);
+  }
 }
 
 function cntSizesForCode(code){
@@ -4340,6 +4394,28 @@ function renderCountResults(){
       addCountLine(code, size, d);
     });
   });
+  // إضافة كود جديد يدويًا
+  wrap.querySelectorAll('.cnt-addcode-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> addCountCode(btn));
+  });
+}
+
+// ترتيب المقاسات فكريًا: الأرقام تصاعدي (29,30,31..) والأحجام بالترتيب XS,S,M,L,XL,XXL
+const CNT_SIZE_ORDER = { 'XS':0, 'S':1, 'M':2, 'L':3, 'XL':4, 'XXL':5 };
+function sortCntSizes(sizeMap){
+  return Array.from(sizeMap.entries()).sort((a, b)=>{
+    const sa = a[0], sb = b[0];
+    const na = parseFloat(sa), nb = parseFloat(sb);
+    const isNumA = !isNaN(na) && /^[\d.]+$/.test(sa);
+    const isNumB = !isNaN(nb) && /^[\d.]+$/.test(sb);
+    if(isNumA && isNumB) return na - nb;
+    if(isNumA) return -1;
+    if(isNumB) return 1;
+    const oa = (sa in CNT_SIZE_ORDER) ? CNT_SIZE_ORDER[sa] : 99;
+    const ob = (sb in CNT_SIZE_ORDER) ? CNT_SIZE_ORDER[sb] : 99;
+    if(oa !== ob) return oa - ob;
+    return sa.localeCompare(sb);
+  });
 }
 
 function renderCountCard(code){
@@ -4347,8 +4423,8 @@ function renderCountCard(code){
   if(!info) return '';
   let totalModel = 0;
   let lines = '';
-  info.sizes.forEach((s, size)=>{
-    let pos = 0; let neg = 0; let deptNames = Array.from(s.depts).join(' / ');
+  sortCntSizes(info.sizes).forEach(([size, s])=>{
+    let deptNames = Array.from(s.depts).join(' / ');
     s.total = s.total || 0;
     const doneKey = cntInputKey(code, size);
     const done = cntDoneRows.get(doneKey) || {};
@@ -4357,7 +4433,7 @@ function renderCountCard(code){
     let result = s.total - floor - stock;
     totalModel += result;
     let content = '<tr class="cnt-size-row" data-code="'+escapeAttr(code)+'" data-size="'+escapeAttr(size)+'" data-dept="'+escapeAttr(deptNames)+'">'
-      + '<td style="text-align:right;font-weight:800;color:#1e293b;">'+escapeHtml(size)+'</td>'
+      + '<td style="font-weight:800;color:#1e293b;">'+escapeHtml(size)+'</td>'
       + '<td>'+s.total+'</td>'
       + '<td><input type="number" min="0" id="cntf_'+cntSizeResultKey(code, deptNames, size)+'" placeholder="0" value="'+(floor||'')+'"></td>'
       + '<td><input type="number" min="0" id="cnts_'+cntSizeResultKey(code, deptNames, size)+'" placeholder="0" value="'+(stock||'')+'"></td>'
@@ -4382,10 +4458,17 @@ function renderCountCard(code){
     + lines
     + '</tbody></table>'
     + '<div class="cnt-model-total">الفرق الكلي للموديل <b style="font-size:20px;">'+(totalModel>0?'+':'')+totalModel+'</b> '+badge+'</div>'
-    + '<div class="cnt-addline"><div style="font-weight:800;font-size:13px;color:#475569;">إضافة مقاس يدوي:</div>'
+    + '<div class="cnt-addline"><div style="font-weight:800;font-size:13px;color:#475569;width:100%;">إضافة مقاس يدوي:</div>'
     + '<input type="text" class="cnt-addline-size" data-code="'+escapeAttr(code)+'" placeholder="المقاس" style="width:110px;">'
     + '<input type="number" class="cnt-addline-qty" min="0" placeholder="العدد" style="width:90px;">'
     + '<button type="button" class="btn-primary cnt-addline-btn" data-code="'+escapeAttr(code)+'" data-size="" data-dept="">إضافة +</button>'
+    + '</div>'
+    + '<div class="cnt-addcode" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;padding-top:10px;border-top:1px dashed #e2e8f0;"><div style="font-weight:800;font-size:13px;color:#475569;width:100%;">إضافة كود جديد (موديل مش في الشيت):</div>'
+    + '<input type="text" class="cnt-addcode-code" placeholder="الكود" style="width:110px;">'
+    + '<input type="text" class="cnt-addcode-size" placeholder="المقاس" style="width:110px;">'
+    + '<input type="number" class="cnt-addcode-qty" min="0" placeholder="العدد" style="width:90px;">'
+    + '<input type="text" class="cnt-addcode-dept" placeholder="الدبارتمنت" style="width:110px;">'
+    + '<button type="button" class="btn-primary cnt-addcode-btn">إضافة كود +</button>'
     + '</div>'
     + '</div>';
 }
@@ -4459,6 +4542,45 @@ function recountCountModelTotal(card){
   card.querySelector('.cnt-model-total').innerHTML = 'الفرق الكلي للموديل <b style="font-size:20px;">'+(total>0?'+':'')+total+'</b> '+badge;
 }
 
+function cntSelectDept(dept){
+  const chips = $('cntDeptChips');
+  if(!chips) return;
+  chips.querySelectorAll('.cnt-dept-check').forEach(c=>{
+    if(c.value !== '' && c.value === dept) c.checked = true;
+  });
+  syncCntChips();
+}
+
+function addCountCode(btn){
+  const box = btn.closest('.cnt-addcode');
+  if(!box) return;
+  const codeInput = box.querySelector('.cnt-addcode-code');
+  const sizeInput = box.querySelector('.cnt-addcode-size');
+  const qtyInput = box.querySelector('.cnt-addcode-qty');
+  const deptInput = box.querySelector('.cnt-addcode-dept');
+  let rawCode = String((codeInput && codeInput.value) || '').trim();
+  const size = String((sizeInput && sizeInput.value) || '').trim();
+  const qty = parseFloat((qtyInput && qtyInput.value) || 0) || 0;
+  const dept = shortDept((deptInput && deptInput.value) || '') || '-';
+  if(!rawCode){ showToast('اكتب الكود.'); return; }
+  if(!size){ showToast('اكتب المقاس.'); return; }
+  const code = fixLeadingZero(rawCode.toUpperCase());
+  // أضف للفهرس
+  if(!cntIndex.has(code)) cntIndex.set(code, { depts:new Map() });
+  const entry = cntIndex.get(code);
+  if(!entry.depts.has(dept)) entry.depts.set(dept, { total:0, loc:'-' });
+  entry.depts.get(dept).total += qty;
+  if(!cntRowIndex.has(dept)) cntRowIndex.set(dept, []);
+  cntRowIndex.get(dept).push({ code, size, qty, loc:'-' });
+  // لو الدبارتمنت جديد => ضيفه للقائمة وأعد بناء الـ chips (مع الحفاظ على الاختيارات)
+  if(dept !== '-' && cntDeptList.indexOf(dept) === -1){ cntDeptList.push(dept); }
+  if(dept !== '-'){ populateCountDepts(); cntSelectDept(dept); }
+  // ورّي الكود الجديد
+  $('cntSearchInput').value = code;
+  renderCountResults();
+  showToast('تم إضافة الكود «'+code+'» ✓');
+}
+
 function cssEscape(str){
   if(typeof CSS !== 'undefined' && CSS.escape) return CSS.escape(str);
   return String(str).replace(/"/g,'\\"');
@@ -4467,7 +4589,7 @@ function cssEscape(str){
 function renderCountExport(){
   const depts = cntSelectedDepts();
   if(depts.length === 0){ showToast('اختار دبارتمنت واحد أو أكتر الأول.'); return; }
-  const header = ['الكود', 'المقاس', 'توتال', 'Floor', 'Stock', 'النتيجة', 'الدبارتمنت', 'اللوكيشن'];
+  const header = ['الكود', 'المقاس', 'توتال', 'Floor', 'Stock', 'النتيجة', 'العلامة', 'الدبارتمنت', 'اللوكيشن'];
   const rowsData = [header];
   cntIndex.forEach((entry, code)=>{
     depts.forEach(d=>{
@@ -4479,7 +4601,8 @@ function renderCountExport(){
         const floor = done.floor || 0;
         const stock = done.stock || 0;
         const result = r.qty - floor - stock;
-        rowsData.push([code, r.size, r.qty, floor, stock, (result>0?'+':'')+result, d, r.loc]);
+        const mark = result === 0 ? 'ترصيد' : (result > 0 ? 'عجز' : 'زيادة');
+        rowsData.push([code, r.size, r.qty, floor, stock, (result>0?'+':'')+result, mark, d, r.loc]);
       });
     });
   });
@@ -4508,7 +4631,8 @@ $('cntExportBtn') && $('cntExportBtn').addEventListener('click', renderCountExpo
 $('fileInputCount') && $('fileInputCount').addEventListener('change', (e)=>{ const f = e.target.files && e.target.files[0]; if(f) handleCountFile(f); });
 $('cntSearchInput') && $('cntSearchInput').addEventListener('input', renderCountResults);
 $('cntSearchInput') && $('cntSearchInput').addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); renderCountResults(); } });
-$('cntDeptSelect') && $('cntDeptSelect').addEventListener('change', ()=>{ renderCountResults(); });
+// دبارتمنت chips بتشتغل ذاتيًا في populateCountDepts/syncCntChips
+// (تم إزالة cntDeptSelect — استُبدل بعلامات markers)
 
 // تنظيف بيانات Map Check عند المسح
 try{ localStorage.removeItem(mapCheckDBKey()); }catch(e){}
