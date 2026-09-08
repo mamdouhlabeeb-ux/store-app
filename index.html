@@ -531,6 +531,13 @@ service cloud.firestore {
         <button class="upload-btn" id="openMoneyMapBtn">فتح Money Map</button>
         <div class="upload-status" id="uploadStatusMoneyMapCard"></div>
       </div>
+      <div class="upload-card" id="uploadCardCount">
+        <div class="step-tag">9 - جرد / ترصيد</div>
+        <h3>جرد / ترصيد</h3>
+        <p>ارفع شيت الاستوك واختار الدبارتمنت — اكتب floor و stock لكل مقاس والنظام يتطرح ويعرض النتيجة والترصيد/العجز/الزيادة</p>
+        <button class="upload-btn" id="openCountBtn">فتح جرد / ترصيد</button>
+        <div class="upload-status" id="uploadStatusCountCard"></div>
+      </div>
     </div>
 
     <div class="panel" id="drivePanel" style="padding:16px;margin-bottom:22px;">
@@ -736,7 +743,7 @@ service cloud.firestore {
 <div style="position:fixed;left:-9999px;top:0;width:4cm;" id="labelPrintRoot"></div>
 
 <!-- ================= MAP CHECK (فحص اللوكيشن) ================= -->
-<div class="screen" id="screen-mapcheck" style="padding:28px 20px 60px;max-width:980px;margin:0 auto;">
+<div class="screen" id="screen-mapcheck" style="padding:28px 20px 130px;max-width:980px;margin:0 auto;">
   <style>
     .mc-wrap{display:flex;flex-direction:column;gap:12px;}
     .mc-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
@@ -755,6 +762,8 @@ service cloud.firestore {
     .mc-sheet{font-size:11.5px;color:#64748b;background:#f1f5f9;padding:2px 9px;border-radius:999px;font-weight:700;direction:ltr;}
     .mc-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
     @media(max-width:700px){.mc-stats{grid-template-columns:1fr 1fr;}}
+    .mc-input-bar{position:fixed;left:50%;transform:translateX(-50%);bottom:10px;width:min(950px,calc(100% - 24px));display:flex;gap:10px;align-items:center;background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;padding:10px 12px;z-index:70;box-shadow:0 -6px 24px rgba(15,23,42,.14);}
+    .mc-input-bar .search-input{flex:1 1 auto;min-width:0;}
   </style>
   <div class="panel-head" style="margin-bottom:6px;">
     <h2 style="font-family:'Cairo',sans-serif;">Map Check (فحص اللوكيشن)</h2>
@@ -788,11 +797,6 @@ service cloud.firestore {
       </div>
     </div>
     <div class="mc-wrap">
-      <div class="mc-actions">
-        <input class="search-input" id="mapCheckCodeInput" placeholder="اكتب الكود..." inputmode="numeric" enterkeyhint="enter" style="flex:0 1 auto;min-width:160px;max-width:240px;">
-        <button class="export-btn" id="mapCheckAddBtn">+ إضافة</button>
-        <button class="scan-btn" id="mapCheckScanBtn">📷 سكان</button>
-      </div>
       <div id="mapCheckList" style="display:flex;flex-direction:column;gap:8px;"></div>
       <div id="mapCheckSummary" style="display:none;padding:12px 14px;border-radius:12px;background:#f8fafc;border:1px solid var(--line);font-size:14px;font-weight:800;"></div>
       <div class="mc-actions">
@@ -809,6 +813,12 @@ service cloud.firestore {
       </div>
     </div>
     <div id="mapCheckReportBody"></div>
+  </div>
+
+  <div class="mc-input-bar" id="mcInputBar" style="display:none;">
+    <input class="search-input" id="mapCheckCodeInput" placeholder="اكتب الكود..." inputmode="numeric" enterkeyhint="enter" autocomplete="off">
+    <button class="export-btn" id="mapCheckAddBtn">+ إضافة</button>
+    <button class="scan-btn" id="mapCheckScanBtn">📷 سكان</button>
   </div>
 </div>
 
@@ -914,6 +924,76 @@ service cloud.firestore {
     <div class="modal-actions">
       <button class="btn-ghost" id="closeTransfersBtn">إغلاق</button>
     </div>
+  </div>
+</div>
+
+<!-- ================= جرد / ترصيد (COUNT) ================= -->
+<div class="screen" id="screen-count" style="padding:28px 20px 60px;max-width:1040px;margin:0 auto;">
+  <style>
+    .cnt-wrap{display:flex;flex-direction:column;gap:16px;}
+    .cnt-bar{position:sticky;top:0;z-index:60;background:var(--paper);padding:14px 0;border-bottom:1px solid var(--line);}
+    .cnt-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+    .cnt-search{flex:1 1 auto;min-width:180px;}
+    .cnt-code-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 2px 10px rgba(15,23,42,.05);}
+    .cnt-head{display:flex;gap:14px;align-items:flex-start;margin-bottom:12px;}
+    .cnt-thumb{width:72px;height:72px;object-fit:cover;border-radius:12px;background:#f1f5f9;flex:0 0 auto;}
+    .cnt-thumb-missing{width:72px;height:72px;border-radius:12px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:11px;text-align:center;flex:0 0 auto;padding:4px;}
+    .cnt-code{font-size:22px;font-weight:800;font-family:'Cairo',sans-serif;}
+    .cnt-dept{font-size:12.5px;color:var(--muted);font-weight:700;}
+    .cnt-sizes{border-collapse:collapse;width:100%;}
+    .cnt-sizes th{background:#f1f5f9;font-size:12.5px;color:#475569;padding:8px 6px;border:1px solid var(--line);font-weight:700;}
+    .cnt-sizes td{padding:8px 6px;border:1px solid var(--line);text-align:center;font-weight:800;font-size:14px;}
+    .cnt-sizes input{width:64px;padding:7px 8px;border:1px solid #cbd5e1;border-radius:8px;text-align:center;font-weight:800;font-size:14px;font-family:'Cairo',sans-serif;}
+    .cnt-result{margin-inline-start:auto;font-weight:900;font-size:16px;min-width:40px;}
+    .cnt-result.neg{color:#047857;}
+    .cnt-result.pos{color:#b91c1c;}
+    .cnt-result.zero{color:#64748b;}
+    .cnt-model-total{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:800;color:#475569;margin-top:4px;}
+    .cnt-badge{font-size:12px;font-weight:800;padding:3px 12px;border-radius:999px;}
+    .cnt-badge.trs{background:#d1fae5;color:#047857;}
+    .cnt-badge.deficit{background:#fee2e2;color:#b91c1c;}
+    .cnt-badge.surplus{background:#d1fae5;color:#047857;}
+    .cnt-addline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px dashed #e2e8f0;}
+    .cnt-addline input{width:130px;}
+    .cnt-missing{color:var(--muted);font-size:14px;font-weight:700;}
+  </style>
+  <div class="panel-head">
+    <h2 style="font-family:'Cairo',sans-serif;">جرد / ترصيد</h2>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <button class="export-btn" id="cntExportBtn">تنزيل الاكسيل</button>
+      <button class="link-btn" id="cntBackBtn">رجوع</button>
+    </div>
+  </div>
+  <p style="color:var(--muted);font-size:13.5px;line-height:1.8;margin:4px 0 14px;">
+    ارفع شيت الاستوك أولاً (4 أعمدة: الكود-المقاس، العدد، الدبارتمنت، اللوكيشن). اختار دبارتمنت أو أكتر، اكتب الكود في خانة البحث،
+    وافتح floor و stock لكل مقاس — النتيجة = توتال - (floor + stock). صورة الكود تظهر تلقائيًا.
+  </p>
+
+  <div class="upload-card" id="cntUploadCard" style="margin-bottom:16px;">
+    <div class="step-tag">شيت الاستوك</div>
+    <h3>اختيار ملف</h3>
+    <p>الكود-المقاس، العدد، الدبارتمنت، اللوكيشن</p>
+    <label class="upload-btn" for="fileInputCount">اختيار ملف</label>
+    <input type="file" id="fileInputCount" accept=".xlsx,.xls,.csv">
+    <div class="upload-status" id="uploadStatusCount"></div>
+  </div>
+
+  <div id="cntBody" style="display:none;" class="cnt-wrap">
+    <div class="cnt-bar">
+      <div class="cnt-tools">
+        <label style="font-weight:700;font-size:13.5px;">الدبارتمنت:</label>
+        <div style="position:relative;width:220px;">
+          <select class="search-input" id="cntDeptSelect" multiple size="4" style="width:220px;height:auto;min-height:44px;">
+            <option value="">الكل (كل الدبارتمنتات)</option>
+          </select>
+          <div style="position:absolute;bottom:-16px;right:0;font-size:11px;color:var(--muted);font-weight:600;white-space:nowrap;">اضغط سطر (أو Ctrl/تاب) لاختيار أكتر من دبارتمنت</div>
+        </div>
+        <input class="search-input cnt-search" id="cntSearchInput" placeholder="اكتب الكود..." inputmode="numeric" enterkeyhint="search" autocomplete="off">
+      </div>
+      <div class="upload-status" id="cntStatus" style="margin-top:8px;"></div>
+    </div>
+    <div class="upload-card" id="cntNoDept" style="display:none;"><div class="cnt-missing">اختار دبارتمنت الأول وظبط الحقل.</div></div>
+    <div id="cntResults"></div>
   </div>
 </div>
 
@@ -3400,12 +3480,14 @@ function setMapCheckLocStatus(msg, type){
 
 function openMapCheckScreen(){
   switchScreen('screen-mapcheck');
+  const mbar = $('mcInputBar'); if(mbar) mbar.style.display = 'none';
   loadMapCheckDB();
   mapCheckReport = null;
   const rp = $('mapCheckReportPanel'); if(rp) rp.style.display = 'none';
   if(mapCheckMap && mapCheckMap.size){
     setMapCheckLocStatus('الشيت موجود (' + mapCheckMap.size + ' كود) من آخر رفعة للفرع ده ✓', 'ok');
     $('mapCheckPanel').style.display = 'block';
+    if(mbar){ mbar.style.display = 'flex'; layoutMcBar(); }
     refreshMapCheckLocs();
     renderMapCheckList();
     refreshMapCheckSummary();
@@ -3414,6 +3496,15 @@ function openMapCheckScreen(){
     setMapCheckLocStatus('ارفع شيت MAP LOC (الكود، اللوكيشن) الأول.', '');
   }
 }
+function layoutMcBar(){
+  const bar = $('mcInputBar'); const scr = $('screen-mapcheck');
+  if(!bar || !scr || !scr.classList.contains('active')) return;
+  let kb = 0;
+  if(window.visualViewport){ kb = Math.max(0, (window.innerHeight || 0) - window.visualViewport.height); }
+  bar.style.bottom = Math.max(10, kb + 10) + 'px';
+}
+window.addEventListener('resize', layoutMcBar);
+if(window.visualViewport){ window.visualViewport.addEventListener('resize', layoutMcBar); }
 $('openMapCheckBtn') && $('openMapCheckBtn').addEventListener('click', openMapCheckScreen);
 $('mapCheckBackBtn') && $('mapCheckBackBtn').addEventListener('click', ()=>{ camClose(); switchScreen('screen-dashboard'); });
 
@@ -4059,6 +4150,365 @@ $('moneyMapResetBtn') && $('moneyMapResetBtn').addEventListener('click', ()=>{
     });
   }
 })();
+
+// ---------------- جرد / ترصيد (Count) ----------------
+let cntIndex = new Map();        // code -> { depts: Map<dept, {total, loc}> } (بعد الدمج لكل دبارتمنت)
+let cntRowIndex = new Map();     // dept -> array of {code, size, qty, loc}
+let cntDeptList = [];            // ['Dept1','Dept2',...]
+let cntDoneRows = new Map();     // key 'code|dept|size' -> {floor, stock} المدخلة (مؤقت)
+
+function cntDBKey(){ return 'count_v1_' + (currentBranch ? currentBranch.id : 'anon'); }
+
+function loadCntDone(){
+  try{ cntDoneRows = new Map(JSON.parse(localStorage.getItem(cntDBKey()) || '[]')); }catch(e){ cntDoneRows = new Map(); }
+}
+function saveCntDone(){
+  try{ localStorage.setItem(cntDBKey(), JSON.stringify(Array.from(cntDoneRows.entries()))); }catch(e){ console.error(e); }
+}
+function clearCntDone(){
+  cntDoneRows = new Map();
+  try{ localStorage.removeItem(cntDBKey()); }catch(e){}
+}
+
+function cntSelectedDepts(){
+  const sel = $('cntDeptSelect');
+  const out = [];
+  if(!sel) return out;
+  Array.from(sel.selectedOptions || []).forEach(o=>{
+    const v = o.value;
+    if(v && v !== '') out.push(v);
+  });
+  return out;
+}
+
+// هل الدبارتمنت مطلوب؟ (لو مفيش تحديد => كلهم)
+function cntDeptWanted(dept){
+  const sel = $('cntDeptSelect');
+  if(!sel || !sel.selectedOptions || sel.selectedOptions.length === 0) return true;
+  return Array.from(sel.selectedOptions).some(o=> o.value && (o.value === dept));
+}
+
+function handleCountFile(file){
+  const statusEl = $('uploadStatusCount');
+  setStatus(statusEl, 'جاري قراءة الملف...', '');
+  const reader = new FileReader();
+  reader.onload = (e)=>{
+    try{
+      const data = new Uint8Array(e.target.result);
+      const wb = XLSX.read(data, { type:'array' });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'', raw:true });
+      const parsed = processCountRows(rows);
+      if(!parsed.index.size){ setStatus(statusEl, 'مفيش بيانات صالحة اتقرت من الملف.', 'err'); return; }
+      cntIndex = parsed.index;
+      cntRowIndex = parsed.rowIndex;
+      cntDeptList = parsed.depts;
+      populateCountDepts();
+      $('cntUploadCard').style.display = 'none';
+      $('cntBody').style.display = 'block';
+      $('cntNoDept').style.display = 'none';
+      $('cntResults').innerHTML = '';
+      $('cntSearchInput').value = '';
+      setStatus(statusEl, 'تم ✓ (' + cntIndex.size + ' موديل) — اختار دبارتمنت واكتب الكود.', 'ok');
+      $('cntSearchInput').focus();
+    }catch(err){
+      console.error(err);
+      setStatus(statusEl, 'حصل خطأ في قراءة الملف.', 'err');
+    }
+    $('fileInputCount').value = '';
+  };
+  reader.onerror = ()=> setStatus(statusEl, 'تعذر قراءة الملف.', 'err');
+  reader.readAsArrayBuffer(file);
+}
+
+function processCountRows(rows){
+  const index = new Map();    // code -> {depts:Map<dept,{total, loc}>}
+  const rowIndex = new Map(); // dept -> [{code,size,qty,loc}]
+  if(!rows || rows.length === 0) return { index, rowIndex, depts: [] };
+  const deptSet = new Set();
+  let startIdx = 0;
+  const firstQty = parseFloat((rows[0]||[])[1]);
+  if(isNaN(firstQty)) startIdx = 1;
+  for(let i=startIdx; i<rows.length; i++){
+    const row = rows[i];
+    if(!row || row.length === 0) continue;
+    const rawCodeSize = row[0];
+    if(rawCodeSize === undefined || rawCodeSize === '' || rawCodeSize === null) continue;
+    const qty = parseFloat(row[1]) || 0;
+    const dept = (row[2] !== undefined && row[2] !== null) ? String(row[2]).trim() : '';
+    const loc = (row[3] !== undefined && row[3] !== null) ? String(row[3]).trim() : '-';
+    const { code: rawCode, size } = splitCodeSize(rawCodeSize);
+    const code = fixLeadingZero(rawCode);
+    if(!code) continue;
+    const deptKey = dept || '-';
+    if(dept) deptSet.add(dept);
+    if(!index.has(code)) index.set(code, { depts:new Map() });
+    const entry = index.get(code);
+    if(!entry.depts.has(deptKey)) entry.depts.set(deptKey, { total:0, loc: loc === '-' ? '-' : loc });
+    entry.depts.get(deptKey).total += qty;
+    if(!rowIndex.has(deptKey)) rowIndex.set(deptKey, []);
+    rowIndex.get(deptKey).push({ code, size: size || '-', qty, loc });
+  }
+  return { index, rowIndex, depts: Array.from(deptSet) };
+}
+
+function populateCountDepts(){
+  const sel = $('cntDeptSelect');
+  if(!sel) return;
+  sel.innerHTML = '';
+  const allOpt = document.createElement('option');
+  allOpt.value = '';
+  allOpt.textContent = 'الكل (كل الدبارتمنتات)';
+  sel.appendChild(allOpt);
+  cntDeptList.forEach(d=>{
+    const o = document.createElement('option');
+    o.value = d;
+    o.textContent = d;
+    sel.appendChild(o);
+  });
+}
+
+function cntSizesForCode(code){
+  const entry = cntIndex.get(code);
+  if(!entry) return null;
+  const depts = cntSelectedDepts().length ? cntSelectedDepts() : Array.from(entry.depts.keys());
+  const sizeMap = new Map(); // size -> {total, depts:Set}
+  depts.forEach(d=>{
+    const deptEntry = entry.depts.get(d);
+    if(!deptEntry) return;
+    const rows = cntRowIndex.get(d) || [];
+    rows.forEach(r=>{
+      if(r.code !== code) return;
+      if(!sizeMap.has(r.size)) sizeMap.set(r.size, { total:0, depts:new Set() });
+      const s = sizeMap.get(r.size);
+      s.total += r.qty;
+      s.depts.add(d);
+    });
+  });
+  return { depts, sizes: sizeMap };
+}
+
+function cntSizeResultKey(code, dept, size){ return code + '|' + dept + '|' + size; }
+function cntInputKey(code, size){ return code + '|' + size; }
+
+function cntResultCls(v){
+  if(v > 0) return 'pos';
+  if(v < 0) return 'neg';
+  return 'zero';
+}
+
+function renderCountResults(){
+  const wrap = $('cntResults');
+  if(!wrap) return;
+  const raw = String($('cntSearchInput').value || '').trim();
+  const depts = cntSelectedDepts();
+  if(depts.length === 0){
+    wrap.innerHTML = '<div class="upload-card"><div class="cnt-missing">اختار دبارتمنت واحد أو أكتر عشان تبدأ الجرد.</div></div>';
+    return;
+  }
+  if(!raw){
+    wrap.innerHTML = '<div class="upload-card"><div class="cnt-missing">اكتب الكود في خانة البحث.</div></div>';
+    return;
+  }
+  const search = raw.toUpperCase();
+  const matches = Array.from(cntIndex.keys()).filter(c => c.toUpperCase().indexOf(search) !== -1);
+  if(matches.length === 0){
+    wrap.innerHTML = '<div class="upload-card"><div class="cnt-missing">مفيش كود مطابق: «' + escapeHtml(raw) + '».</div></div>';
+    return;
+  }
+  let html = '';
+  matches.forEach(code=>{
+    html += renderCountCard(code);
+  });
+  wrap.innerHTML = html;
+  // ربط أحداث الإدخال
+  wrap.querySelectorAll('.cnt-size-row').forEach(row=>{
+    const code = row.getAttribute('data-code');
+    const size = row.getAttribute('data-size');
+    const d = row.getAttribute('data-dept');
+    const key = cntSizeResultKey(code, d, size);
+    const floorEl = $('cntf_' + key); if(floorEl){ floorEl.addEventListener('input', ()=> onCntInput(code, size, d, floorEl)); }
+    const stockEl = $('cnts_' + key); if(stockEl){ stockEl.addEventListener('input', ()=> onCntInput(code, size, d, stockEl)); }
+    const addLineBtn = row.querySelector('.cnt-addline-add'); if(addLineBtn){ addLineBtn.addEventListener('click', ()=> addCountLine(code, size, d)); }
+  });
+  // ربط أحداث ADD LINE خارجية (multiple rows قد تكرر id => نستخدم class)
+  wrap.querySelectorAll('.cnt-addline-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const code = btn.getAttribute('data-code');
+      const size = btn.getAttribute('data-size');
+      const d = btn.getAttribute('data-dept');
+      addCountLine(code, size, d);
+    });
+  });
+}
+
+function renderCountCard(code){
+  const info = cntSizesForCode(code);
+  if(!info) return '';
+  let totalModel = 0;
+  let lines = '';
+  info.sizes.forEach((s, size)=>{
+    let pos = 0; let neg = 0; let deptNames = Array.from(s.depts).join(' / ');
+    s.total = s.total || 0;
+    const doneKey = cntInputKey(code, size);
+    const done = cntDoneRows.get(doneKey) || {};
+    const floor = (done.floor || 0);
+    const stock = (done.stock || 0);
+    let result = s.total - floor - stock;
+    totalModel += result;
+    let content = '<tr class="cnt-size-row" data-code="'+escapeAttr(code)+'" data-size="'+escapeAttr(size)+'" data-dept="'+escapeAttr(deptNames)+'">'
+      + '<td style="text-align:right;font-weight:800;color:#1e293b;">'+escapeHtml(size)+'</td>'
+      + '<td>'+s.total+'</td>'
+      + '<td><input type="number" min="0" id="cntf_'+cntSizeResultKey(code, deptNames, size)+'" placeholder="0" value="'+(floor||'')+'"></td>'
+      + '<td><input type="number" min="0" id="cnts_'+cntSizeResultKey(code, deptNames, size)+'" placeholder="0" value="'+(stock||'')+'"></td>'
+      + '<td style="font-size:12px;color:#64748b;font-weight:700;">'+escapeHtml(deptNames)+'</td>'
+      + '<td class="cnt-result '+cntResultCls(result)+'">'+(result>0?'+':'')+result+'</td>'
+      + '</tr>';
+    lines += content;
+  });
+  const badge = totalModel === 0
+    ? '<span class="cnt-badge trs">ترصيد</span>'
+    : (totalModel > 0 ? '<span class="cnt-badge deficit">عجز</span>' : '<span class="cnt-badge surplus">زيادة</span>');
+  const imgHtml = '<img class="cnt-thumb" src="'+IMG_BASE+encodeURIComponent(code)+IMG_SUFFIX+'" onerror="this.outerHTML=\'<div class=&quot;cnt-thumb-missing&quot;>لا توجد صورة</div>\'">';
+  return '<div class="cnt-code-card">'
+    + '<div class="cnt-head">'
+    + imgHtml
+    + '<div>'
+    + '<div class="cnt-code">'+escapeHtml(code)+'</div>'
+    + '<div class="cnt-dept">'+(info.depts.join(' / '))+'</div>'
+    + '</div>'
+    + '</div>'
+    + '<table class="cnt-sizes"><thead><tr><th>المقاس</th><th>توتال</th><th>Floor</th><th>Stock</th><th>الدبارتمنت</th><th>النتيجة</th></tr></thead><tbody>'
+    + lines
+    + '</tbody></table>'
+    + '<div class="cnt-model-total">الفرق الكلي للموديل <b style="font-size:20px;">'+(totalModel>0?'+':'')+totalModel+'</b> '+badge+'</div>'
+    + '<div class="cnt-addline"><div style="font-weight:800;font-size:13px;color:#475569;">إضافة مقاس يدوي:</div>'
+    + '<input type="text" class="cnt-addline-size" data-code="'+escapeAttr(code)+'" placeholder="المقاس" style="width:110px;">'
+    + '<input type="number" class="cnt-addline-qty" min="0" placeholder="العدد" style="width:90px;">'
+    + '<button type="button" class="btn-primary cnt-addline-btn" data-code="'+escapeAttr(code)+'" data-size="" data-dept="">إضافة +</button>'
+    + '</div>'
+    + '</div>';
+}
+
+function onCntInput(code, size, dept, el){
+  const row = el.closest('.cnt-size-row');
+  const floorEl = row ? row.querySelector('input[id^="cntf_"]') : null;
+  const stockEl = row ? row.querySelector('input[id^="cnts_"]') : null;
+  const floor = floorEl ? (parseFloat(floorEl.value) || 0) : 0;
+  const stock = stockEl ? (parseFloat(stockEl.value) || 0) : 0;
+  // احسب التوتال من عمود توتال في الصف
+  const qtyCell = row ? row.querySelector('td:nth-child(2)') : null;
+  const qty = qtyCell ? (parseFloat(qtyCell.textContent) || 0) : 0;
+  const result = qty - floor - stock;
+  if(row){
+    const resCell = row.querySelector('.cnt-result');
+    if(resCell){
+      resCell.className = 'cnt-result ' + cntResultCls(result);
+      resCell.textContent = (result>0?'+':'') + result;
+    }
+  }
+  cntDoneRows.set(cntInputKey(code, size), { floor: floor, stock: stock });
+  saveCntDone();
+  recountCountModelTotal($('cntResults') ? $('cntResults').querySelector('.cnt-code-card') : null);
+}
+
+function addCountLine(code, size, dept){
+  const card = document.querySelector('.cnt-code-card');
+  const wrap = $('cntResults');
+  if(!wrap) return;
+  const sizeInput = wrap.querySelector('.cnt-addline-size[data-code="'+cssEscape(code)+'"]');
+  const qtyInput = wrap.querySelector('.cnt-addline-qty');
+  const sz = String((sizeInput && sizeInput.value) || '').trim();
+  if(!sz){ showToast('اكتب اسم المقاس.'); return; }
+  const qty = parseFloat((qtyInput && qtyInput.value) || 0) || 0;
+  if(!card) return;
+  // نضيف صف بنفس id الخاص بخط إدخال فعلي؛ نستخدم معامل فريد
+  const uq = '_add_' + Date.now();
+  const doneKey = cntInputKey(code, uq);
+  const floor = 0, stock = 0;
+  const result = qty - floor - stock;
+  const rowId1 = 'cntf_' + cntSizeResultKey(code, dept, uq);
+  const rowId2 = 'cnts_' + cntSizeResultKey(code, dept, uq);
+  let tr = document.createElement('tr');
+  tr.className = 'cnt-size-row';
+  tr.innerHTML = '<td style="text-align:right;font-weight:800;color:#1e293b;">'+escapeHtml(sz)+'</td>'
+    + '<td>'+qty+'</td>'
+    + '<td><input type="number" min="0" id="'+rowId1+'" placeholder="0" value=""></td>'
+    + '<td><input type="number" min="0" id="'+rowId2+'" placeholder="0" value=""></td>'
+    + '<td style="font-size:12px;color:#64748b;font-weight:700;">'+escapeHtml(dept||'')+'</td>'
+    + '<td class="cnt-result '+cntResultCls(result)+'">'+(result>0?'+':'')+result+'</td>';
+  const tbody = card.querySelector('.cnt-sizes tbody');
+  if(tbody) tbody.appendChild(tr);
+  $('cntf_'+cntSizeResultKey(code, dept, uq)).addEventListener('input', ()=> onCntInput(code, uq, dept, $('cntf_'+cntSizeResultKey(code, dept, uq))));
+  $('cnts_'+cntSizeResultKey(code, dept, uq)).addEventListener('input', ()=> onCntInput(code, uq, dept, $('cnts_'+cntSizeResultKey(code, dept, uq))));
+  // نحدّث الفرق الكلي
+  showToast('تم إضافة المقاس «'+sz+'» ✓');
+  recountCountModelTotal(card);
+}
+
+function recountCountModelTotal(card){
+  if(!card) return;
+  let total = 0;
+  card.querySelectorAll('.cnt-result').forEach(el=>{
+    const raw = el.textContent.replace('+','');
+    total += (parseFloat(raw) || 0);
+  });
+  const badge = total === 0
+    ? '<span class="cnt-badge trs">ترصيد</span>'
+    : (total > 0 ? '<span class="cnt-badge deficit">عجز</span>' : '<span class="cnt-badge surplus">زيادة</span>');
+  card.querySelector('.cnt-model-total').innerHTML = 'الفرق الكلي للموديل <b style="font-size:20px;">'+(total>0?'+':'')+total+'</b> '+badge;
+}
+
+function cssEscape(str){
+  if(typeof CSS !== 'undefined' && CSS.escape) return CSS.escape(str);
+  return String(str).replace(/"/g,'\\"');
+}
+
+function renderCountExport(){
+  const depts = cntSelectedDepts();
+  if(depts.length === 0){ showToast('اختار دبارتمنت واحد أو أكتر الأول.'); return; }
+  const header = ['الكود', 'المقاس', 'توتال', 'Floor', 'Stock', 'النتيجة', 'الدبارتمنت', 'اللوكيشن'];
+  const rowsData = [header];
+  cntIndex.forEach((entry, code)=>{
+    depts.forEach(d=>{
+      const deptRows = cntRowIndex.get(d) || [];
+      deptRows.forEach(r=>{
+        if(r.code !== code) return;
+        const doneKey = cntInputKey(code, r.size);
+        const done = cntDoneRows.get(doneKey) || {};
+        const floor = done.floor || 0;
+        const stock = done.stock || 0;
+        const result = r.qty - floor - stock;
+        rowsData.push([code, r.size, r.qty, floor, stock, (result>0?'+':'')+result, d, r.loc]);
+      });
+    });
+  });
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rowsData), 'الجرد');
+  XLSX.writeFile(wb, branchFname('جرد_و_ترصيد') + '.xlsx');
+}
+
+function cntOpen(){
+  if(!currentBranch){ return; }
+  loadCntDone();
+  $('cntUploadCard').style.display = 'block';
+  $('cntBody').style.display = 'block';
+  $('cntResults').innerHTML = '';
+  populateCountDepts();
+  if(cntIndex.size === 0){
+    $('cntUploadCard').style.display = 'block';
+    $('cntBody').style.display = 'none';
+  }
+  switchScreen('screen-count');
+}
+
+$('openCountBtn') && $('openCountBtn').addEventListener('click', cntOpen);
+$('cntBackBtn') && $('cntBackBtn').addEventListener('click', ()=>{ switchScreen('screen-dashboard'); });
+$('cntExportBtn') && $('cntExportBtn').addEventListener('click', renderCountExport);
+$('fileInputCount') && $('fileInputCount').addEventListener('change', (e)=>{ const f = e.target.files && e.target.files[0]; if(f) handleCountFile(f); });
+$('cntSearchInput') && $('cntSearchInput').addEventListener('input', renderCountResults);
+$('cntSearchInput') && $('cntSearchInput').addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); renderCountResults(); } });
+$('cntDeptSelect') && $('cntDeptSelect').addEventListener('change', ()=>{ renderCountResults(); });
 
 // تنظيف بيانات Map Check عند المسح
 try{ localStorage.removeItem(mapCheckDBKey()); }catch(e){}
