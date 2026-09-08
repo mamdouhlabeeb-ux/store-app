@@ -1118,10 +1118,27 @@ $('logoutBtn').addEventListener('click', ()=>{
 
 // ---------------- Live sync بين الأجهزة المفتوحة ----------------
 let liveSync = null;
+let mapCheckUnsub = null;
 function startLiveSync(){
   stopLiveSync();
   const id = currentBranch ? currentBranch.id : '';
   if(!id) return;
+  const applyMapCheck = (mc)=>{
+    mapCheckMap = new Map(mc.rows.map(p=>[p[0], typeof p[1] === 'string' ? { loc: p[1], raw: '' } : { loc: (p[1] && p[1].loc) || '', raw: (p[1] && p[1].raw) || '' }]));
+    mapCheckEntries = (Array.isArray(mc.entries)) ? mc.entries.map(en=>({ code: en.code, norm: en.norm, loc: en.loc })) : [];
+    if(typeof mc.sel === 'string') mapCheckSelectedLoc = mc.sel;
+    saveMapCheckDB();
+    const scr = $('screen-mapcheck');
+    if(scr && scr.classList.contains('active')){
+      mapCheckReport = null;
+      const rp = $('mapCheckReportPanel'); if(rp) rp.style.display = 'none';
+      $('mapCheckPanel').style.display = 'block';
+      refreshMapCheckLocs();
+      renderMapCheckList();
+      refreshMapCheckSummary();
+      setMapCheckLocStatus('الشيت اتعمل تحديث (' + mapCheckMap.size + ' كود) ✓', 'ok');
+    }
+  };
   liveSync = db.collection('branchData').doc(id).onSnapshot(snap=>{
     const d = snap.exists ? snap.data() : null;
     if(!d) return;
@@ -1140,28 +1157,15 @@ function startLiveSync(){
         renderTransfersTable();
       }
     }
-    // استقبال Map Check الحي: أي رفع شيت من أي جهاز يظهر فوراً وبتتفعل الخانات للشغل
-    if(d.mapCheck && typeof d.mapCheck === 'object' && Array.isArray(d.mapCheck.rows)){
-      const mc = d.mapCheck;
-      mapCheckMap = new Map(mc.rows.map(p=>[p[0], typeof p[1] === 'string' ? { loc: p[1], raw: '' } : { loc: (p[1] && p[1].loc) || '', raw: (p[1] && p[1].raw) || '' }]));
-      mapCheckEntries = (Array.isArray(mc.entries)) ? mc.entries.map(en=>({ code: en.code, norm: en.norm, loc: en.loc })) : [];
-      if(typeof mc.sel === 'string') mapCheckSelectedLoc = mc.sel;
-      saveMapCheckDB();
-      const scr = $('screen-mapcheck');
-      if(scr && scr.classList.contains('active')){
-        mapCheckReport = null;
-        const rp = $('mapCheckReportPanel'); if(rp) rp.style.display = 'none';
-        $('mapCheckPanel').style.display = 'block';
-        refreshMapCheckLocs();
-        renderMapCheckList();
-        refreshMapCheckSummary();
-        setMapCheckLocStatus('الشيت اتعمل تحديث (' + mapCheckMap.size + ' كود) ✓', 'ok');
-      }
-    }
     }, err=> console.error('liveSync:', err));
+  mapCheckUnsub = db.collection('mapCheckData').doc(id).onSnapshot(snap=>{
+    const mc = snap.exists ? snap.data() : null;
+    if(mc && Array.isArray(mc.rows) && mc.rows.length) applyMapCheck(mc);
+  }, err=> console.error('mapCheckLive:', err));
 }
 function stopLiveSync(){
   if(liveSync){ liveSync(); liveSync = null; }
+  if(mapCheckUnsub){ mapCheckUnsub(); mapCheckUnsub = null; }
 }
 
 $('resetDataBtn').addEventListener('click', async ()=>{
@@ -1172,8 +1176,10 @@ $('resetDataBtn').addEventListener('click', async ()=>{
   showLoading('جاري مسح البيانات...');
   try{
     await db.collection('branchData').doc(currentBranch.id).delete();
+    try{ await db.collection('mapCheckData').doc(currentBranch.id).delete(); }catch(err){}
     stockSummary = []; salesRows = []; stockTotalsMap = new Map(); locationMap = new Map(); codeOutMem = new Set();
     transferRows = []; transferMapLoc = new Map(); transferMarkMem = new Set(); transfersDest = 'all'; lpRows = [];
+    mapCheckMap = new Map(); mapCheckEntries = []; mapCheckSelectedLoc = '';
     try{ localStorage.removeItem(codeOutKey()); }catch(err){}
     try{ localStorage.removeItem('transfers_' + currentBranch.id); }catch(err){}
     try{ localStorage.removeItem(mapCheckDBKey()); }catch(err){}
@@ -3412,18 +3418,19 @@ function loadMapCheckDB(){
 }
 
 /* ---------- تزامن بسيط (نفس نمط اللاست بيس): حفظ في وثيقة الفرع + سحب عند فتح الشاشة ---------- */
+let mapCheckCloudErr = '';
 async function saveMapCheckRows(branchId){
   if(!branchId) return false;
   try{
-    const existing = await loadBranchData(branchId) || {};
-    existing.mapCheck = {
+    await db.collection('mapCheckData').doc(branchId).set({
       uploadedAt: new Date().toISOString(),
       rows: Array.from(mapCheckMap.entries()),
       entries: mapCheckEntries,
       sel: mapCheckSelectedLoc
-    };
-    return await saveBranchData(branchId, existing);
-  }catch(e){ console.error(e); return false; }
+    }, { merge: true });
+    mapCheckCloudErr = '';
+    return true;
+  }catch(e){ mapCheckCloudErr = (e && e.code) ? (e.code + (e.message ? ': ' + e.message : '')) : String(e); console.error(e); return false; }
 }
 async function persistMapCheck(){
   saveMapCheckDB();
@@ -3446,8 +3453,8 @@ function openMapCheckScreen(){
     let src = '';
     if(currentBranch && currentBranch.id){
       try{
-        const doc = await loadBranchData(currentBranch.id);
-        const mc = (doc && doc.mapCheck) || null;
+        const snap = await db.collection('mapCheckData').doc(currentBranch.id).get();
+        const mc = (snap.exists) ? snap.data() : null;
         if(mc && Array.isArray(mc.rows) && mc.rows.length){
           mapCheckMap = new Map(mc.rows.map(p=>[p[0], typeof p[1] === 'string' ? { loc: p[1], raw: '' } : { loc: (p[1] && p[1].loc) || '', raw: (p[1] && p[1].raw) || '' }]));
           mapCheckEntries = (Array.isArray(mc.entries)) ? mc.entries.map(en=>({ code: en.code, norm: en.norm, loc: en.loc })) : [];
@@ -3508,7 +3515,7 @@ function handleMapCheckLocFile(file){
       renderMapCheckList();
       refreshMapCheckSummary();
       const cloudOk = await persistMapCheck();
-      setMapCheckLocStatus(cloudOk ? 'تم رفع شيت MAP LOC (' + m.size + ' كود) ✓ — محفوظ على السحابة' : 'الشيت اتحفظ محليًا (' + m.size + ' كود) — فشل الحفظ على السحابة! شوف الكونسول (F12)', cloudOk ? 'ok' : 'err');
+      setMapCheckLocStatus(cloudOk ? 'تم رفع شيت MAP LOC (' + m.size + ' كود) ✓ — محفوظ على السحابة' : 'الشيت اتحفظ محليًا (' + m.size + ' كود) — فشل الحفظ على السحابة! (السبب: ' + (mapCheckCloudErr || 'مش معروف') + ')', cloudOk ? 'ok' : 'err');
       $('mapCheckPanel').style.display = 'block';
       $('mapCheckCodeInput').focus();
     }catch(err){
