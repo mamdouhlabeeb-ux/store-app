@@ -4469,7 +4469,10 @@ function renderCountCard(code){
     ? '<span class="cnt-badge trs">ترصيد</span>'
     : (totalModel > 0 ? '<span class="cnt-badge deficit">عجز</span>' : '<span class="cnt-badge surplus">زيادة</span>');
   const imgUrl = IMG_BASE + encodeURIComponent(code) + IMG_SUFFIX;
-  const imgHtml = '<a class="cnt-thumb-btn" href="'+escapeAttr(imgUrl)+'" target="_blank" rel="noopener" title="فتح صورة الموديل">🖼 صورة</a>';
+  const imgHtml = '<img class="cnt-thumb cnt-thumb-img" src="'+escapeAttr(imgUrl)+'" alt="'+escapeAttr(code)+'" loading="lazy" title="اضغط للتكبير" ' +
+    'style="cursor:zoom-in;border:1px solid #e2e8f0;" ' +
+    'onclick="var w=window.open(this.src,\'_blank\');return false;" ' +
+    'onerror="this.onerror=null;this.style.display=\'none\';var p=this.parentNode;var n=document.createElement(\'span\');n.className=\'cnt-thumb-missing\';n.textContent=\'لا صورة\';p.insertBefore(n,this.nextSibling);"></img>';
   return '<div class="cnt-code-card">'
     + '<div class="cnt-head">'
     + imgHtml
@@ -4624,7 +4627,7 @@ function renderCountExport(){
         const floor = done.floor || 0;
         const stock = done.stock || 0;
         const result = r.qty - floor - stock;
-        const mark = result === 0 ? '' : (result > 0 ? 'عجز' : 'زيادة');
+        const mark = result === 0 ? '' : (result > 0 ? 'ترصيد' : 'زيادة');
         rowsData.push([code, r.size, r.qty, floor, stock, (result>0?'+':'')+result, mark, d, r.loc]);
       });
     });
