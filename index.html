@@ -416,7 +416,7 @@ service cloud.firestore {
       <button class="btn-primary" id="loginBtn">دخول</button>
       <button class="btn-ghost" id="adminOpenBtn">لوحة إدارة الفروع (للمدير)</button>
       <button class="btn-ghost" id="installBtnLogin" style="color:var(--amber-deep);text-align:center;">تثبيت التطبيق على الجهاز</button>
-      <div class="ver-stamp" id="verStamp">v2026-09-01-label39</div>
+      <div class="ver-stamp" id="verStamp">v2026-09-01-label39 · build-mc-20260908a</div>
     </div>
   </div>
 </div>
@@ -3413,7 +3413,7 @@ function loadMapCheckDB(){
 
 /* ---------- تزامن بسيط (نفس نمط اللاست بيس): حفظ في وثيقة الفرع + سحب عند فتح الشاشة ---------- */
 async function saveMapCheckRows(branchId){
-  if(!branchId) return;
+  if(!branchId) return false;
   try{
     const existing = await loadBranchData(branchId) || {};
     existing.mapCheck = {
@@ -3422,12 +3422,13 @@ async function saveMapCheckRows(branchId){
       entries: mapCheckEntries,
       sel: mapCheckSelectedLoc
     };
-    await saveBranchData(branchId, existing);
-  }catch(e){ console.error(e); }
+    return await saveBranchData(branchId, existing);
+  }catch(e){ console.error(e); return false; }
 }
-function persistMapCheck(){
+async function persistMapCheck(){
   saveMapCheckDB();
-  if(currentBranch && currentBranch.id) saveMapCheckRows(currentBranch.id);
+  if(currentBranch && currentBranch.id) return await saveMapCheckRows(currentBranch.id);
+  return false;
 }
 
 function setMapCheckLocStatus(msg, type){
@@ -3480,7 +3481,7 @@ $('fileInputMapCheckLoc').addEventListener('change', (e)=>{ if(e.target.files &&
 function handleMapCheckLocFile(file){
   setMapCheckLocStatus('جاري قراءة الملف...', '');
   const reader = new FileReader();
-  reader.onload = (e)=>{
+  reader.onload = async (e)=>{
     try{
       const data = new Uint8Array(e.target.result);
       const wb = XLSX.read(data, { type:'array' });
@@ -3503,8 +3504,8 @@ function handleMapCheckLocFile(file){
       refreshMapCheckLocs();
       renderMapCheckList();
       refreshMapCheckSummary();
-      persistMapCheck();
-      setMapCheckLocStatus('تم رفع شيت MAP LOC (' + m.size + ' كود) ✓ — محفوظ ومتاح لكل الأجهزة', 'ok');
+      const cloudOk = await persistMapCheck();
+      setMapCheckLocStatus(cloudOk ? 'تم رفع شيت MAP LOC (' + m.size + ' كود) ✓ — محفوظ على السحابة' : 'الشيت اتحفظ محليًا (' + m.size + ' كود) — فشل الحفظ على السحابة! شوف الكونسول (F12)', cloudOk ? 'ok' : 'err');
       $('mapCheckPanel').style.display = 'block';
       $('mapCheckCodeInput').focus();
     }catch(err){
