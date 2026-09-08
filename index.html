@@ -3415,7 +3415,7 @@ function openMapCheckScreen(){
   }
 }
 $('openMapCheckBtn') && $('openMapCheckBtn').addEventListener('click', openMapCheckScreen);
-$('mapCheckBackBtn') && $('mapCheckBackBtn').addEventListener('click', ()=>{ stopLastPriceScanner(); switchScreen('screen-dashboard'); });
+$('mapCheckBackBtn') && $('mapCheckBackBtn').addEventListener('click', ()=>{ camClose(); switchScreen('screen-dashboard'); });
 
 const dropMapCheckLoc = $('dropMapCheckLoc');
 ['dragover','dragenter'].forEach(evt=> dropMapCheckLoc.addEventListener(evt, (e)=>{ e.preventDefault(); dropMapCheckLoc.classList.add('dragover'); }));
