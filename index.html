@@ -1154,10 +1154,8 @@ $('resetDataBtn').addEventListener('click', async ()=>{
   showLoading('جاري مسح البيانات...');
   try{
     await db.collection('branchData').doc(currentBranch.id).delete();
-    try{ await db.collection('mapCheckData').doc(currentBranch.id).delete(); }catch(err){}
     stockSummary = []; salesRows = []; stockTotalsMap = new Map(); locationMap = new Map(); codeOutMem = new Set();
     transferRows = []; transferMapLoc = new Map(); transferMarkMem = new Set(); transfersDest = 'all'; lpRows = [];
-    mapCheckMap = new Map(); mapCheckEntries = []; mapCheckSelectedLoc = '';
     try{ localStorage.removeItem(codeOutKey()); }catch(err){}
     try{ localStorage.removeItem('transfers_' + currentBranch.id); }catch(err){}
     try{ localStorage.removeItem(mapCheckDBKey()); }catch(err){}
@@ -3375,14 +3373,11 @@ let mapCheckEntries = [];             // { code, norm, loc }
 let mapCheckSelectedLoc = '';
 let mapCheckReport = null;
 
-function mapCheckFlatRows(){
-  return Array.from(mapCheckMap, ([k,v])=> ({ code: k, loc: (typeof v === 'string' ? v : (v && v.loc) || ''), raw: (typeof v === 'string' ? '' : (v && v.raw) || '') }));
-}
 function saveMapCheckDB(){
   try{
     localStorage.setItem(mapCheckDBKey(), JSON.stringify({
       at: Date.now(),
-      rows: mapCheckFlatRows(),
+      rows: Array.from(mapCheckMap.entries()),
       entries: mapCheckEntries,
       sel: mapCheckSelectedLoc
     }));
@@ -3391,55 +3386,11 @@ function saveMapCheckDB(){
 function loadMapCheckDB(){
   try{
     const j = JSON.parse(localStorage.getItem(mapCheckDBKey()) || 'null');
-    if(j && Array.isArray(j.rows) && j.rows.length){
-      const first = j.rows[0];
-      if(Array.isArray(first)){
-        mapCheckMap = new Map(j.rows.map(p=>[p[0], typeof p[1] === 'string' ? { loc: p[1], raw: '' } : { loc: (p[1] && p[1].loc) || '', raw: (p[1] && p[1].raw) || '' }]));
-      } else {
-        mapCheckMap = new Map(j.rows.map(p=>[String(p.code), { loc: (p.loc) || '', raw: (p.raw) || '' }]));
-      }
-    } else mapCheckMap = new Map();
+    if(j && j.rows && Array.isArray(j.rows)) mapCheckMap = new Map(j.rows.map(p=>[p[0], typeof p[1] === 'string' ? { loc: p[1], raw: '' } : { loc: (p[1] && p[1].loc) || '', raw: (p[1] && p[1].raw) || '' }]));
+    else mapCheckMap = new Map();
     mapCheckEntries = (j && Array.isArray(j.entries)) ? j.entries.map(en=>({ code: en.code, norm: en.norm, loc: en.loc })) : [];
     mapCheckSelectedLoc = (j && j.sel) || '';
   }catch(e){ mapCheckMap = new Map(); mapCheckEntries = []; mapCheckSelectedLoc = ''; }
-}
-
-/* ---------- تزامن بيحاكي الـ Money Map حرفيًا: وثيقة مستقلة + سحب واستبدال عند فتح الشاشة ---------- */
-let mapCheckCloudErr = '';
-function mapCheckSaveRemote(){
-  if(!currentBranch || !currentBranch.id || typeof db === 'undefined' || !db){ mapCheckCloudErr = 'مفيش فرع أو اتصال Firestore.'; return Promise.resolve(false); }
-  try{
-    return db.collection('mapCheckData').doc(currentBranch.id).set({
-      rows: mapCheckFlatRows(),
-      entries: mapCheckEntries,
-      sel: mapCheckSelectedLoc,
-      updatedAt: new Date().toISOString()
-    }, { merge: true }).then(()=>{ mapCheckCloudErr = ''; return true; }, (e)=>{ mapCheckCloudErr = (e && e.code) ? (e.code + (e.message ? ': ' + e.message : '')) : String(e); console.error(e); return false; });
-  }catch(e){ mapCheckCloudErr = String(e); return Promise.resolve(false); }
-}
-async function mapCheckLoadRemote(){
-  if(!currentBranch || !currentBranch.id || typeof db === 'undefined' || !db){ loadMapCheckDB(); return false; }
-  try{
-    const snap = await db.collection('mapCheckData').doc(currentBranch.id).get();
-    if(snap.exists){
-      const mc = snap.data() || {};
-      if(Array.isArray(mc.rows) && mc.rows.length){
-        mapCheckMap = new Map(mc.rows.map(p=>[String(p.code), { loc: (p.loc) || '', raw: (p.raw) || '' }]));
-        mapCheckEntries = (Array.isArray(mc.entries)) ? mc.entries.map(en=>({ code: en.code, norm: en.norm, loc: en.loc })) : [];
-        if(typeof mc.sel === 'string') mapCheckSelectedLoc = mc.sel;
-        saveMapCheckDB();
-        return true;
-      }
-    }
-    loadMapCheckDB();
-    if(mapCheckMap.size) mapCheckSaveRemote();
-    return false;
-  }catch(e){ console.error(e); loadMapCheckDB(); return false; }
-}
-async function persistMapCheck(){
-  saveMapCheckDB();
-  if(currentBranch && currentBranch.id) return await mapCheckSaveRemote();
-  return false;
 }
 
 function setMapCheckLocStatus(msg, type){
@@ -3449,24 +3400,19 @@ function setMapCheckLocStatus(msg, type){
 
 function openMapCheckScreen(){
   switchScreen('screen-mapcheck');
-  $('mapCheckPanel').style.display = 'none';
+  loadMapCheckDB();
   mapCheckReport = null;
   const rp = $('mapCheckReportPanel'); if(rp) rp.style.display = 'none';
-  setMapCheckLocStatus('بيجيب آخر شيت من السحابة...', '');
-  (async ()=>{
-    const fromCloud = await mapCheckLoadRemote();
-    const total = mapCheckMap ? mapCheckMap.size : 0;
-    if(total){
-      setMapCheckLocStatus('الشيت موجود (' + total + ' كود) ✓' + (fromCloud ? ' — آخر نسخة من السحابة' : (mapCheckCloudErr ? ' — لا يمكن النسخة السحابية: ' + mapCheckCloudErr.slice(0, 80) : '')), 'ok');
-      $('mapCheckPanel').style.display = 'block';
-      refreshMapCheckLocs();
-      renderMapCheckList();
-      refreshMapCheckSummary();
-      $('mapCheckCodeInput').focus();
-    } else {
-      setMapCheckLocStatus('ارفع شيت MAP LOC (الكود، اللوكيشن) — أول شيت.', '');
-    }
-  })();
+  if(mapCheckMap && mapCheckMap.size){
+    setMapCheckLocStatus('الشيت موجود (' + mapCheckMap.size + ' كود) من آخر رفعة للفرع ده ✓', 'ok');
+    $('mapCheckPanel').style.display = 'block';
+    refreshMapCheckLocs();
+    renderMapCheckList();
+    refreshMapCheckSummary();
+    $('mapCheckCodeInput').focus();
+  } else {
+    setMapCheckLocStatus('ارفع شيت MAP LOC (الكود، اللوكيشن) الأول.', '');
+  }
 }
 $('openMapCheckBtn') && $('openMapCheckBtn').addEventListener('click', openMapCheckScreen);
 $('mapCheckBackBtn') && $('mapCheckBackBtn').addEventListener('click', ()=>{ camClose(); switchScreen('screen-dashboard'); });
@@ -3480,7 +3426,7 @@ $('fileInputMapCheckLoc').addEventListener('change', (e)=>{ if(e.target.files &&
 function handleMapCheckLocFile(file){
   setMapCheckLocStatus('جاري قراءة الملف...', '');
   const reader = new FileReader();
-  reader.onload = async (e)=>{
+  reader.onload = (e)=>{
     try{
       const data = new Uint8Array(e.target.result);
       const wb = XLSX.read(data, { type:'array' });
@@ -3503,8 +3449,8 @@ function handleMapCheckLocFile(file){
       refreshMapCheckLocs();
       renderMapCheckList();
       refreshMapCheckSummary();
-      const cloudOk = await persistMapCheck();
-      setMapCheckLocStatus(cloudOk ? 'تم رفع شيت MAP LOC (' + m.size + ' كود) ✓ — محفوظ على السحابة' : 'الشيت اتحفظ محليًا (' + m.size + ' كود) — فشل الحفظ على السحابة! (السبب: ' + (mapCheckCloudErr || 'مش معروف') + ')', cloudOk ? 'ok' : 'err');
+      saveMapCheckDB();
+      setMapCheckLocStatus('تم رفع شيت MAP LOC (' + m.size + ' كود) ✓', 'ok');
       $('mapCheckPanel').style.display = 'block';
       $('mapCheckCodeInput').focus();
     }catch(err){
@@ -3540,7 +3486,7 @@ $('mapCheckResetBtn').addEventListener('click', ()=>{
   $('mapCheckReportPanel').style.display = 'none';
   renderMapCheckList();
   refreshMapCheckSummary();
-  persistMapCheck();
+  saveMapCheckDB();
   $('mapCheckCodeInput').focus();
 });
 
@@ -3564,7 +3510,7 @@ function mapCheckAddCode(raw){
   mapCheckEntries.push({ code: rawCode, norm, loc: mapCheckLocOf(norm), sheetCode: mapCheckRawOf(norm) });
   renderMapCheckList();
   refreshMapCheckSummary();
-  persistMapCheck();
+  saveMapCheckDB();
   input.value = '';
   input.focus();
 }
@@ -3598,7 +3544,7 @@ function renderMapCheckList(){
     $('mapCheckReportPanel').style.display = 'none';
     renderMapCheckList();
     refreshMapCheckSummary();
-    persistMapCheck();
+    saveMapCheckDB();
   }));
 }
 
@@ -3696,8 +3642,6 @@ function mapCheckExport(){
 }
 $('mapCheckExportBtn').addEventListener('click', mapCheckExport);
 
-// =============== Money Map — بياخد من شيت المخزون المحفوظ مباشرةً (من غير رفع) ===============
-let moneyMapStockIndex = new Map(); // norm -> شكل الكود من شيت المخزون (زي R217166)
 let moneyMapRows = [];
 function moneyMapDBKey(){
   return 'moneyMap_v1_' + (currentBranch ? currentBranch.id : 'anon');
