@@ -961,6 +961,16 @@ service cloud.firestore {
     .cnt-dept-chip{display:inline-flex;gap:5px;align-items:center;background:#f1f5f9;border:1px solid var(--line);border-radius:999px;padding:4px 11px;font-size:12.5px;font-weight:700;color:#334155;cursor:pointer;user-select:none;}
     .cnt-dept-chip input{width:15px;height:15px;accent-color:#1d4ed8;margin:0;cursor:pointer;}
     .cnt-dept-chip.on{background:#dbeafe;border-color:#93c5fd;color:#1e3a8a;}
+    .cnt-dd{position:relative;flex:1 1 auto;min-width:190px;max-width:340px;}
+    .cnt-dd-btn{width:100%;display:flex;align-items:center;justify-content:space-between;gap:8px;background:#fff;border:1px solid #cbd5e1;border-radius:10px;padding:9px 12px;font-family:'Cairo',sans-serif;font-size:13.5px;font-weight:700;color:#1e293b;cursor:pointer;text-align:right;}
+    .cnt-dd-btn .cnt-dd-arrow{transition:transform .15s ease;font-size:11px;color:#64748b;}
+    .cnt-dd.open .cnt-dd-arrow{transform:rotate(180deg);}
+    .cnt-dd-panel{display:none;position:absolute;top:calc(100% + 6px);right:0;left:0;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 10px 30px rgba(15,23,42,.15);z-index:90;max-height:240px;overflow-y:auto;padding:6px;}
+    .cnt-dd.open .cnt-dd-panel{display:block;}
+    .cnt-dd-opt{display:flex;gap:8px;align-items:center;padding:8px 10px;border-radius:8px;font-size:13.5px;font-weight:700;color:#334155;cursor:pointer;user-select:none;}
+    .cnt-dd-opt:hover{background:#f1f5f9;}
+    .cnt-dd-opt input{width:16px;height:16px;accent-color:#1d4ed8;margin:0;cursor:pointer;flex:0 0 auto;}
+    .cnt-dd-opt.multi-tag{background:#dbeafe;color:#1e3a8a;}
   </style>
   <div class="panel-head">
     <h2 style="font-family:'Cairo',sans-serif;">جرد / ترصيد</h2>
@@ -987,10 +997,14 @@ service cloud.firestore {
     <div class="cnt-bar">
       <div class="cnt-tools">
         <label style="font-weight:700;font-size:13.5px;">الدبارتمنت:</label>
-        <div id="cntDeptChips" class="cnt-dept-chips" style="display:flex;gap:6px;flex-wrap:wrap;align-items:center;flex:1 1 auto;">
-          <label class="cnt-dept-chip cnt-all" style="cursor:pointer;">
-            <input type="checkbox" class="cnt-dept-check" value="" checked> كل الدبارتمنتات
-          </label>
+        <div id="cntDeptDD" class="cnt-dd">
+          <button type="button" class="cnt-dd-btn" id="cntDeptDDBtn">
+            <span id="cntDeptDDLabel">كل الدبارتمنتات</span>
+            <span class="cnt-dd-arrow">▾</span>
+          </button>
+          <div class="cnt-dd-panel" id="cntDeptDDPanel">
+            <label class="cnt-dd-opt"><input type="checkbox" class="cnt-dept-check" value="" checked> كل الدبارتمنتات</label>
+          </div>
         </div>
         <input class="search-input cnt-search" id="cntSearchInput" placeholder="اكتب الكود..." inputmode="numeric" enterkeyhint="search" autocomplete="off">
       </div>
@@ -4175,10 +4189,10 @@ function clearCntDone(){
 }
 
 function cntSelectedDepts(){
-  const chips = $('cntDeptChips');
+  const panel = $('cntDeptDDPanel');
   const out = [];
-  if(!chips) return out;
-  const checks = Array.from(chips.querySelectorAll('.cnt-dept-check'));
+  if(!panel) return out;
+  const checks = Array.from(panel.querySelectorAll('.cnt-dept-check'));
   const all = checks.find(c=> c.value === '');
   const anySpecific = checks.some(c=> c.value !== '' && c.checked);
   if(!anySpecific || (all && all.checked)){
@@ -4266,16 +4280,16 @@ function processCountRows(rows){
 }
 
 function populateCountDepts(){
-  const chips = $('cntDeptChips');
-  if(!chips) return;
-  // احتفظ بالحالة الحالية (الكل + المحددين) ثم نبني الـ chips من جديد
+  const panel = $('cntDeptDDPanel');
+  if(!panel) return;
+  // احتفظ بالحالة الحالية (الكل + المحددين) ثم نبني الخيارات من جديد
   const prev = new Set();
-  chips.querySelectorAll('.cnt-dept-check').forEach(c=>{ if(c.checked) prev.add(c.value); });
+  panel.querySelectorAll('.cnt-dept-check').forEach(c=>{ if(c.checked) prev.add(c.value); });
   const allChecked = prev.has('');
-  chips.innerHTML = '';
+  panel.innerHTML = '';
   const mk = (label, value, checked)=>{
     const lb = document.createElement('label');
-    lb.className = 'cnt-dept-chip' + (checked ? ' on' : '');
+    lb.className = 'cnt-dd-opt' + (value !== '' && checked ? ' multi-tag' : '');
     const cb = document.createElement('input');
     cb.type = 'checkbox';
     cb.className = 'cnt-dept-check';
@@ -4285,41 +4299,47 @@ function populateCountDepts(){
     sp.textContent = label;
     lb.appendChild(cb);
     lb.appendChild(sp);
-    lb.addEventListener('click', (e)=>{
-      if(e.target === cb) return;
-      cb.checked = !cb.checked;
-      syncCntChips();
-      renderCountResults();
-    });
-    cb.addEventListener('change', ()=>{ syncCntChips(); renderCountResults(); });
     return lb;
   };
-  const allLb = mk('كل الدبارتمنتات', '', allChecked);
-  chips.appendChild(allLb);
+  panel.appendChild(mk('كل الدبارتمنتات', '', allChecked));
   cntDeptList.forEach(d=>{
-    chips.appendChild(mk(d, d, prev.has(d)));
+    panel.appendChild(mk(d, d, (prev.has(d) && !allChecked)));
   });
   syncCntChips();
 }
 
 function syncCntChips(){
-  const chips = $('cntDeptChips');
-  if(!chips) return;
-  const checks = Array.from(chips.querySelectorAll('.cnt-dept-check'));
+  const panel = $('cntDeptDDPanel');
+  const dd = $('cntDeptDD');
+  if(!panel) return;
+  const checks = Array.from(panel.querySelectorAll('.cnt-dept-check'));
   const all = checks.find(c=> c.value === '');
   checks.forEach(c=>{
-    const lb = c.closest('.cnt-dept-chip');
-    if(lb) lb.classList.toggle('on', c.checked);
+    const lb = c.closest('.cnt-dd-opt');
+    if(lb) lb.classList.toggle('multi-tag', c.checked && c.value !== '');
   });
   const anySpecific = checks.some(c=> c.value !== '' && c.checked);
   if(all){
-    // لو حددت دبارتمنت محدد => افتح "الكل"
     if(anySpecific) all.checked = false;
-    // لو كل المحددين اتلغوا => رجع "الكل" تلقائيًا
     if(!anySpecific) all.checked = true;
-    const allLb = all.closest('.cnt-dept-chip');
-    if(allLb) allLb.classList.toggle('on', all.checked);
+    const allLb = all.closest('.cnt-dd-opt');
+    if(allLb) allLb.classList.toggle('multi-tag', false);
   }
+  // نص الزر
+  const lbl = $('cntDeptDDLabel');
+  if(lbl && panel) lbl.textContent = cntDDButtonLabel();
+}
+
+function cntDDButtonLabel(){
+  const panel = $('cntDeptDDPanel');
+  if(!panel) return '';
+  const checks = Array.from(panel.querySelectorAll('.cnt-dept-check'));
+  const all = checks.find(c=> c.value === '');
+  if(all && all.checked) return 'كل الدبارتمنتات';
+  const sel = checks.filter(c=> c.value !== '' && c.checked).map(c=> c.value);
+  if(sel.length === 0) return 'كل الدبارتمنتات';
+  if(sel.length === 1) return sel[0];
+  return sel.length + ' دبارتمنت';
 }
 
 function cntSizesForCode(code){
@@ -4543,9 +4563,9 @@ function recountCountModelTotal(card){
 }
 
 function cntSelectDept(dept){
-  const chips = $('cntDeptChips');
-  if(!chips) return;
-  chips.querySelectorAll('.cnt-dept-check').forEach(c=>{
+  const panel = $('cntDeptDDPanel');
+  if(!panel) return;
+  panel.querySelectorAll('.cnt-dept-check').forEach(c=>{
     if(c.value !== '' && c.value === dept) c.checked = true;
   });
   syncCntChips();
@@ -4631,8 +4651,30 @@ $('cntExportBtn') && $('cntExportBtn').addEventListener('click', renderCountExpo
 $('fileInputCount') && $('fileInputCount').addEventListener('change', (e)=>{ const f = e.target.files && e.target.files[0]; if(f) handleCountFile(f); });
 $('cntSearchInput') && $('cntSearchInput').addEventListener('input', renderCountResults);
 $('cntSearchInput') && $('cntSearchInput').addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); renderCountResults(); } });
-// دبارتمنت chips بتشتغل ذاتيًا في populateCountDepts/syncCntChips
-// (تم إزالة cntDeptSelect — استُبدل بعلامات markers)
+// فتح/إغلاق قائمة الدبارتمنتات (dropdown) + تفويض أحداث الـ checkboxes
+(function(){
+  const dd = $('cntDeptDD');
+  const btn = $('cntDeptDDBtn');
+  const panel = $('cntDeptDDPanel');
+  if(!dd || !btn || !panel) return;
+  btn.addEventListener('click', (e)=>{
+    e.stopPropagation();
+    dd.classList.toggle('open');
+  });
+  document.addEventListener('click', (e)=>{
+    if(!dd.contains(e.target)) dd.classList.remove('open');
+  });
+  panel.addEventListener('click', (e)=>{
+    if(e.target.tagName === 'INPUT') return;
+    const lb = e.target.closest('.cnt-dd-opt');
+    if(!lb) return;
+    const cb = lb.querySelector('.cnt-dept-check');
+    if(cb){ cb.checked = !cb.checked; }
+    syncCntChips();
+    renderCountResults();
+  });
+  panel.addEventListener('change', ()=>{ syncCntChips(); renderCountResults(); });
+})();
 
 // تنظيف بيانات Map Check عند المسح
 try{ localStorage.removeItem(mapCheckDBKey()); }catch(e){}
