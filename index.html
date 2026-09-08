@@ -1140,6 +1140,24 @@ function startLiveSync(){
         renderTransfersTable();
       }
     }
+    // استقبال Map Check الحي: أي رفع شيت من أي جهاز يظهر فوراً وبتتفعل الخانات للشغل
+    if(d.mapCheck && typeof d.mapCheck === 'object' && Array.isArray(d.mapCheck.rows)){
+      const mc = d.mapCheck;
+      mapCheckMap = new Map(mc.rows.map(p=>[p[0], typeof p[1] === 'string' ? { loc: p[1], raw: '' } : { loc: (p[1] && p[1].loc) || '', raw: (p[1] && p[1].raw) || '' }]));
+      mapCheckEntries = (Array.isArray(mc.entries)) ? mc.entries.map(en=>({ code: en.code, norm: en.norm, loc: en.loc })) : [];
+      if(typeof mc.sel === 'string') mapCheckSelectedLoc = mc.sel;
+      saveMapCheckDB();
+      const scr = $('screen-mapcheck');
+      if(scr && scr.classList.contains('active')){
+        mapCheckReport = null;
+        const rp = $('mapCheckReportPanel'); if(rp) rp.style.display = 'none';
+        $('mapCheckPanel').style.display = 'block';
+        refreshMapCheckLocs();
+        renderMapCheckList();
+        refreshMapCheckSummary();
+        setMapCheckLocStatus('الشيت اتعمل تحديث (' + mapCheckMap.size + ' كود) ✓', 'ok');
+      }
+    }
     }, err=> console.error('liveSync:', err));
 }
 function stopLiveSync(){
@@ -3393,6 +3411,25 @@ function loadMapCheckDB(){
   }catch(e){ mapCheckMap = new Map(); mapCheckEntries = []; mapCheckSelectedLoc = ''; }
 }
 
+/* ---------- تزامن بسيط (نفس نمط اللاست بيس): حفظ في وثيقة الفرع + سحب عند فتح الشاشة ---------- */
+async function saveMapCheckRows(branchId){
+  if(!branchId) return;
+  try{
+    const existing = await loadBranchData(branchId) || {};
+    existing.mapCheck = {
+      uploadedAt: new Date().toISOString(),
+      rows: Array.from(mapCheckMap.entries()),
+      entries: mapCheckEntries,
+      sel: mapCheckSelectedLoc
+    };
+    await saveBranchData(branchId, existing);
+  }catch(e){ console.error(e); }
+}
+function persistMapCheck(){
+  saveMapCheckDB();
+  if(currentBranch && currentBranch.id) saveMapCheckRows(currentBranch.id);
+}
+
 function setMapCheckLocStatus(msg, type){
   const el = $('uploadStatusMapCheckLoc'); if(!el) return;
   el.className = 'upload-status'; if(type) el.classList.add(type); el.textContent = msg;
@@ -3400,19 +3437,36 @@ function setMapCheckLocStatus(msg, type){
 
 function openMapCheckScreen(){
   switchScreen('screen-mapcheck');
-  loadMapCheckDB();
+  $('mapCheckPanel').style.display = 'none';
   mapCheckReport = null;
   const rp = $('mapCheckReportPanel'); if(rp) rp.style.display = 'none';
-  if(mapCheckMap && mapCheckMap.size){
-    setMapCheckLocStatus('الشيت موجود (' + mapCheckMap.size + ' كود) من آخر رفعة للفرع ده ✓', 'ok');
-    $('mapCheckPanel').style.display = 'block';
-    refreshMapCheckLocs();
-    renderMapCheckList();
-    refreshMapCheckSummary();
-    $('mapCheckCodeInput').focus();
-  } else {
-    setMapCheckLocStatus('ارفع شيت MAP LOC (الكود، اللوكيشن) الأول.', '');
-  }
+  (async ()=>{
+    if(currentBranch && currentBranch.id){
+      try{
+        const doc = await loadBranchData(currentBranch.id);
+        const mc = (doc && doc.mapCheck) || null;
+        if(mc && Array.isArray(mc.rows)){
+          mapCheckMap = new Map(mc.rows.map(p=>[p[0], typeof p[1] === 'string' ? { loc: p[1], raw: '' } : { loc: (p[1] && p[1].loc) || '', raw: (p[1] && p[1].raw) || '' }]));
+          mapCheckEntries = (Array.isArray(mc.entries)) ? mc.entries.map(en=>({ code: en.code, norm: en.norm, loc: en.loc })) : [];
+          mapCheckSelectedLoc = (mc.sel) || '';
+        } else {
+          loadMapCheckDB();
+        }
+      }catch(e){ console.error(e); loadMapCheckDB(); }
+    } else {
+      loadMapCheckDB();
+    }
+    if(mapCheckMap && mapCheckMap.size){
+      setMapCheckLocStatus('الشيت موجود (' + mapCheckMap.size + ' كود) من آخر رفعة للفرع ده ✓', 'ok');
+      $('mapCheckPanel').style.display = 'block';
+      refreshMapCheckLocs();
+      renderMapCheckList();
+      refreshMapCheckSummary();
+      $('mapCheckCodeInput').focus();
+    } else {
+      setMapCheckLocStatus('ارفع شيت MAP LOC (الكود، اللوكيشن) الأول.', '');
+    }
+  })();
 }
 $('openMapCheckBtn') && $('openMapCheckBtn').addEventListener('click', openMapCheckScreen);
 $('mapCheckBackBtn') && $('mapCheckBackBtn').addEventListener('click', ()=>{ camClose(); switchScreen('screen-dashboard'); });
@@ -3449,8 +3503,8 @@ function handleMapCheckLocFile(file){
       refreshMapCheckLocs();
       renderMapCheckList();
       refreshMapCheckSummary();
-      saveMapCheckDB();
-      setMapCheckLocStatus('تم رفع شيت MAP LOC (' + m.size + ' كود) ✓', 'ok');
+      persistMapCheck();
+      setMapCheckLocStatus('تم رفع شيت MAP LOC (' + m.size + ' كود) ✓ — محفوظ ومتاح لكل الأجهزة', 'ok');
       $('mapCheckPanel').style.display = 'block';
       $('mapCheckCodeInput').focus();
     }catch(err){
@@ -3486,7 +3540,7 @@ $('mapCheckResetBtn').addEventListener('click', ()=>{
   $('mapCheckReportPanel').style.display = 'none';
   renderMapCheckList();
   refreshMapCheckSummary();
-  saveMapCheckDB();
+  persistMapCheck();
   $('mapCheckCodeInput').focus();
 });
 
@@ -3510,7 +3564,7 @@ function mapCheckAddCode(raw){
   mapCheckEntries.push({ code: rawCode, norm, loc: mapCheckLocOf(norm), sheetCode: mapCheckRawOf(norm) });
   renderMapCheckList();
   refreshMapCheckSummary();
-  saveMapCheckDB();
+  persistMapCheck();
   input.value = '';
   input.focus();
 }
@@ -3544,7 +3598,7 @@ function renderMapCheckList(){
     $('mapCheckReportPanel').style.display = 'none';
     renderMapCheckList();
     refreshMapCheckSummary();
-    saveMapCheckDB();
+    persistMapCheck();
   }));
 }
 
