@@ -3441,31 +3441,34 @@ function openMapCheckScreen(){
   $('mapCheckPanel').style.display = 'none';
   mapCheckReport = null;
   const rp = $('mapCheckReportPanel'); if(rp) rp.style.display = 'none';
+  setMapCheckLocStatus('بيجيب آخر شيت من السحابة...', '');
   (async ()=>{
+    let src = '';
     if(currentBranch && currentBranch.id){
       try{
         const doc = await loadBranchData(currentBranch.id);
         const mc = (doc && doc.mapCheck) || null;
-        if(mc && Array.isArray(mc.rows)){
+        if(mc && Array.isArray(mc.rows) && mc.rows.length){
           mapCheckMap = new Map(mc.rows.map(p=>[p[0], typeof p[1] === 'string' ? { loc: p[1], raw: '' } : { loc: (p[1] && p[1].loc) || '', raw: (p[1] && p[1].raw) || '' }]));
           mapCheckEntries = (Array.isArray(mc.entries)) ? mc.entries.map(en=>({ code: en.code, norm: en.norm, loc: en.loc })) : [];
           mapCheckSelectedLoc = (mc.sel) || '';
+          src = 'السحابة';
         } else {
+          src = 'مفيش شيت في السحابة';
           loadMapCheckDB();
         }
-      }catch(e){ console.error(e); loadMapCheckDB(); }
-    } else {
-      loadMapCheckDB();
-    }
-    if(mapCheckMap && mapCheckMap.size){
-      setMapCheckLocStatus('الشيت موجود (' + mapCheckMap.size + ' كود) من آخر رفعة للفرع ده ✓', 'ok');
+      }catch(e){ console.error(e); src = 'فشل قراءة السحابة: ' + ((e && e.message) ? e.message : String(e)); loadMapCheckDB(); }
+    } else { loadMapCheckDB(); }
+    const total = mapCheckMap ? mapCheckMap.size : 0;
+    if(total){
+      setMapCheckLocStatus('الشيت موجود (' + total + ' كود) ✓  —  المصدر: ' + src, 'ok');
       $('mapCheckPanel').style.display = 'block';
       refreshMapCheckLocs();
       renderMapCheckList();
       refreshMapCheckSummary();
       $('mapCheckCodeInput').focus();
     } else {
-      setMapCheckLocStatus('ارفع شيت MAP LOC (الكود، اللوكيشن) الأول.', '');
+      setMapCheckLocStatus(src === 'مفيش شيت في السحابة' ? 'مفيش شيت في السحابة على الفرع ده — لو رافعت من اللاب وطلعت «محفوظ على السحابة» يبقى أعد فتح الشاشة دي.' : (src.indexOf('فشل') === 0 ? src : 'ارفع شيت (الكود، اللوكيشن) الأول.'), src.indexOf('فشل') === 0 ? 'err' : '');
     }
   })();
 }
