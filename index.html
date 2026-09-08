@@ -997,9 +997,11 @@ async function loadBranchConfig(){
   }
   cfg.branches.forEach((b,i)=>{ b.name = BRANCH_NAMES[i] || b.name; });
   cfg.adminPassword = cfg.adminPassword || DEFAULT_ADMIN_PASSWORD;
-  if(cfg.passwordTag !== '2020'){
-    cfg.branches.forEach(b=>{ b.password = DEFAULT_BRANCH_PASSWORD; });
-    cfg.passwordTag = '2020';
+  // إعادة تعيين شاملة: أول تشغيل على الكود الجديد بيمرّن كل الفروع على 152152 مرة واحدة فقط،
+  // وبعدها أي تغيير بيحصل من فرع/مدير بيتبقى محفوظ زي ما هو
+  if(cfg.resetAllTag !== '152152'){
+    cfg.branches.forEach(b=>{ b.password = '152152'; });
+    cfg.resetAllTag = '152152';
   }
   try{ await db.collection('config').doc('branches').set(cfg); }catch(e){ console.error(e); }
   return cfg;
