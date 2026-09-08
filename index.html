@@ -4224,6 +4224,10 @@ function handleCountFile(file){
       cntIndex = parsed.index;
       cntRowIndex = parsed.rowIndex;
       cntDeptList = parsed.depts;
+      if(cntDoneRows.size > 0 && !confirm('في نتائج محفوظة من جرد قبل كده.\nرفع شيت جديد هيبدأ الجرد من الصفر والأرقام دي هتتمسح.\n\nمتأكد إنك عايز تستمر؟')){
+        setStatus(statusEl, 'اتلغيت — النتائج المحفوظة لسه موجودة.', 'err');
+        return;
+      }
       clearCntDone();
       populateCountDepts();
       $('cntUploadCard').style.display = 'none';
@@ -4618,18 +4622,36 @@ function renderCountExport(){
   if(depts.length === 0){ showToast('اختار دبارتمنت واحد أو أكتر الأول.'); return; }
   const header = ['الكود', 'المقاس', 'توتال', 'Floor', 'Stock', 'النتيجة', 'العلامة', 'الدبارتمنت', 'اللوكيشن'];
   const rowsData = [header];
+  const qtyOf = (code, size)=>{
+    const done = cntDoneRows.get(cntInputKey(code, size)) || {};
+    return { floor: done.floor || 0, stock: done.stock || 0 };
+  };
+  const rowsByCode = new Map();
   cntIndex.forEach((entry, code)=>{
+    const rows = [];
+    let totalModel = 0;
     depts.forEach(d=>{
-      const deptRows = cntRowIndex.get(d) || [];
-      deptRows.forEach(r=>{
+      (cntRowIndex.get(d) || []).forEach(r=>{
         if(r.code !== code) return;
-        const done = cntDoneRows.get(cntInputKey(code, r.size)) || {};
-        const floor = done.floor || 0;
-        const stock = done.stock || 0;
+        const { floor, stock } = qtyOf(code, r.size);
         const result = r.qty - floor - stock;
-        const mark = result === 0 ? '' : (result > 0 ? 'ترصيد' : 'زيادة');
-        rowsData.push([code, r.size, r.qty, floor, stock, (result>0?'+':'')+result, mark, d, r.loc]);
+        totalModel += result;
+        rows.push({ r, floor, stock, result, d });
       });
+    });
+    rowsByCode.set(code, { rows, totalModel });
+  });
+  rowsByCode.forEach(({ rows, totalModel })=>{
+    rows.forEach(({ r, floor, stock, result, d })=>{
+      let mark;
+      if(totalModel === 0){
+        mark = result === 0 ? '' : 'ترصيد';
+      }else if(totalModel > 0){
+        mark = 'عجز';
+      }else{
+        mark = 'زيادة';
+      }
+      rowsData.push([r.code, r.size, r.qty, floor, stock, (result>0?'+':'')+result, mark, d, r.loc]);
     });
   });
   const wb = XLSX.utils.book_new();
