@@ -933,6 +933,8 @@ service cloud.firestore {
     .cnt-wrap{display:flex;flex-direction:column;gap:16px;}
     .cnt-bar{position:sticky;top:0;z-index:60;background:var(--paper);padding:14px 0;border-bottom:1px solid var(--line);}
     .cnt-tools{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+    .cnt-sync-bar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:12px;background:#eff6ff;border:1px solid #bfdbfe;border-radius:12px;padding:9px 12px;}
+    .cnt-sync-bar input{font-size:15px;}
     .cnt-pending-dd{padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;font-family:inherit;font-size:13.5px;font-weight:700;color:#1e293b;cursor:pointer;max-width:230px;}
     .cnt-pending-dd option{font-weight:600;}
     .cnt-search{flex:1 1 auto;min-width:180px;}
@@ -999,6 +1001,12 @@ service cloud.firestore {
 
   <div id="cntBody" style="display:none;" class="cnt-wrap">
     <div class="cnt-bar">
+      <div class="cnt-sync-bar">
+        <label style="font-weight:800;font-size:13.5px;color:#334155;">🔑 كود المزامنة:</label>
+        <input id="cntSyncKeyInput" placeholder="اكتب نفس الكود على كل الأجهزة (مثال: jard-maadi)" maxlength="40" autocomplete="off" style="flex:1;min-width:180px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;font-family:inherit;font-size:13.5px;font-weight:700;color:#1e293b;">
+        <button type="button" class="btn-primary" id="cntSyncBtn" style="white-space:nowrap;">حفظ ومزامنة</button>
+        <span id="cntSyncHint" style="font-size:12px;color:var(--muted);font-weight:800;"></span>
+      </div>
       <div class="cnt-tools">
         <label style="font-weight:700;font-size:13.5px;">الدبارتمنت:</label>
         <div id="cntDeptDD" class="cnt-dd">
@@ -4247,6 +4255,86 @@ function cntSelectedDepts(){
   return out;
 }
 
+// ---------------- مزامنة الجرد/الشيت/النتائج عبر Firebase ----------------
+function cntSyncKey(){
+  try{ return (localStorage.getItem('count_sync_' + (currentBranch ? currentBranch.id : 'anon')) || '').trim(); }catch(e){ return ''; }
+}
+function setCntSyncKey(v){
+  try{ localStorage.setItem('count_sync_' + (currentBranch ? currentBranch.id : 'anon'), String(v).trim()); }catch(e){}
+}
+function cntSyncPrefix(){
+  return (currentBranch ? currentBranch.id : 'anon') + '_' + (cntSyncKey() || 'default');
+}
+function cntSyncRef(){
+  if(!db || !currentBranch) return null;
+  return db.collection('jardData').doc(cntSyncPrefix());
+}
+function cntSyncPack(){
+  let sheet = null, done = null;
+  try{ sheet = localStorage.getItem(cntSheetKey()) || null; }catch(e){}
+  try{ done = localStorage.getItem(cntDBKey()) || null; }catch(e){}
+  return { sheet: sheet, done: done, updatedAt: Date.now() };
+}
+function setCntSyncHint(msg){
+  const h = $('cntSyncHint');
+  if(h && msg !== undefined) h.textContent = msg;
+}
+let cntPushTimer = null;
+function cntPushCloud(){
+  if(!db || !currentBranch || !cntSyncKey()) return;
+  clearTimeout(cntPushTimer);
+  setCntSyncHint('الرفع للسحابة...');
+  cntPushTimer = setTimeout(async ()=>{
+    const ref = cntSyncRef();
+    if(!ref){ setCntSyncHint('مفيش اتصال Firebase'); return; }
+    try{
+      await ref.set(cntSyncPack());
+      setCntSyncHint('تم الرفع للسحابة ✓');
+    }catch(e){ console.error(e); setCntSyncHint('فشل الرفع — تأكد من الإنترنت'); }
+  }, 600);
+}
+async function cntPullCloud(){
+  if(!db || !currentBranch || !cntSyncKey()) return false;
+  const ref = cntSyncRef();
+  if(!ref){ setCntSyncHint('مفيش اتصال Firebase'); return false; }
+  try{
+    const snap = await ref.get();
+    if(!snap.exists) return false;
+    const d = snap.data();
+    let changed = false;
+    if(d.sheet){ try{ if((localStorage.getItem(cntSheetKey()) || null) !== d.sheet){ localStorage.setItem(cntSheetKey(), d.sheet); changed = true; } }catch(e){} }
+    if(d.done){ try{ if((localStorage.getItem(cntDBKey()) || null) !== d.done){ localStorage.setItem(cntDBKey(), d.done); changed = true; } }catch(e){} }
+    if(changed){
+      loadCntDone();
+      if(cntIndex.size === 0) loadCntSheet();
+      populateCntDepts();
+      populateCntPendingDD();
+      if(cntIndex.size > 0){
+        if($('cntUploadCard')) $('cntUploadCard').style.display = 'none';
+        if($('cntBody')) $('cntBody').style.display = 'block';
+      }
+    }
+    setCntSyncHint('تم الجلب من السحابة ✓');
+    return true;
+  }catch(e){ console.error(e); setCntSyncHint('فشل الجلب — تأكد من الإنترنت'); return false; }
+}
+function cntSaveSyncNow(){
+  if(!currentBranch){ showToast('اختار الفرع الأول.'); return; }
+  const v = ($('cntSyncKeyInput') ? String($('cntSyncKeyInput').value) : '').trim();
+  if(!v){ showToast('اكتب كود المزامنة الأول.'); return; }
+  setCntSyncKey(v);
+  setCntSyncHint('جاري المزامنة...');
+  (async ()=>{
+    const pulled = await cntPullCloud();
+    if(!pulled){
+      cntPushCloud();
+    }else{
+      cntPushCloud();
+    }
+  })();
+  showToast('كود المزامنة محفوظ ✓');
+}
+
 // هل الدبارتمنت مطلوب؟ (الكل => كلهم)
 function cntDeptWanted(dept){
   return cntSelectedDepts().indexOf(dept) !== -1;
@@ -4276,6 +4364,7 @@ function handleCountFile(file){
       populateCountDepts();
       populateCntPendingDD();
       saveCntSheet();
+      cntPushCloud();
       $('cntUploadCard').style.display = 'none';
       $('cntBody').style.display = 'block';
       $('cntNoDept').style.display = 'none';
@@ -4601,6 +4690,7 @@ function onCntInput(code, size, dept, el){
   cntDoneRows.set(cntInputKey(code, size), { floor: floor, stock: stock });
   saveCntDone();
   populateCntPendingDD();
+  cntPushCloud();
   recountCountModelTotal($('cntResults') ? $('cntResults').querySelector('.cnt-code-card') : null);
 }
 
@@ -4746,11 +4836,25 @@ function cntOpen(){
   $('cntResults').innerHTML = '';
   populateCountDepts();
   populateCntPendingDD();
+  if($('cntSyncKeyInput')) $('cntSyncKeyInput').value = cntSyncKey();
+  if(cntSyncKey()){ setCntSyncHint('جاري الجلب من السحابة...'); cntPullCloud(); }
   if(cntIndex.size === 0){
     $('cntUploadCard').style.display = 'block';
     $('cntBody').style.display = 'none';
   }
   switchScreen('screen-count');
+}
+
+function cntSyncKeyInputChange(){
+  const v = ($('cntSyncKeyInput') ? String($('cntSyncKeyInput').value) : '').trim();
+  if(!currentBranch){ showToast('اختار الفرع الأول.'); return; }
+  setCntSyncKey(v);
+  if(v && (cntIndex.size === 0 || cntDoneRows.size === 0)){
+    setCntSyncHint('جاري الجلب من السحابة...');
+    cntPullCloud();
+  }else{
+    cntPushCloud();
+  }
 }
 
 $('openCountBtn') && $('openCountBtn').addEventListener('click', cntOpen);
@@ -4766,6 +4870,9 @@ $('cntPendingDD') && $('cntPendingDD').addEventListener('change', (e)=>{
   renderCountResults();
   e.target.value = '';
 });
+$('cntSyncKeyInput') && $('cntSyncKeyInput').addEventListener('change', cntSyncKeyInputChange);
+$('cntSyncKeyInput') && $('cntSyncKeyInput').addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); cntSyncKeyInputChange(); } });
+$('cntSyncBtn') && $('cntSyncBtn').addEventListener('click', cntSaveSyncNow);
 // فتح/إغلاق قائمة الدبارتمنتات (dropdown) + تفويض أحداث الـ checkboxes
 (function(){
   const dd = $('cntDeptDD');
