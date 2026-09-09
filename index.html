@@ -3552,13 +3552,15 @@ function mapCheckPushCloud(){
   if(!currentBranch || !cntSyncKey()) return;
   const ref = mapCheckSyncRef(); if(!ref) return;
   const pack = {
-    rows: Array.from(mapCheckMap.entries()),
+    rows: Object.fromEntries(mapCheckMap.entries()),
     entries: mapCheckEntries,
     sel: mapCheckSelectedLoc,
     updatedAt: Date.now()
   };
-  ref.set(pack).then(()=>{ setMapCheckSyncHint('تم الرفع للسحابة ✓'); })
-    .catch(e=>{ console.error(e); setMapCheckSyncHint('فشل الرفع — تأكد من الإنترنت'); });
+  try{
+    ref.set(pack).then(()=>{ setMapCheckSyncHint('تم الرفع للسحابة ✓'); })
+      .catch(e=>{ console.error(e); setMapCheckSyncHint('فشل الرفع — تأكد من الإنترنت'); });
+  }catch(e){ console.error(e); setMapCheckSyncHint('فشل الرفع — بيانات غير صالحة للسحابة'); }
 }
 async function mapCheckPullCloud(){
   if(!currentBranch || !cntSyncKey()) return false;
@@ -3571,6 +3573,12 @@ async function mapCheckPullCloud(){
     let changed = false;
     if(d.rows && Array.isArray(d.rows)){
       mapCheckMap = new Map(d.rows.map(p=>[p[0], typeof p[1] === 'string' ? { loc: p[1], raw: '' } : { loc: (p[1] && p[1].loc) || '', raw: (p[1] && p[1].raw) || '' }]));
+      changed = true;
+    } else if(d.rows && typeof d.rows === 'object'){
+      mapCheckMap = new Map(Object.keys(d.rows).map(k=>{
+        const v = d.rows[k];
+        return [k, (typeof v === 'string') ? { loc: v, raw: '' } : { loc: (v && v.loc) || '', raw: (v && v.raw) || '' }];
+      }));
       changed = true;
     }
     if(d.entries && Array.isArray(d.entries)){
