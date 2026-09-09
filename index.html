@@ -5022,19 +5022,17 @@ function renderCountExport(){
     return { floor: done.floor || 0, stock: done.stock || 0 };
   };
   const rowsByCode = new Map();
-  cntIndex.forEach((entry, code)=>{
-    const rows = [];
-    let totalModel = 0;
-    depts.forEach(d=>{
-      (cntRowIndex.get(d) || []).forEach(r=>{
-        if(r.code !== code) return;
-        const { floor, stock } = qtyOf(code, r.size);
-        const result = r.qty - floor - stock;
-        totalModel += result;
-        rows.push({ r, floor, stock, result, d });
-      });
+  cntRowIndex.forEach((rows, d)=>{
+    if(depts.indexOf(d) === -1) return;
+    rows.forEach(r=>{
+      const code = r.code;
+      const { floor, stock } = qtyOf(code, r.size);
+      const result = r.qty - floor - stock;
+      if(!rowsByCode.has(code)) rowsByCode.set(code, { rows: [], totalModel: 0 });
+      const rec = rowsByCode.get(code);
+      rec.totalModel += result;
+      rec.rows.push({ r, floor, stock, result, d });
     });
-    rowsByCode.set(code, { rows, totalModel });
   });
   rowsByCode.forEach(({ rows, totalModel })=>{
     rows.forEach(({ r, floor, stock, result, d })=>{
