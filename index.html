@@ -4727,21 +4727,26 @@ function cntScanIncrement(rawText){
   const sizePart = t.slice(idx + 1).trim().toUpperCase();
   if(!codePart || !sizePart) return false;
   codePart = fixLeadingZero(codePart.toUpperCase());
+  const normS = (s)=>String(s||'').trim().toUpperCase().replace(/[\s-]/g,'');
   if(!cntIndex.has(codePart)){
     playWarnAlarm();
     showToast('الكود «'+codePart+'» مش موجود في المخزن ⚠️');
     return true;
   }
-  let sizeFound = false;
+  let sizeFound = false, exactSize = sizePart;
   cntRowIndex.forEach(rows=>{
-    rows.forEach(r=>{ if(r.code === codePart && String(r.size).toUpperCase() === sizePart) sizeFound = true; });
+    rows.forEach(r=>{
+      if(r.code === codePart && normS(r.size) === normS(sizePart)){
+        sizeFound = true;
+        exactSize = String(r.size).trim();
+      }
+    });
   });
   if(!sizeFound){
-    playWarnAlarm();
-    showToast('المقاس «'+sizePart+'» مش موجود للكود «'+codePart+'» في المخزن ⚠️');
+    showToast('المقاس «'+sizePart+'» مش موجود للكود «'+codePart+'» — شيّك الإملاء.');
     return true;
   }
-  const key = cntInputKey(codePart, sizePart);
+  const key = cntInputKey(codePart, exactSize);
   const prev = cntDoneRows.get(key) || {};
   const next = { floor: (prev.floor || 0) + 1, stock: prev.stock || 0 };
   cntDoneRows.set(key, next);
