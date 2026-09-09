@@ -787,6 +787,13 @@ service cloud.firestore {
     </div>
   </div>
 
+  <div class="cnt-sync-bar" style="margin-bottom:16px;">
+    <label style="font-weight:800;font-size:13.5px;color:#334155;">🔑 كود المزامنة:</label>
+    <input id="mapCheckSyncKeyInput" placeholder="نفس الكود اللي على الأجهزة التانية (زي جرد/ترصيد)" maxlength="40" autocomplete="off" style="flex:1;min-width:180px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;font-family:inherit;font-size:13.5px;font-weight:700;color:#1e293b;">
+    <button type="button" class="btn-primary" id="mapCheckSyncBtn" style="white-space:nowrap;">حفظ ومزامنة</button>
+    <span id="mapCheckSyncHint" style="font-size:12px;color:var(--muted);font-weight:800;"></span>
+  </div>
+
   <div class="panel" id="mapCheckPanel" style="display:none;margin-top:20px;">
     <div class="panel-head">
       <h2 style="font-size:19px;">فحص اللوكيشن</h2>
@@ -3532,26 +3539,107 @@ function setMapCheckLocStatus(msg, type){
   el.className = 'upload-status'; if(type) el.classList.add(type); el.textContent = msg;
 }
 
-function openMapCheckScreen(){
-  switchScreen('screen-mapcheck');
-  const mbar = $('mcInputBar'); if(mbar) mbar.style.display = 'none';
-  loadMapCheckDB();
+function setMapCheckSyncHint(msg){
+  const h = $('mapCheckSyncHint'); if(h) h.textContent = msg;
+}
+function mapCheckSyncRef(){
+  if(!db || !currentBranch || !cntSyncKey()) return null;
+  return db.collection('mapchkData').doc(currentBranch.id + '_' + cntSyncKey());
+}
+function mapCheckPushCloud(){
+  if(!currentBranch || !cntSyncKey()) return;
+  const ref = mapCheckSyncRef(); if(!ref) return;
+  const pack = {
+    rows: Array.from(mapCheckMap.entries()),
+    entries: mapCheckEntries,
+    sel: mapCheckSelectedLoc,
+    updatedAt: Date.now()
+  };
+  ref.set(pack).then(()=>{ setMapCheckSyncHint('تم الرفع للسحابة ✓'); })
+    .catch(e=>{ console.error(e); setMapCheckSyncHint('فشل الرفع — تأكد من الإنترنت'); });
+}
+async function mapCheckPullCloud(){
+  if(!currentBranch || !cntSyncKey()) return false;
+  const ref = mapCheckSyncRef();
+  if(!ref){ setMapCheckSyncHint('مفيش اتصال Firebase'); return false; }
+  try{
+    const snap = await ref.get();
+    if(!snap.exists){ setMapCheckSyncHint('مفيش بيانات في السحابة لهذا الكود'); return false; }
+    const d = snap.data();
+    let changed = false;
+    if(d.rows && Array.isArray(d.rows)){
+      mapCheckMap = new Map(d.rows.map(p=>[p[0], typeof p[1] === 'string' ? { loc: p[1], raw: '' } : { loc: (p[1] && p[1].loc) || '', raw: (p[1] && p[1].raw) || '' }]));
+      changed = true;
+    }
+    if(d.entries && Array.isArray(d.entries)){
+      mapCheckEntries = d.entries.map(en=>({ code: en.code, norm: en.norm, loc: en.loc, sheetCode: (en.sheetCode || mapCheckRawOf(en.norm)) }));
+      changed = true;
+    }
+    if(d.sel && !mapCheckSelectedLoc) mapCheckSelectedLoc = d.sel;
+    if(changed){
+      saveMapCheckDB();
+      refreshMapCheckScreenState();
+    }
+    setMapCheckSyncHint('تم الجلب من السحابة ✓');
+    return true;
+  }catch(e){ console.error(e); setMapCheckSyncHint('فشل الجلب — تأكد من الإنترنت'); return false; }
+}
+function mapCheckSyncChange(){
+  if(!currentBranch){ showToast('اختار الفرع الأول.'); return; }
+  const v = ($('mapCheckSyncKeyInput') ? String($('mapCheckSyncKeyInput').value) : '').trim();
+  setCntSyncKey(v);
+  if(v && mapCheckMap.size === 0 && mapCheckEntries.length === 0){
+    setMapCheckSyncHint('جاري الجلب من السحابة...');
+    mapCheckPullCloud();
+  } else {
+    mapCheckPushCloud();
+  }
+}
+function mapCheckSyncNow(){
+  if(!currentBranch){ showToast('اختار الفرع الأول.'); return; }
+  const v = ($('mapCheckSyncKeyInput') ? String($('mapCheckSyncKeyInput').value) : '').trim();
+  if(!v){ showToast('اكتب كود المزامنة الأول.'); return; }
+  setCntSyncKey(v);
+  setMapCheckSyncHint('جاري المزامنة...');
+  mapCheckPullCloud().then(pulled=>{ if(!pulled) mapCheckPushCloud(); });
+  showToast('كود المزامنة محفوظ ✓');
+}
+
+function refreshMapCheckScreenState(){
   mapCheckReport = null;
   const rp = $('mapCheckReportPanel'); if(rp) rp.style.display = 'none';
+  const mbar = $('mcInputBar');
   if(mapCheckMap && mapCheckMap.size){
-    setMapCheckLocStatus('الشيت موجود (' + mapCheckMap.size + ' كود) من آخر رفعة للفرع ده ✓', 'ok');
+    setMapCheckLocStatus('الشيت موجود (' + mapCheckMap.size + ' كود) ✓', 'ok');
     $('mapCheckPanel').style.display = 'block';
     if(mbar) mbar.style.display = 'flex';
     refreshMapCheckLocs();
     renderMapCheckList();
     refreshMapCheckSummary();
-    $('mapCheckCodeInput').focus();
   } else {
+    $('mapCheckPanel').style.display = 'none';
+    if(mbar) mbar.style.display = 'none';
     setMapCheckLocStatus('ارفع شيت MAP LOC (الكود، اللوكيشن) الأول.', '');
   }
 }
+
+function openMapCheckScreen(){
+  switchScreen('screen-mapcheck');
+  const mbar = $('mcInputBar'); if(mbar) mbar.style.display = 'none';
+  loadMapCheckDB();
+  if($('mapCheckSyncKeyInput')) $('mapCheckSyncKeyInput').value = cntSyncKey();
+  refreshMapCheckScreenState();
+  if(cntSyncKey()){
+    setMapCheckSyncHint('جاري الجلب من السحابة...');
+    mapCheckPullCloud();
+  }
+  $('mapCheckCodeInput').focus();
+}
 $('openMapCheckBtn') && $('openMapCheckBtn').addEventListener('click', openMapCheckScreen);
 $('mapCheckBackBtn') && $('mapCheckBackBtn').addEventListener('click', ()=>{ camClose(); switchScreen('screen-dashboard'); });
+$('mapCheckSyncKeyInput') && $('mapCheckSyncKeyInput').addEventListener('change', mapCheckSyncChange);
+$('mapCheckSyncKeyInput') && $('mapCheckSyncKeyInput').addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); mapCheckSyncChange(); } });
+$('mapCheckSyncBtn') && $('mapCheckSyncBtn').addEventListener('click', mapCheckSyncNow);
 
 const dropMapCheckLoc = $('dropMapCheckLoc');
 ['dragover','dragenter'].forEach(evt=> dropMapCheckLoc.addEventListener(evt, (e)=>{ e.preventDefault(); dropMapCheckLoc.classList.add('dragover'); }));
@@ -3586,6 +3674,7 @@ function handleMapCheckLocFile(file){
       renderMapCheckList();
       refreshMapCheckSummary();
       saveMapCheckDB();
+      mapCheckPushCloud();
       setMapCheckLocStatus('تم رفع شيت MAP LOC (' + m.size + ' كود) ✓', 'ok');
       $('mapCheckPanel').style.display = 'block';
       $('mapCheckCodeInput').focus();
@@ -3614,6 +3703,7 @@ $('mapCheckLocSelect').addEventListener('change', ()=>{
   $('mapCheckReportPanel').style.display = 'none';
   renderMapCheckList();
   refreshMapCheckSummary();
+  mapCheckPushCloud();
 });
 
 $('mapCheckResetBtn').addEventListener('click', ()=>{
@@ -3623,6 +3713,7 @@ $('mapCheckResetBtn').addEventListener('click', ()=>{
   renderMapCheckList();
   refreshMapCheckSummary();
   saveMapCheckDB();
+  mapCheckPushCloud();
   $('mapCheckCodeInput').focus();
 });
 
@@ -3647,6 +3738,7 @@ function mapCheckAddCode(raw){
   renderMapCheckList();
   refreshMapCheckSummary();
   saveMapCheckDB();
+  mapCheckPushCloud();
   input.value = '';
   input.focus();
 }
@@ -3681,6 +3773,7 @@ function renderMapCheckList(){
     renderMapCheckList();
     refreshMapCheckSummary();
     saveMapCheckDB();
+    mapCheckPushCloud();
   }));
 }
 
