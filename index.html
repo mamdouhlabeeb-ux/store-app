@@ -5086,7 +5086,12 @@ $('openCountBtn') && $('openCountBtn').addEventListener('click', cntOpen);
 $('cntBackBtn') && $('cntBackBtn').addEventListener('click', ()=>{ switchScreen('screen-dashboard'); });
 $('cntExportBtn') && $('cntExportBtn').addEventListener('click', renderCountExport);
 $('fileInputCount') && $('fileInputCount').addEventListener('change', (e)=>{ const f = e.target.files && e.target.files[0]; if(f) handleCountFile(f); });
-$('cntSearchInput') && $('cntSearchInput').addEventListener('input', renderCountResults);
+$('cntSearchInput') && $('cntSearchInput').addEventListener('input', (e)=>{
+    const v = String($('cntSearchInput').value || '').trim();
+    if(v.indexOf('-') === -1){ renderCountResults(); return; }
+    if(cntScanIncrement(v)){ return; }
+    renderCountResults();
+  });
 $('cntSearchInput') && $('cntSearchInput').addEventListener('keydown', (e)=>{
     if(e.key === 'Enter'){
       e.preventDefault();
