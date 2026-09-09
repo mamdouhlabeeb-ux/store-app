@@ -3654,8 +3654,9 @@ function handleMapCheckLocFile(file){
   const reader = new FileReader();
   reader.onload = (e)=>{
     try{
+      if(typeof XLSX === 'undefined'){ setMapCheckLocStatus('مكتبة قراءة الملفات محملتش — تأكد من الإنترنت وحدّث الصفحة.', 'err'); return; }
       const data = new Uint8Array(e.target.result);
-      const wb = XLSX.read(data, { type:'array' });
+      const wb = parseSheetData(data, file.name);
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'', raw:true });
       if(!rows || rows.length === 0){ setMapCheckLocStatus('الملف فاضي.', 'err'); return; }
@@ -3682,7 +3683,7 @@ function handleMapCheckLocFile(file){
       $('mapCheckCodeInput').focus();
     }catch(err){
       console.error(err);
-      setMapCheckLocStatus('حصل خطأ في قراءة الملف. تيقن إنه xlsx/xls/csv.', 'err');
+      setMapCheckLocStatus('تعذر قراءة الملف: ' + ((err && err.message) || String(err)).slice(0, 100) + ' — جرّب ملف xlsx نظيف وتأكد من الإنترنت.', 'err');
     }
   };
   reader.readAsArrayBuffer(file);
