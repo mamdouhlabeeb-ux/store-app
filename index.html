@@ -3688,6 +3688,7 @@ function handleMapCheckLocFile(file){
       mapCheckPushCloud();
       setMapCheckLocStatus('تم رفع شيت MAP LOC (' + m.size + ' كود) ✓', 'ok');
       $('mapCheckPanel').style.display = 'block';
+      const mbarEl = $('mcInputBar'); if(mbarEl) mbarEl.style.display = 'flex';
       $('mapCheckCodeInput').focus();
     }catch(err){
       console.error(err);
