@@ -965,6 +965,11 @@ service cloud.firestore {
     .cnt-result.pos{color:#b91c1c;}
     .cnt-result.zero{color:#64748b;}
     .cnt-model-total{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:800;color:#475569;margin-top:4px;}
+    #cntQuickAdd{display:flex;flex-direction:column;gap:10px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;margin:10px 0;box-shadow:0 1px 6px rgba(0,0,0,.05);}
+    .cnt-qa-title{font-weight:800;font-size:13.5px;color:#475569;}
+    .cnt-qa-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+    .cnt-qa-in{flex:1;min-width:70px;padding:9px 10px;border:1px solid #cbd5e1;border-radius:8px;font-weight:800;font-size:15px;font-family:'Cairo',sans-serif;text-align:center;box-sizing:border-box;}
+    .cnt-qa-btn{white-space:nowrap;}
     .cnt-badge{font-size:12px;font-weight:800;padding:3px 12px;border-radius:999px;}
     .cnt-badge.trs{background:#d1fae5;color:#047857;}
     .cnt-badge.deficit{background:#fee2e2;color:#b91c1c;}
@@ -1031,6 +1036,27 @@ service cloud.firestore {
         <select class="cnt-pending-dd" id="cntPendingDD" title="اختار كود من الأكواد اللي لسه متجردتش — يظهر فوراً للجرد"><option value="">⬜ أكواد لسه متجردتش</option></select>
       </div>
       <div class="upload-status" id="cntStatus" style="margin-top:8px;"></div>
+    </div>
+    <div id="cntQuickAdd" style="display:none;">
+      <div class="cnt-qa-block">
+        <div class="cnt-qa-title">➕ إضافة مقاس يدوي:</div>
+        <div class="cnt-qa-row">
+          <input type="text" id="cntQAddCode" placeholder="الكود" class="cnt-qa-in" style="width:130px;">
+          <input type="text" id="cntQAddSize" placeholder="المقاس" class="cnt-qa-in" style="width:90px;">
+          <input type="number" id="cntQAddQty" min="0" placeholder="العدد" class="cnt-qa-in" style="width:80px;">
+          <button type="button" class="btn-primary cnt-qa-btn" id="cntQAddBtn">إضافة مقاس +</button>
+        </div>
+      </div>
+      <div class="cnt-qa-block">
+        <div class="cnt-qa-title">✚ إضافة كود جديد (مش في الشيت):</div>
+        <div class="cnt-qa-row">
+          <input type="text" id="cntQNewCode" placeholder="الكود" class="cnt-qa-in" style="width:120px;">
+          <input type="text" id="cntQNewSize" placeholder="المقاس" class="cnt-qa-in" style="width:80px;">
+          <input type="number" id="cntQNewQty" min="0" placeholder="العدد" class="cnt-qa-in" style="width:70px;">
+          <input type="text" id="cntQNewDept" placeholder="الدبارتمنت" class="cnt-qa-in" style="width:90px;">
+          <button type="button" class="btn-primary cnt-qa-btn" id="cntQNewBtn">إضافة كود +</button>
+        </div>
+      </div>
     </div>
     <div class="upload-card" id="cntNoDept" style="display:none;"><div class="cnt-missing">اختار دبارتمنت الأول وظبط الحقل.</div></div>
     <div id="cntResults"></div>
@@ -4513,6 +4539,7 @@ function handleCountFile(file){
       cntPushCloud();
       $('cntUploadCard').style.display = 'none';
       $('cntBody').style.display = 'block';
+      const cntQA2 = $('cntQuickAdd'); if(cntQA2) cntQA2.style.display = 'flex';
       $('cntNoDept').style.display = 'none';
       $('cntResults').innerHTML = '';
       $('cntSearchInput').value = '';
@@ -4721,16 +4748,10 @@ function cntScanIncrement(rawText){
   saveCntDone();
   $('cntSearchInput').value = codePart;
   renderCountResults();
-  const wrap = $('cntResults');
-  if(wrap){
-    const row = Array.from(wrap.querySelectorAll('.cnt-size-row')).find(r=> r.getAttribute('data-code') === codePart && String(r.getAttribute('data-size')).toUpperCase() === sizePart);
-    if(row){
-      const floorEl = row.querySelector('input[id^="cntf_"]');
-      if(floorEl){
-        floorEl.value = next.floor;
-        onCntInput(codePart, sizePart, row.getAttribute('data-dept') || '', floorEl);
-      }
-    }
+  $('cntSearchInput').value = '';
+  const inBox = $('cntSearchInput'); if(inBox) inBox.focus();
+  if(codePart && sizePart){
+    const qaCode = $('cntQAddCode'); if(qaCode) qaCode.value = codePart;
   }
   populateCntPendingDD();
   cntPushCloud();
@@ -4762,7 +4783,11 @@ function renderCountResults(){
     html += renderCountCard(code);
   });
   wrap.innerHTML = html;
-  // ربط أحداث الإدخال
+  wireCntResults(wrap);
+}
+
+function wireCntResults(wrap){
+  if(!wrap) return;
   wrap.querySelectorAll('.cnt-size-row').forEach(row=>{
     const code = row.getAttribute('data-code');
     const size = row.getAttribute('data-size');
@@ -4771,19 +4796,6 @@ function renderCountResults(){
     const floorEl = $('cntf_' + key); if(floorEl){ floorEl.addEventListener('input', ()=> onCntInput(code, size, d, floorEl)); }
     const stockEl = $('cnts_' + key); if(stockEl){ stockEl.addEventListener('input', ()=> onCntInput(code, size, d, stockEl)); }
     const addLineBtn = row.querySelector('.cnt-addline-add'); if(addLineBtn){ addLineBtn.addEventListener('click', ()=> addCountLine(code, size, d)); }
-  });
-  // ربط أحداث ADD LINE خارجية (multiple rows قد تكرر id => نستخدم class)
-  wrap.querySelectorAll('.cnt-addline-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const code = btn.getAttribute('data-code');
-      const size = btn.getAttribute('data-size');
-      const d = btn.getAttribute('data-dept');
-      addCountLine(code, size, d);
-    });
-  });
-  // إضافة كود جديد يدويًا
-  wrap.querySelectorAll('.cnt-addcode-btn').forEach(btn=>{
-    btn.addEventListener('click', ()=> addCountCode(btn));
   });
 }
 
@@ -4849,18 +4861,6 @@ function renderCountCard(code){
     + lines
     + '</tbody></table>'
     + '<div class="cnt-model-total">الفرق الكلي للموديل <b style="font-size:26px;">'+(totalModel>0?'+':'')+totalModel+'</b> '+badge+'</div>'
-    + '<div class="cnt-addline"><div style="font-weight:800;font-size:13px;color:#475569;width:100%;">إضافة مقاس يدوي:</div>'
-    + '<input type="text" class="cnt-addline-size" data-code="'+escapeAttr(code)+'" placeholder="المقاس" style="width:110px;">'
-    + '<input type="number" class="cnt-addline-qty" min="0" placeholder="العدد" style="width:90px;">'
-    + '<button type="button" class="btn-primary cnt-addline-btn" data-code="'+escapeAttr(code)+'" data-size="" data-dept="">إضافة +</button>'
-    + '</div>'
-    + '<div class="cnt-addcode" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-top:8px;padding-top:10px;border-top:1px dashed #e2e8f0;"><div style="font-weight:800;font-size:13px;color:#475569;width:100%;">إضافة كود جديد (موديل مش في الشيت):</div>'
-    + '<input type="text" class="cnt-addcode-code" placeholder="الكود" style="width:110px;">'
-    + '<input type="text" class="cnt-addcode-size" placeholder="المقاس" style="width:110px;">'
-    + '<input type="number" class="cnt-addcode-qty" min="0" placeholder="العدد" style="width:90px;">'
-    + '<input type="text" class="cnt-addcode-dept" placeholder="الدبارتمنت" style="width:110px;">'
-    + '<button type="button" class="btn-primary cnt-addcode-btn">إضافة كود +</button>'
-    + '</div>'
     + '</div>';
 }
 
@@ -4888,67 +4888,46 @@ function onCntInput(code, size, dept, el){
   recountCountModelTotal($('cntResults') ? $('cntResults').querySelector('.cnt-code-card') : null);
 }
 
-function addCountLine(code, size, dept){
-  const card = document.querySelector('.cnt-code-card');
-  const wrap = $('cntResults');
-  if(!wrap) return;
-  const sizeInput = wrap.querySelector('.cnt-addline-size[data-code="'+cssEscape(code)+'"]');
-  const qtyInput = wrap.querySelector('.cnt-addline-qty');
-  const sz = String((sizeInput && sizeInput.value) || '').trim();
-  if(!sz){ showToast('اكتب اسم المقاس.'); return; }
-  const qty = parseFloat((qtyInput && qtyInput.value) || 0) || 0;
-  if(!card) return;
-  // استخرج الدبارتمنت الصحيح: من الصف الموجود في الكارد أو من أول دبارتمنت مختار
-  dept = String(dept || '').trim() || '';
-  if(!dept){
-    const first = card.querySelector('.cnt-size-row[data-code="'+cssEscape(code)+'"]');
-    dept = first ? (first.getAttribute('data-dept') || '') : '';
+function addCountLine(code, size, dept, qt){
+  if(!code || !cntIndex.has(code)){
+    playWarnAlarm();
+    showToast('الكود مش موجود في الشيت — استخدم «إضافة كود جديد».');
+    return false;
   }
+  const sz = String(size || '').trim();
+  if(!sz){ showToast('اكتب اسم المقاس.'); return false; }
+  const qty = (typeof qt === 'number' && !isNaN(qt)) ? qt : (parseFloat(qt) || 0);
+  dept = String(dept || '').trim();
   if(!dept){
     const ds = cntSelectedDepts();
     dept = (ds && ds.length) ? ds[0] : '';
   }
-  if(!dept){ showToast('اختار دبارتمنت أو حدد الكود من النتائج الأول.'); return; }
-  // افحص إن المقاس موجود فعلًا في بيانات الشيت (لتفادي تعارض ids ومشاركة خزانة)
+  if(!dept){ showToast('اختار دبارتمنت الأول.'); return false; }
+  // افحص إن المقاس موجود فعلًا (لتفادي تعارض ids ومشاركة خزانة)
   let sizeExists = false;
   cntRowIndex.forEach(rows=>{
     rows.forEach(r=>{ if(r.code === code && String(r.size).toUpperCase() === sz.toUpperCase()) sizeExists = true; });
   });
   if(sizeExists){
     showToast('المقاس «'+sz+'» موجود فعلًا — زوّد العدد في خانة Floor/Stock بتاعه.');
-    return;
+    return false;
   }
   // سجّل المقاس اليدوي في الفهرس عشان يظهر في تنزيل الإكسل
-  if(!cntIndex.has(code)) cntIndex.set(code, { depts:new Map() });
   const ent = cntIndex.get(code);
   if(!ent.depts.has(dept)) ent.depts.set(dept, { total:0, loc:'-' });
   ent.depts.get(dept).total += qty;
   if(!cntRowIndex.has(dept)) cntRowIndex.set(dept, []);
   cntRowIndex.get(dept).push({ code, size: sz, qty, loc: '-' });
-  // أضف الصف بصريًا بالمقاس الحقيقي
-  const doneKey = cntInputKey(code, sz);
-  const floor = 0, stock = 0;
-  const result = qty - floor - stock;
-  const rowId1 = 'cntf_' + cntSizeResultKey(code, dept, sz);
-  const rowId2 = 'cnts_' + cntSizeResultKey(code, dept, sz);
-  let tr = document.createElement('tr');
-  tr.className = 'cnt-size-row';
-  tr.setAttribute('data-code', code);
-  tr.setAttribute('data-size', sz);
-  tr.setAttribute('data-dept', dept);
-  tr.innerHTML = '<td style="text-align:right;font-weight:800;color:#1e293b;">'+escapeHtml(sz)+'</td>'
-    + '<td>'+qty+'</td>'
-    + '<td><input type="number" min="0" id="'+rowId1+'" placeholder="0" value=""></td>'
-    + '<td><input type="number" min="0" id="'+rowId2+'" placeholder="0" value=""></td>'
-    + '<td style="font-size:12px;color:#64748b;font-weight:700;">'+escapeHtml(dept||'')+'</td>'
-    + '<td class="cnt-result '+cntResultCls(result)+'">'+(result>0?'+':'')+result+'</td>';
-  const tbody = card.querySelector('.cnt-sizes tbody');
-  if(tbody) tbody.appendChild(tr);
-  $('cntf_'+cntSizeResultKey(code, dept, sz)).addEventListener('input', ()=> onCntInput(code, sz, dept, $('cntf_'+cntSizeResultKey(code, dept, sz))));
-  $('cnts_'+cntSizeResultKey(code, dept, sz)).addEventListener('input', ()=> onCntInput(code, sz, dept, $('cnts_'+cntSizeResultKey(code, dept, sz))));
-  // نحدّث الفرق الكلي
+  if(cntDeptList.indexOf(dept) === -1){ cntDeptList.push(dept); }
+  populateCountDepts();
+  cntSelectDept(dept);
+  saveCntSheet();
+  // أعد بناء النتائج عشان يظهر الصف اليدوي
+  $('cntSearchInput').value = code;
+  renderCountResults();
+  cntPushCloud();
   showToast('تم إضافة المقاس «'+sz+'» ✓');
-  recountCountModelTotal(card);
+  return true;
 }
 
 function recountCountModelTotal(card){
@@ -4974,16 +4953,30 @@ function cntSelectDept(dept){
 }
 
 function addCountCode(btn){
-  const box = btn.closest('.cnt-addcode');
-  if(!box) return;
-  const codeInput = box.querySelector('.cnt-addcode-code');
-  const sizeInput = box.querySelector('.cnt-addcode-size');
-  const qtyInput = box.querySelector('.cnt-addcode-qty');
-  const deptInput = box.querySelector('.cnt-addcode-dept');
-  let rawCode = String((codeInput && codeInput.value) || '').trim();
-  const size = String((sizeInput && sizeInput.value) || '').trim();
-  const qty = parseFloat((qtyInput && qtyInput.value) || 0) || 0;
-  let dept = shortDept((deptInput && deptInput.value) || '') || '-';
+  cntQuickAddCode();
+}
+
+function cntQuickAddSize(){
+  let code = String(($('cntQAddCode') && $('cntQAddCode').value) || '').trim().toUpperCase();
+  if(!code && $('cntSearchInput')) code = String($('cntSearchInput').value || '').trim().toUpperCase();
+  code = fixLeadingZero(code);
+  const size = String(($('cntQAddSize') && $('cntQAddSize').value) || '').trim();
+  const qty = parseFloat(($('cntQAddQty') && $('cntQAddQty').value) || 0) || 0;
+  if(!code){ showToast('اكتب الكود أو سكانه الأول.'); return; }
+  const done = addCountLine(code, size, '', qty);
+  if(!done) return;
+  if($('cntQAddCode')) $('cntQAddCode').value = '';
+  if($('cntQAddSize')) $('cntQAddSize').value = '';
+  if($('cntQAddQty')) $('cntQAddQty').value = '';
+  const in1 = $('cntQAddCode'); if(in1) in1.focus();
+}
+
+function cntQuickAddCode(){
+  let rawCode = String(($('cntQNewCode') && $('cntQNewCode').value) || '').trim();
+  if(!rawCode && $('cntSearchInput')) rawCode = String($('cntSearchInput').value || '').trim();
+  const size = String(($('cntQNewSize') && $('cntQNewSize').value) || '').trim();
+  const qty = parseFloat(($('cntQNewQty') && $('cntQNewQty').value) || 0) || 0;
+  let dept = shortDept(String(($('cntQNewDept') && $('cntQNewDept').value) || '').trim()) || '-';
   if(dept === '-'){
     const ds = cntSelectedDepts();
     if(ds && ds.length) dept = ds[0];
@@ -4991,20 +4984,27 @@ function addCountCode(btn){
   if(!rawCode){ showToast('اكتب الكود.'); return; }
   if(!size){ showToast('اكتب المقاس.'); return; }
   const code = fixLeadingZero(rawCode.toUpperCase());
-  // أضف للفهرس
+  if(cntIndex.has(code)){ playWarnAlarm(); showToast('الكود «'+code+'» موجود في الشيت — سكانه في خانة البحث.'); return; }
+  if(dept === '-'){ showToast('اختار دبارتمنت أو اكتب اسم الدبارتمنت.'); return; }
   if(!cntIndex.has(code)) cntIndex.set(code, { depts:new Map() });
   const entry = cntIndex.get(code);
   if(!entry.depts.has(dept)) entry.depts.set(dept, { total:0, loc:'-' });
   entry.depts.get(dept).total += qty;
   if(!cntRowIndex.has(dept)) cntRowIndex.set(dept, []);
   cntRowIndex.get(dept).push({ code, size, qty, loc:'-' });
-  // لو الدبارتمنت جديد => ضيفه للقائمة وأعد بناء الـ chips (مع الحفاظ على الاختيارات)
-  if(dept !== '-' && cntDeptList.indexOf(dept) === -1){ cntDeptList.push(dept); }
-  if(dept !== '-'){ populateCountDepts(); cntSelectDept(dept); }
-  // ورّي الكود الجديد
+  if(cntDeptList.indexOf(dept) === -1){ cntDeptList.push(dept); }
+  populateCountDepts();
+  cntSelectDept(dept);
+  saveCntSheet();
   $('cntSearchInput').value = code;
   renderCountResults();
+  cntPushCloud();
   showToast('تم إضافة الكود «'+code+'» ✓');
+  if($('cntQNewCode')) $('cntQNewCode').value = '';
+  if($('cntQNewSize')) $('cntQNewSize').value = '';
+  if($('cntQNewQty')) $('cntQNewQty').value = '';
+  if($('cntQNewDept')) $('cntQNewDept').value = '';
+  const in2 = $('cntQNewCode'); if(in2) in2.focus();
 }
 
 function cssEscape(str){
@@ -5058,6 +5058,7 @@ function cntOpen(){
   if(cntIndex.size === 0) loadCntSheet();
   $('cntUploadCard').style.display = 'block';
   $('cntBody').style.display = 'block';
+  const cntQA = $('cntQuickAdd'); if(cntQA) cntQA.style.display = 'flex';
   $('cntResults').innerHTML = '';
   populateCountDepts();
   populateCntPendingDD();
@@ -5085,6 +5086,8 @@ function cntSyncKeyInputChange(){
 $('openCountBtn') && $('openCountBtn').addEventListener('click', cntOpen);
 $('cntBackBtn') && $('cntBackBtn').addEventListener('click', ()=>{ switchScreen('screen-dashboard'); });
 $('cntExportBtn') && $('cntExportBtn').addEventListener('click', renderCountExport);
+$('cntQAddBtn') && $('cntQAddBtn').addEventListener('click', cntQuickAddSize);
+$('cntQNewBtn') && $('cntQNewBtn').addEventListener('click', cntQuickAddCode);
 $('fileInputCount') && $('fileInputCount').addEventListener('change', (e)=>{ const f = e.target.files && e.target.files[0]; if(f) handleCountFile(f); });
 $('cntSearchInput') && $('cntSearchInput').addEventListener('input', (e)=>{
     const v = String($('cntSearchInput').value || '').trim();
