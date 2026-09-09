@@ -999,14 +999,15 @@ service cloud.firestore {
     <div class="upload-status" id="uploadStatusCount"></div>
   </div>
 
+  <div class="cnt-sync-bar" style="margin-bottom:14px;">
+    <label style="font-weight:800;font-size:13.5px;color:#334155;">🔑 كود المزامنة:</label>
+    <input id="cntSyncKeyInput" placeholder="اكتب نفس الكود على كل الأجهزة (مثال: jard-maadi)" maxlength="40" autocomplete="off" style="flex:1;min-width:180px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;font-family:inherit;font-size:13.5px;font-weight:700;color:#1e293b;">
+    <button type="button" class="btn-primary" id="cntSyncBtn" style="white-space:nowrap;">حفظ ومزامنة</button>
+    <span id="cntSyncHint" style="font-size:12px;color:var(--muted);font-weight:800;"></span>
+  </div>
+
   <div id="cntBody" style="display:none;" class="cnt-wrap">
     <div class="cnt-bar">
-      <div class="cnt-sync-bar">
-        <label style="font-weight:800;font-size:13.5px;color:#334155;">🔑 كود المزامنة:</label>
-        <input id="cntSyncKeyInput" placeholder="اكتب نفس الكود على كل الأجهزة (مثال: jard-maadi)" maxlength="40" autocomplete="off" style="flex:1;min-width:180px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;font-family:inherit;font-size:13.5px;font-weight:700;color:#1e293b;">
-        <button type="button" class="btn-primary" id="cntSyncBtn" style="white-space:nowrap;">حفظ ومزامنة</button>
-        <span id="cntSyncHint" style="font-size:12px;color:var(--muted);font-weight:800;"></span>
-      </div>
       <div class="cnt-tools">
         <label style="font-weight:700;font-size:13.5px;">الدبارتمنت:</label>
         <div id="cntDeptDD" class="cnt-dd">
