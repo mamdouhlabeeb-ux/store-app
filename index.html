@@ -960,7 +960,7 @@ service cloud.firestore {
     .cnt-sizes td{padding:11px 8px;border:1px solid var(--line);text-align:center;font-weight:800;font-size:17px;}
     .cnt-sizes td:first-child{font-size:19px;}
     .cnt-sizes input{width:76px;padding:9px 8px;border:1px solid #cbd5e1;border-radius:8px;text-align:center;font-weight:800;font-size:17px;font-family:'Cairo',sans-serif;}
-    .cnt-result{margin-inline-start:auto;font-weight:900;font-size:16px;min-width:40px;}
+    .cnt-result{margin-inline-start:auto;font-weight:900;font-size:22px;min-width:40px;}
     .cnt-result.neg{color:#047857;}
     .cnt-result.pos{color:#b91c1c;}
     .cnt-result.zero{color:#64748b;}
@@ -4663,6 +4663,54 @@ function cntResultCls(v){
   return 'zero';
 }
 
+function cntScanIncrement(rawText){
+  if(typeof rawText !== 'string') return false;
+  const t = rawText.trim();
+  if(!t) return false;
+  const idx = t.lastIndexOf('-');
+  if(idx === -1) return false;
+  let codePart = t.slice(0, idx).trim();
+  const sizePart = t.slice(idx + 1).trim().toUpperCase();
+  if(!codePart || !sizePart) return false;
+  codePart = fixLeadingZero(codePart.toUpperCase());
+  if(!cntIndex.has(codePart)){
+    playBeep();
+    showToast('الكود «'+codePart+'» مش موجود في المخزن ⚠️');
+    return true;
+  }
+  let sizeFound = false;
+  cntRowIndex.forEach(rows=>{
+    rows.forEach(r=>{ if(r.code === codePart && String(r.size).toUpperCase() === sizePart) sizeFound = true; });
+  });
+  if(!sizeFound){
+    playBeep();
+    showToast('المقاس «'+sizePart+'» مش موجود للكود «'+codePart+'» في المخزن ⚠️');
+    return true;
+  }
+  const key = cntInputKey(codePart, sizePart);
+  const prev = cntDoneRows.get(key) || {};
+  const next = { floor: (prev.floor || 0) + 1, stock: prev.stock || 0 };
+  cntDoneRows.set(key, next);
+  saveCntDone();
+  $('cntSearchInput').value = codePart;
+  renderCountResults();
+  const wrap = $('cntResults');
+  if(wrap){
+    const row = Array.from(wrap.querySelectorAll('.cnt-size-row')).find(r=> r.getAttribute('data-code') === codePart && String(r.getAttribute('data-size')).toUpperCase() === sizePart);
+    if(row){
+      const floorEl = row.querySelector('input[id^="cntf_"]');
+      if(floorEl){
+        floorEl.value = next.floor;
+        onCntInput(codePart, sizePart, row.getAttribute('data-dept') || '', floorEl);
+      }
+    }
+  }
+  populateCntPendingDD();
+  cntPushCloud();
+  showToast('سكان «'+codePart+'-'+sizePart+'» → Floor: '+next.floor+' ✓');
+  return true;
+}
+
 function renderCountResults(){
   const wrap = $('cntResults');
   if(!wrap) return;
@@ -4773,7 +4821,7 @@ function renderCountCard(code){
     + '<table class="cnt-sizes"><thead><tr><th>المقاس</th><th>توتال</th><th>Floor</th><th>Stock</th><th>الدبارتمنت</th><th>النتيجة</th></tr></thead><tbody>'
     + lines
     + '</tbody></table>'
-    + '<div class="cnt-model-total">الفرق الكلي للموديل <b style="font-size:20px;">'+(totalModel>0?'+':'')+totalModel+'</b> '+badge+'</div>'
+    + '<div class="cnt-model-total">الفرق الكلي للموديل <b style="font-size:26px;">'+(totalModel>0?'+':'')+totalModel+'</b> '+badge+'</div>'
     + '<div class="cnt-addline"><div style="font-weight:800;font-size:13px;color:#475569;width:100%;">إضافة مقاس يدوي:</div>'
     + '<input type="text" class="cnt-addline-size" data-code="'+escapeAttr(code)+'" placeholder="المقاس" style="width:110px;">'
     + '<input type="number" class="cnt-addline-qty" min="0" placeholder="العدد" style="width:90px;">'
@@ -4823,15 +4871,33 @@ function addCountLine(code, size, dept){
   if(!sz){ showToast('اكتب اسم المقاس.'); return; }
   const qty = parseFloat((qtyInput && qtyInput.value) || 0) || 0;
   if(!card) return;
-  // نضيف صف بنفس id الخاص بخط إدخال فعلي؛ نستخدم معامل فريد
-  const uq = '_add_' + Date.now();
-  const doneKey = cntInputKey(code, uq);
+  // افحص إن المقاس موجود فعلًا في بيانات الشيت (لتفادي تعارض ids ومشاركة خزانة)
+  let sizeExists = false;
+  cntRowIndex.forEach(rows=>{
+    rows.forEach(r=>{ if(r.code === code && String(r.size).toUpperCase() === sz.toUpperCase()) sizeExists = true; });
+  });
+  if(sizeExists){
+    showToast('المقاس «'+sz+'» موجود فعلًا — زوّد العدد في خانة Floor/Stock بتاعه.');
+    return;
+  }
+  // سجّل المقاس اليدوي في الفهرس عشان يظهر في تنزيل الإكسل
+  if(!cntIndex.has(code)) cntIndex.set(code, { depts:new Map() });
+  const ent = cntIndex.get(code);
+  if(!ent.depts.has(dept)) ent.depts.set(dept, { total:0, loc:'-' });
+  ent.depts.get(dept).total += qty;
+  if(!cntRowIndex.has(dept)) cntRowIndex.set(dept, []);
+  cntRowIndex.get(dept).push({ code, size: sz, qty, loc: '-' });
+  // أضف الصف بصريًا بالمقاس الحقيقي
+  const doneKey = cntInputKey(code, sz);
   const floor = 0, stock = 0;
   const result = qty - floor - stock;
-  const rowId1 = 'cntf_' + cntSizeResultKey(code, dept, uq);
-  const rowId2 = 'cnts_' + cntSizeResultKey(code, dept, uq);
+  const rowId1 = 'cntf_' + cntSizeResultKey(code, dept, sz);
+  const rowId2 = 'cnts_' + cntSizeResultKey(code, dept, sz);
   let tr = document.createElement('tr');
   tr.className = 'cnt-size-row';
+  tr.setAttribute('data-code', code);
+  tr.setAttribute('data-size', sz);
+  tr.setAttribute('data-dept', dept);
   tr.innerHTML = '<td style="text-align:right;font-weight:800;color:#1e293b;">'+escapeHtml(sz)+'</td>'
     + '<td>'+qty+'</td>'
     + '<td><input type="number" min="0" id="'+rowId1+'" placeholder="0" value=""></td>'
@@ -4840,8 +4906,8 @@ function addCountLine(code, size, dept){
     + '<td class="cnt-result '+cntResultCls(result)+'">'+(result>0?'+':'')+result+'</td>';
   const tbody = card.querySelector('.cnt-sizes tbody');
   if(tbody) tbody.appendChild(tr);
-  $('cntf_'+cntSizeResultKey(code, dept, uq)).addEventListener('input', ()=> onCntInput(code, uq, dept, $('cntf_'+cntSizeResultKey(code, dept, uq))));
-  $('cnts_'+cntSizeResultKey(code, dept, uq)).addEventListener('input', ()=> onCntInput(code, uq, dept, $('cnts_'+cntSizeResultKey(code, dept, uq))));
+  $('cntf_'+cntSizeResultKey(code, dept, sz)).addEventListener('input', ()=> onCntInput(code, sz, dept, $('cntf_'+cntSizeResultKey(code, dept, sz))));
+  $('cnts_'+cntSizeResultKey(code, dept, sz)).addEventListener('input', ()=> onCntInput(code, sz, dept, $('cnts_'+cntSizeResultKey(code, dept, sz))));
   // نحدّث الفرق الكلي
   showToast('تم إضافة المقاس «'+sz+'» ✓');
   recountCountModelTotal(card);
@@ -4857,7 +4923,7 @@ function recountCountModelTotal(card){
   const badge = total === 0
     ? '<span class="cnt-badge trs">ترصيد</span>'
     : (total > 0 ? '<span class="cnt-badge deficit">عجز</span>' : '<span class="cnt-badge surplus">زيادة</span>');
-  card.querySelector('.cnt-model-total').innerHTML = 'الفرق الكلي للموديل <b style="font-size:20px;">'+(total>0?'+':'')+total+'</b> '+badge;
+  card.querySelector('.cnt-model-total').innerHTML = 'الفرق الكلي للموديل <b style="font-size:26px;">'+(total>0?'+':'')+total+'</b> '+badge;
 }
 
 function cntSelectDept(dept){
@@ -4981,7 +5047,13 @@ $('cntBackBtn') && $('cntBackBtn').addEventListener('click', ()=>{ switchScreen(
 $('cntExportBtn') && $('cntExportBtn').addEventListener('click', renderCountExport);
 $('fileInputCount') && $('fileInputCount').addEventListener('change', (e)=>{ const f = e.target.files && e.target.files[0]; if(f) handleCountFile(f); });
 $('cntSearchInput') && $('cntSearchInput').addEventListener('input', renderCountResults);
-$('cntSearchInput') && $('cntSearchInput').addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); renderCountResults(); } });
+$('cntSearchInput') && $('cntSearchInput').addEventListener('keydown', (e)=>{
+    if(e.key === 'Enter'){
+      e.preventDefault();
+      if(cntScanIncrement($('cntSearchInput').value)){ return; }
+      renderCountResults();
+    }
+  });
 $('cntPendingDD') && $('cntPendingDD').addEventListener('change', (e)=>{
   const code = e.target.value;
   if(!code) return;
