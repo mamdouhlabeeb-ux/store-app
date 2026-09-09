@@ -3462,7 +3462,6 @@ function camAccept(raw){
   const c = camPending;
   if(c && raw){
     camPending = null;
-    playBeep();
     c(String(raw).trim());
   }
   camClose();
@@ -3797,7 +3796,7 @@ function mapCheckAddCode(raw){
   if(!rawCode){ return; }
   const norm = normalizeLastPriceCode(rawCode);
   if(!norm){ showToast('اكتب كود صحيح.'); input.value = ''; return; }
-  if(mapCheckEntries.some(en=> en.norm === norm)){ playBeep(); showToast('الكود ده مضاف قبل كده.'); input.value = ''; return; }
+  if(mapCheckEntries.some(en=> en.norm === norm)){ showToast('الكود ده مضاف قبل كده.'); input.value = ''; return; }
   mapCheckReport = null;
   $('mapCheckReportPanel').style.display = 'none';
   mapCheckEntries.push({ code: rawCode, norm, loc: mapCheckLocOf(norm), sheetCode: mapCheckRawOf(norm) });
@@ -4985,7 +4984,7 @@ function cntQuickAddCode(){
   if(!rawCode){ showToast('اكتب الكود.'); return; }
   if(!size){ showToast('اكتب المقاس.'); return; }
   const code = fixLeadingZero(rawCode.toUpperCase());
-  if(cntIndex.has(code)){ playWarnAlarm(); showToast('الكود «'+code+'» موجود في الشيت — سكانه في خانة البحث.'); return; }
+  if(cntIndex.has(code)){ showToast('الكود «'+code+'» موجود في الشيت — سكانه في خانة البحث.'); return; }
   if(dept === '-'){ showToast('اختار دبارتمنت أو اكتب اسم الدبارتمنت.'); return; }
   if(!cntIndex.has(code)) cntIndex.set(code, { depts:new Map() });
   const entry = cntIndex.get(code);
