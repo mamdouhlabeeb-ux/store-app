@@ -777,13 +777,6 @@ service cloud.firestore {
     في الآخر اضغط <b>«تم الانتهاء»</b> وينزل ريبورت Excel محترم بالتقرير الكامل.
   </p>
 
-  <div class="cnt-sync-bar" style="margin-bottom:16px;">
-    <label style="font-weight:800;font-size:13.5px;color:#334155;">🔑 كود المزامنة:</label>
-    <input id="mapCheckSyncKeyInput" placeholder="نفس الكود اللي على الأجهزة التانية (زي جرد/ترصيد)" maxlength="40" autocomplete="off" style="flex:1;min-width:180px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;font-family:inherit;font-size:13.5px;font-weight:700;color:#1e293b;">
-    <button type="button" class="btn-primary" id="mapCheckSyncBtn" style="white-space:nowrap;">حفظ ومزامنة</button>
-    <span id="mapCheckSyncHint" style="font-size:12px;color:var(--muted);font-weight:800;"></span>
-  </div>
-
   <div class="upload-row" style="grid-template-columns:1fr;">
     <div class="upload-card" id="dropMapCheckLoc">
       <div class="step-tag">شيت MAP LOC</div>
@@ -3540,9 +3533,6 @@ function setMapCheckLocStatus(msg, type){
   el.className = 'upload-status'; if(type) el.classList.add(type); el.textContent = msg;
 }
 
-function setMapCheckSyncHint(msg){
-  const h = $('mapCheckSyncHint'); if(h) h.textContent = msg;
-}
 function mapCheckSyncRef(){
   if(!db || !currentBranch || !cntSyncKey()) return null;
   return db.collection('mapchkData').doc(currentBranch.id + '_' + cntSyncKey());
@@ -3556,16 +3546,15 @@ function mapCheckPushCloud(){
     sel: mapCheckSelectedLoc,
     updatedAt: Date.now()
   };
-  ref.set(pack).then(()=>{ setMapCheckSyncHint('تم الرفع للسحابة ✓'); })
-    .catch(e=>{ console.error(e); setMapCheckSyncHint('فشل الرفع — تأكد من الإنترنت'); });
+  ref.set(pack).then(()=>{}).catch(e=>{ console.error(e); });
 }
 async function mapCheckPullCloud(){
   if(!db || !currentBranch || !cntSyncKey()) return false;
   const ref = mapCheckSyncRef();
-  if(!ref){ setMapCheckSyncHint('مفيش اتصال Firebase'); return false; }
+  if(!ref) return false;
   try{
     const snap = await ref.get();
-    if(!snap.exists){ setMapCheckSyncHint('مفيش بيانات في السحابة لهذا الكود'); return false; }
+    if(!snap.exists) return false;
     const d = snap.data();
     let changed = false;
     if(d.rows && Array.isArray(d.rows)){
@@ -3581,29 +3570,8 @@ async function mapCheckPullCloud(){
       saveMapCheckDB();
       refreshMapCheckScreenState();
     }
-    setMapCheckSyncHint('تم الجلب من السحابة ✓');
     return true;
-  }catch(e){ console.error(e); setMapCheckSyncHint('فشل الجلب — تأكد من الإنترنت'); return false; }
-}
-function mapCheckSyncChange(){
-  if(!currentBranch){ showToast('اختار الفرع الأول.'); return; }
-  const v = ($('mapCheckSyncKeyInput') ? String($('mapCheckSyncKeyInput').value) : '').trim();
-  setCntSyncKey(v);
-  if(v && mapCheckMap.size === 0 && mapCheckEntries.length === 0){
-    setMapCheckSyncHint('جاري الجلب من السحابة...');
-    mapCheckPullCloud();
-  } else {
-    mapCheckPushCloud();
-  }
-}
-function mapCheckSyncNow(){
-  if(!currentBranch){ showToast('اختار الفرع الأول.'); return; }
-  const v = ($('mapCheckSyncKeyInput') ? String($('mapCheckSyncKeyInput').value) : '').trim();
-  if(!v){ showToast('اكتب كود المزامنة الأول.'); return; }
-  setCntSyncKey(v);
-  setMapCheckSyncHint('جاري المزامنة...');
-  mapCheckPullCloud().then(pulled=>{ if(!pulled) mapCheckPushCloud(); });
-  showToast('كود المزامنة محفوظ ✓');
+  }catch(e){ console.error(e); return false; }
 }
 
 function refreshMapCheckScreenState(){
@@ -3627,12 +3595,8 @@ function refreshMapCheckScreenState(){
 function openMapCheckScreen(){
   switchScreen('screen-mapcheck');
   loadMapCheckDB();
-  if($('mapCheckSyncKeyInput')) $('mapCheckSyncKeyInput').value = cntSyncKey();
   refreshMapCheckScreenState();
-  if(cntSyncKey()){
-    setMapCheckSyncHint('جاري الجلب من السحابة...');
-    mapCheckPullCloud();
-  }
+  if(cntSyncKey()) mapCheckPullCloud();
   $('mapCheckCodeInput').focus();
 }
 function layoutMcBar(){
@@ -3646,9 +3610,6 @@ window.addEventListener('resize', layoutMcBar);
 if(window.visualViewport){ window.visualViewport.addEventListener('resize', layoutMcBar); }
 $('openMapCheckBtn') && $('openMapCheckBtn').addEventListener('click', openMapCheckScreen);
 $('mapCheckBackBtn') && $('mapCheckBackBtn').addEventListener('click', ()=>{ camClose(); switchScreen('screen-dashboard'); });
-$('mapCheckSyncKeyInput') && $('mapCheckSyncKeyInput').addEventListener('change', mapCheckSyncChange);
-$('mapCheckSyncKeyInput') && $('mapCheckSyncKeyInput').addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); mapCheckSyncChange(); } });
-$('mapCheckSyncBtn') && $('mapCheckSyncBtn').addEventListener('click', mapCheckSyncNow);
 
 const dropMapCheckLoc = $('dropMapCheckLoc');
 ['dragover','dragenter'].forEach(evt=> dropMapCheckLoc.addEventListener(evt, (e)=>{ e.preventDefault(); dropMapCheckLoc.classList.add('dragover'); }));
