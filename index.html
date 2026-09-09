@@ -3460,6 +3460,33 @@ function playBeep(){
   }catch(e){}
 }
 
+function playWarnAlarm(){
+  try{
+    const AC = window.AudioContext || window.webkitAudioContext;
+    if(!AC) return;
+    const ctx = new AC();
+    if(ctx.state === 'suspended'){ ctx.resume().catch(function(){}); }
+    const t0 = ctx.currentTime;
+    const duration = 0.9;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(1200, t0);
+    osc.frequency.setValueAtTime(900, t0 + 0.22);
+    osc.frequency.setValueAtTime(1200, t0 + 0.45);
+    osc.frequency.setValueAtTime(900, t0 + 0.67);
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(0.5, t0 + 0.03);
+    gain.gain.setValueAtTime(0.5, t0 + duration - 0.08);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + duration);
+    setTimeout(function(){ try{ ctx.close(); }catch(e){} }, 1200);
+  }catch(e){}
+}
+
 function camClose(){
   if(camState){
     clearInterval(camState.timer);
@@ -4674,7 +4701,7 @@ function cntScanIncrement(rawText){
   if(!codePart || !sizePart) return false;
   codePart = fixLeadingZero(codePart.toUpperCase());
   if(!cntIndex.has(codePart)){
-    playBeep();
+    playWarnAlarm();
     showToast('الكود «'+codePart+'» مش موجود في المخزن ⚠️');
     return true;
   }
@@ -4683,7 +4710,7 @@ function cntScanIncrement(rawText){
     rows.forEach(r=>{ if(r.code === codePart && String(r.size).toUpperCase() === sizePart) sizeFound = true; });
   });
   if(!sizeFound){
-    playBeep();
+    playWarnAlarm();
     showToast('المقاس «'+sizePart+'» مش موجود للكود «'+codePart+'» في المخزن ⚠️');
     return true;
   }
@@ -4871,6 +4898,17 @@ function addCountLine(code, size, dept){
   if(!sz){ showToast('اكتب اسم المقاس.'); return; }
   const qty = parseFloat((qtyInput && qtyInput.value) || 0) || 0;
   if(!card) return;
+  // استخرج الدبارتمنت الصحيح: من الصف الموجود في الكارد أو من أول دبارتمنت مختار
+  dept = String(dept || '').trim() || '';
+  if(!dept){
+    const first = card.querySelector('.cnt-size-row[data-code="'+cssEscape(code)+'"]');
+    dept = first ? (first.getAttribute('data-dept') || '') : '';
+  }
+  if(!dept){
+    const ds = cntSelectedDepts();
+    dept = (ds && ds.length) ? ds[0] : '';
+  }
+  if(!dept){ showToast('اختار دبارتمنت أو حدد الكود من النتائج الأول.'); return; }
   // افحص إن المقاس موجود فعلًا في بيانات الشيت (لتفادي تعارض ids ومشاركة خزانة)
   let sizeExists = false;
   cntRowIndex.forEach(rows=>{
@@ -4945,7 +4983,11 @@ function addCountCode(btn){
   let rawCode = String((codeInput && codeInput.value) || '').trim();
   const size = String((sizeInput && sizeInput.value) || '').trim();
   const qty = parseFloat((qtyInput && qtyInput.value) || 0) || 0;
-  const dept = shortDept((deptInput && deptInput.value) || '') || '-';
+  let dept = shortDept((deptInput && deptInput.value) || '') || '-';
+  if(dept === '-'){
+    const ds = cntSelectedDepts();
+    if(ds && ds.length) dept = ds[0];
+  }
   if(!rawCode){ showToast('اكتب الكود.'); return; }
   if(!size){ showToast('اكتب المقاس.'); return; }
   const code = fixLeadingZero(rawCode.toUpperCase());
