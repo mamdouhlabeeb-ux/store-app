@@ -276,11 +276,13 @@ th.code-out-th{ width:96px; text-align:center; }
 window.__errs=[];
 window.addEventListener('error', function(e){
   try{
-    window.__errs.push(e.message||String(e));
+    var em = (e && e.message) || String(e);
+    if(em === 'Script error') return;
+    window.__errs.push(em);
     var d=document.getElementById('errReport');
     if(!d) return;
     d.style.display='block';
-    d.textContent = '⚠️ خطأ: ' + (e.message||String(e)) + (e.lineno ? ' (سطر ' + e.lineno + ')' : '');
+    d.textContent = '⚠️ خطأ: ' + em + (e.lineno ? ' (سطر ' + e.lineno + ')' : '');
   }catch(_){}
 });
 </script>
@@ -3564,7 +3566,7 @@ async function mapCheckPullCloud(){
   if(!ref){ setMapCheckSyncHint('مفيش اتصال Firebase'); return false; }
   try{
     const snap = await ref.get();
-    if(!snap.exists){ setMapCheckSyncHint('مفيش بيانات في السحابة لهذا الكود'); return false; }
+    if(!snap.exists){ setMapCheckSyncHint('مفيش بيانات لسه على الكود ده — أول إدخال هيترفع تلقائي.'); return false; }
     const d = snap.data();
     let changed = false;
     if(d.rows && Array.isArray(d.rows)){
