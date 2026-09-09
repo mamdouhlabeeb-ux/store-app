@@ -1402,7 +1402,7 @@ function handleTransfersFile(file){
   reader.onload = async (e)=>{
     try{
       const data = new Uint8Array(e.target.result);
-      const wb = XLSX.read(data, { type:'array' });
+      const wb = parseSheetData(data, file.name);
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'', raw:true });
       const parsed = processTransfersRows(rows);
@@ -1415,7 +1415,7 @@ function handleTransfersFile(file){
       $('tabTransfersBtn').style.display = '';
       const saved = await saveTransfersToCloud();
       $('uploadStatusTransfersCard').textContent = saved ? ('آخر تحديث تحويلات: ' + formatDate(new Date().toISOString())) : 'حصلت مشكلة في الحفظ آخر مرة.';
-    }catch(err){ console.error(err); setStatus(statusEl, 'حصل خطأ في قراءة الملف.', 'err'); }
+    }catch(err){ console.error(err); setStatus(statusEl, 'تعذر قراءة الملف (' + ((err && err.message) || '').slice(0, 90) + '). تأكد إنه xlsx/xls/csv وغير محمي بكلمة مرور.', 'err'); }
     $('fileInputTransfers').value = '';
   };
   reader.onerror = ()=> setStatus(statusEl, 'تعذر قراءة الملف.', 'err');
@@ -1428,7 +1428,7 @@ function handleMapLocFile(file){
   reader.onload = async (e)=>{
     try{
       const data = new Uint8Array(e.target.result);
-      const wb = XLSX.read(data, { type:'array' });
+      const wb = parseSheetData(data, file.name);
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'', raw:true });
       const parsed = processMapLocRows(rows);
@@ -1438,7 +1438,7 @@ function handleMapLocFile(file){
       setStatus(statusEl, 'تم قراءة شيت MAP LOC ✓ (' + parsed.length + ' كود)', 'ok');
       await saveTransfersToCloud();
       $('tabTransfersBtn').style.display = '';
-    }catch(err){ console.error(err); setStatus(statusEl, 'حصل خطأ في قراءة الملف.', 'err'); }
+    }catch(err){ console.error(err); setStatus(statusEl, 'تعذر قراءة الملف (' + ((err && err.message) || '').slice(0, 90) + '). تأكد إنه xlsx/xls/csv وغير محمي بكلمة مرور.', 'err'); }
     $('fileInputMapLoc').value = '';
   };
   reader.onerror = ()=> setStatus(statusEl, 'تعذر قراءة الملف.', 'err');
@@ -1912,7 +1912,7 @@ function handleStockFile(file){
   reader.onload = async (e)=>{
     try{
       const data = new Uint8Array(e.target.result);
-      const wb = XLSX.read(data, { type:'array' });
+      const wb = parseSheetData(data, file.name);
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'', raw:true });
       const summary = processStockRows(rows);
@@ -1931,7 +1931,7 @@ function handleStockFile(file){
       clearCodeOutMarks();
       $('lastUpdateLabel').textContent = 'آخر تحديث: ' + formatDate(nowIso);
       setStatus(statusEl, ok ? ('تم ✓ (' + summary.length + ' موديل)') : ('اتعالج لكن لم يُحفظ' + saveErrHint()), ok?'ok':'err');
-    }catch(err){ console.error(err); setStatus(statusEl, 'حصل خطأ في قراءة الملف.', 'err'); }
+    }catch(err){ console.error(err); setStatus(statusEl, 'تعذر قراءة الملف (' + ((err && err.message) || '').slice(0, 90) + '). تأكد إنه xlsx/xls/csv وغير محمي بكلمة مرور.', 'err'); }
     $('fileInputStock').value = '';
   };
   reader.onerror = ()=> setStatus(statusEl, 'تعذر قراءة الملف.', 'err');
@@ -1984,7 +1984,7 @@ function handleSalesFile(file){
   reader.onload = async (e)=>{
     try{
       const data = new Uint8Array(e.target.result);
-      const wb = XLSX.read(data, { type:'array' });
+      const wb = parseSheetData(data, file.name);
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'', raw:true });
       const rowsOut = processSalesRows(rows);
@@ -2001,7 +2001,7 @@ function handleSalesFile(file){
       clearCodeOutMarks();
       $('lastUpdateLabel').textContent = 'آخر تحديث: ' + formatDate(nowIso);
       setStatus(statusEl, ok ? ('تم ✓ (' + rowsOut.length + ' صنف)') : ('اتعالج لكن لم يُحفظ' + saveErrHint()), ok?'ok':'err');
-    }catch(err){ console.error(err); setStatus(statusEl, 'حصل خطأ في قراءة الملف.', 'err'); }
+    }catch(err){ console.error(err); setStatus(statusEl, 'تعذر قراءة الملف (' + ((err && err.message) || '').slice(0, 90) + '). تأكد إنه xlsx/xls/csv وغير محمي بكلمة مرور.', 'err'); }
     $('fileInputSales').value = '';
   };
   reader.onerror = ()=> setStatus(statusEl, 'تعذر قراءة الملف.', 'err');
@@ -2064,7 +2064,7 @@ function handleLocFile(file){
   reader.onload = async (e)=>{
     try{
       const data = new Uint8Array(e.target.result);
-      const wb = XLSX.read(data, { type:'array' });
+      const wb = parseSheetData(data, file.name);
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'', raw:true });
       const parsed = processLocRows(rows);
@@ -2080,7 +2080,7 @@ function handleLocFile(file){
       clearCodeOutMarks();
       $('lastUpdateLabel').textContent = 'آخر تحديث: ' + formatDate(nowIso);
       setStatus(statusEl, ok ? ('تم ✓ (' + parsed.length + ' كود)') : ('اتعالج لكن لم يُحفظ' + saveErrHint()), ok?'ok':'err');
-    }catch(err){ console.error(err); setStatus(statusEl, 'حصل خطأ في قراءة الملف.', 'err'); }
+    }catch(err){ console.error(err); setStatus(statusEl, 'تعذر قراءة الملف (' + ((err && err.message) || '').slice(0, 90) + '). تأكد إنه xlsx/xls/csv وغير محمي بكلمة مرور.', 'err'); }
     $('fileInputLoc').value = '';
   };
   reader.onerror = ()=> setStatus(statusEl, 'تعذر قراءة الملف.', 'err');
@@ -2806,7 +2806,7 @@ function handleLabelStockFile(file){
   reader.onload = async (e)=>{
     try{
       const data = new Uint8Array(e.target.result);
-      const wb = XLSX.read(data, { type:'array' });
+      const wb = parseSheetData(data, file.name);
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'', raw:true });
       if(!rows || rows.length === 0){ setLabelStockStatus('الملف فاضي.', 'err'); return; }
@@ -2832,7 +2832,7 @@ function handleLabelStockFile(file){
       renderLabelSearched('');
     }catch(err){
       console.error(err);
-      setLabelStockStatus('حصل خطأ في قراءة الملف.', 'err');
+      setLabelStockStatus('تعذر قراءة الملف (' + ((err && err.message) || '').slice(0, 90) + '). تأكد إنه xlsx/xls/csv.', 'err');
     }
     $('fileInputLabelStock').value = '';
   };
@@ -3113,6 +3113,29 @@ function normalizeLastPriceUploadCode(s){
   return normalizeLastPriceCode(s);
 }
 
+function parseSheetData(bytes, fileName){
+  let lastErr = null;
+  try{ return XLSX.read(bytes, { type:'array' }); }catch(e){ lastErr = e; }
+  let text = null;
+  try{
+    const b = ArrayBuffer.isView(bytes) ? bytes : new Uint8Array(bytes);
+    if(b.length >= 2 && b[0] === 0xFF && b[1] === 0xFE) text = new TextDecoder('utf-16le').decode(b);
+    else if(b.length >= 2 && b[0] === 0xFE && b[1] === 0xFF) text = new TextDecoder('utf-16be').decode(b);
+    else if(/\.(csv|txt)$/i.test(String(fileName || ''))){
+      try{ text = new TextDecoder('utf-8').decode(b); }
+      catch(err){
+        text = '';
+        for(let i = 0; i < b.length; i++) text += String.fromCharCode(b[i]);
+      }
+    }
+  }catch(err){}
+  if(text !== null){
+    if(text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+    try{ return XLSX.read(text, { type:'string' }); }catch(err){}
+  }
+  throw lastErr || new Error('cannot parse sheet');
+}
+
 function openLastPriceScreen(){
   switchScreen('screen-lastprice');
   (async ()=>{
@@ -3152,7 +3175,7 @@ function handleLastPriceStockFile(file){
   reader.onload = async (e)=>{
     try{
       const data = new Uint8Array(e.target.result);
-      const wb = XLSX.read(data, { type:'array' });
+      const wb = parseSheetData(data, file.name);
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'', raw:true });
       if(!rows || rows.length === 0){ setLastPriceStockStatus('الملف فاضي.', 'err'); return; }
@@ -3175,7 +3198,7 @@ function handleLastPriceStockFile(file){
       openLastPriceStream();
     }catch(err){
       console.error(err);
-      setLastPriceStockStatus('حصل خطأ في قراءة الملف.', 'err');
+      setLastPriceStockStatus('تعذر قراءة الملف (' + ((err && err.message) || '').slice(0, 90) + '). تأكد إنه xlsx/xls/csv.', 'err');
     }
     $('fileInputLastPrice').value = '';
   };
@@ -3639,7 +3662,7 @@ function handleMapCheckLocFile(file){
   reader.onload = (e)=>{
     try{
       const data = new Uint8Array(e.target.result);
-      const wb = XLSX.read(data, { type:'array' });
+      const wb = parseSheetData(data, file.name);
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'', raw:true });
       if(!rows || rows.length === 0){ setMapCheckLocStatus('الملف فاضي.', 'err'); return; }
@@ -3666,7 +3689,7 @@ function handleMapCheckLocFile(file){
       $('mapCheckCodeInput').focus();
     }catch(err){
       console.error(err);
-      setMapCheckLocStatus('حصل خطأ في قراءة الملف. تيقن إنه xlsx/xls/csv.', 'err');
+      setMapCheckLocStatus('تعذر قراءة الملف (' + ((err && err.message) || '').slice(0, 90) + '). تأكد إنه xlsx/xls/csv وغير محمي بكلمة مرور.', 'err');
     }
   };
   reader.readAsArrayBuffer(file);
@@ -4440,7 +4463,7 @@ function handleCountFile(file){
   reader.onload = (e)=>{
     try{
       const data = new Uint8Array(e.target.result);
-      const wb = XLSX.read(data, { type:'array' });
+      const wb = parseSheetData(data, file.name);
       const ws = wb.Sheets[wb.SheetNames[0]];
       const rows = XLSX.utils.sheet_to_json(ws, { header:1, defval:'', raw:true });
       const parsed = processCountRows(rows);
@@ -4467,7 +4490,7 @@ function handleCountFile(file){
       $('cntSearchInput').focus();
     }catch(err){
       console.error(err);
-      setStatus(statusEl, 'حصل خطأ في قراءة الملف.', 'err');
+      setStatus(statusEl, 'تعذر قراءة الملف (' + ((err && err.message) || '').slice(0, 90) + '). تأكد إنه xlsx/xls/csv وغير محمي بكلمة مرور.', 'err');
     }
     $('fileInputCount').value = '';
   };
