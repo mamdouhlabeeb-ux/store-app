@@ -507,34 +507,10 @@ service cloud.firestore {
       <div class="panel" id="uploadCardReports" style="padding:18px;margin-bottom:22px;">
       <div style="margin-bottom:12px;">
         <h2 style="font-size:20px;margin:0;">📊 تقرير المبيعات</h2>
-        <p style="color:var(--muted);font-size:13px;margin:6px 0 0 0;">ارفع الشيتات الثلاثة (المخزون، المبيعات، اللوكيشن) لكل نتائج التقرير تظهر لك تحتها.</p>
+        <p style="color:var(--muted);font-size:13px;margin:6px 0 0 0;">افتح النافذة وارفع الشيتات الثلاثة (المخزون، المبيعات، اللوكيشن) وكل نتائج التقرير تظهر لك تحتها.</p>
       </div>
-      <div class="upload-row" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:0;">
-        <div class="upload-card" id="uploadCardStock" style="margin:0;">
-          <div class="step-tag">1 - شيت المخزون</div>
-          <h3>شيت المخزون (السورس)</h3>
-          <p>4 أعمدة بالترتيب: الكود-المقاس، الكمية، الدبارتمنت، اللوكيشن</p>
-          <label class="upload-btn" for="fileInputStock">اختيار ملف</label>
-          <input type="file" id="fileInputStock" accept=".xlsx,.xls,.csv">
-          <div class="upload-status" id="uploadStatusStock"></div>
-        </div>
-        <div class="upload-card" id="uploadCardSales" style="margin:0;">
-          <div class="step-tag">2 - شيت المبيعات</div>
-          <h3>شيت المبيعات</h3>
-          <p>عمودين بالترتيب: الكود-المقاس، الكمية المباعة</p>
-          <label class="upload-btn" for="fileInputSales">اختيار ملف</label>
-          <input type="file" id="fileInputSales" accept=".xlsx,.xls,.csv">
-          <div class="upload-status" id="uploadStatusSales"></div>
-        </div>
-        <div class="upload-card" id="uploadCardLoc" style="margin:0;">
-          <div class="step-tag">3 - شيت اللوكيشن</div>
-          <h3>شيت اللوكيشن</h3>
-          <p>عمودين بالترتيب: الكود، اللوكيشن</p>
-          <label class="upload-btn" for="fileInputLoc">اختيار ملف</label>
-          <input type="file" id="fileInputLoc" accept=".xlsx,.xls,.csv">
-          <div class="upload-status" id="uploadStatusLoc"></div>
-        </div>
-      </div>
+      <button class="upload-btn" id="openSalesPanelBtn" style="background:#2563eb;color:#fff;">فتح نافذة تقرير المبيعات</button>
+      <div class="upload-status" id="uploadStatusReports"></div>
     </div>
       <div class="upload-card" id="uploadCardTransfers">
         <div class="step-tag">4 - تحضير التحويلات</div>
@@ -669,6 +645,45 @@ service cloud.firestore {
   </div>
 
   <div class="footer-note">البيانات بتتحفظ على سحابة Firebase ومتاحة لأي حد معاه باسورد الفرع أو الملف نفسه — متشاركش الملف أو بيانات الإعداد إلا مع فريقك.</div>
+</div>
+
+<!-- ================= SALES REPORT PANEL (رفع شيتات تقرير المبيعات) ================= -->
+<div class="screen" id="screen-salespanel" style="padding:28px 20px 60px;max-width:980px;margin:0 auto;">
+  <div class="panel-head" style="margin-bottom:6px;">
+    <h2 style="font-family:'Cairo',sans-serif;">📊 تقرير المبيعات — رفع الشيتات</h2>
+    <button class="link-btn" id="salesPanelBackBtn">رجوع</button>
+  </div>
+  <div class="panel" style="padding:18px;margin-bottom:22px;">
+    <div style="margin-bottom:12px;">
+      <p style="color:var(--muted);font-size:13px;margin:0;">ارفع الشيتات الثلاثة بالترتيب وبعد ما تقفل النتيجة تظهر في تقرير المبيعات تحت.</p>
+    </div>
+    <div class="upload-row" style="grid-template-columns:1fr 1fr 1fr;margin-bottom:0;">
+      <div class="upload-card" id="uploadCardStock" style="margin:0;">
+        <div class="step-tag">1 - شيت المخزون</div>
+        <h3>شيت المخزون (السورس)</h3>
+        <p>4 أعمدة بالترتيب: الكود-المقاس، الكمية، الدبارتمنت، اللوكيشن</p>
+        <label class="upload-btn" for="fileInputStock">اختيار ملف</label>
+        <input type="file" id="fileInputStock" accept=".xlsx,.xls,.csv">
+        <div class="upload-status" id="uploadStatusStock"></div>
+      </div>
+      <div class="upload-card" id="uploadCardSales" style="margin:0;">
+        <div class="step-tag">2 - شيت المبيعات</div>
+        <h3>شيت المبيعات</h3>
+        <p>عمودين بالترتيب: الكود-المقاس، الكمية المباعة</p>
+        <label class="upload-btn" for="fileInputSales">اختيار ملف</label>
+        <input type="file" id="fileInputSales" accept=".xlsx,.xls,.csv">
+        <div class="upload-status" id="uploadStatusSales"></div>
+      </div>
+      <div class="upload-card" id="uploadCardLoc" style="margin:0;">
+        <div class="step-tag">3 - شيت اللوكيشن</div>
+        <h3>شيت اللوكيشن</h3>
+        <p>عمودين بالترتيب: الكود، اللوكيشن</p>
+        <label class="upload-btn" for="fileInputLoc">اختيار ملف</label>
+        <input type="file" id="fileInputLoc" accept=".xlsx,.xls,.csv">
+        <div class="upload-status" id="uploadStatusLoc"></div>
+      </div>
+    </div>
+  </div>
 </div>
 
 <!-- ================= LABEL PRICING (استيكر/ليبل تسعير) - standalone ================= -->
@@ -5160,6 +5175,8 @@ function cntSyncKeyInputChange(){
 }
 
 $('openCountBtn') && $('openCountBtn').addEventListener('click', cntOpen);
+$('openSalesPanelBtn') && $('openSalesPanelBtn').addEventListener('click', ()=>{ switchScreen('screen-salespanel'); });
+$('salesPanelBackBtn') && $('salesPanelBackBtn').addEventListener('click', ()=>{ switchScreen('screen-dashboard'); });
 $('cntBackBtn') && $('cntBackBtn').addEventListener('click', ()=>{ switchScreen('screen-dashboard'); });
 $('cntExportBtn') && $('cntExportBtn').addEventListener('click', renderCountExport);
 $('cntQAddBtn') && $('cntQAddBtn').addEventListener('click', cntQuickAddSize);
