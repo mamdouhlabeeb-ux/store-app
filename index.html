@@ -461,6 +461,7 @@ service cloud.firestore {
       <button class="link-btn" id="changePwBtn">تغيير كلمة المرور</button>
       <button class="link-btn danger" id="resetDataBtn">مسح البيانات</button>
       <button class="link-btn" id="logoutBtn">تسجيل خروج</button>
+      <button class="link-btn" id="langBtn" title="تبديل اللغة">English</button>
     </div>
   </div>
 
@@ -1257,6 +1258,28 @@ function renderAdmin(){
 }
 
 // ---------------- dashboard boot ----------------
+let appLang = 'ar';
+try{ appLang = ((localStorage.getItem('app_lang') || 'ar') === 'en') ? 'en' : 'ar'; }catch(e){}
+function applyAppLang(){
+  const l = (appLang === 'en') ? 'en' : 'ar';
+  const html = document.documentElement;
+  html.setAttribute('lang', l);
+  html.setAttribute('dir', l === 'en' ? 'ltr' : 'rtl');
+  const btn = $('langBtn');
+  if(btn) btn.textContent = (l === 'en') ? 'العربية' : 'English';
+  document.title = (l === 'en') ? 'Inventory & Sales | RAVIN' : 'نظام متابعة المخزون والمبيعات';
+  try{
+    localStorage.setItem('app_lang', l);
+    document.cookie = 'app_lang=' + l + ';path=/;max-age=31536000';
+  }catch(e){}
+}
+function toggleAppLang(){
+  appLang = (appLang === 'en') ? 'ar' : 'en';
+  applyAppLang();
+  showToast(appLang === 'en' ? 'English layout ON — directions flipped.' : 'تم التبديل للعربية — رجعت النتائج يمين لشمال.');
+}
+applyAppLang();
+
 $('logoutBtn').addEventListener('click', ()=>{
   stopLiveSync();
   currentBranch = null; stockSummary = []; salesRows = []; stockTotalsMap = new Map(); locationMap = new Map(); codeOutMem = null;
@@ -2762,6 +2785,7 @@ function handleInstallClick(){
     }
   }
 }
+$('langBtn') && $('langBtn').addEventListener('click', toggleAppLang);
 $('installBtn').addEventListener('click', handleInstallClick);
 $('installBtnLogin').addEventListener('click', handleInstallClick);
 
