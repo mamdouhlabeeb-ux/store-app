@@ -1163,7 +1163,7 @@ let stockSummary = [];   // [{code, totalQty, department, mixedDept, sizes:[{siz
 let stockTotalsMap = new Map(); // code -> {totalQty, department}
 let salesRows = [];      // [{code, size, qtySold}]
 let locationMap = new Map(); // code -> location (شيت اللوكيشن)
-let salesSort = null;    // {col:'code'|'dept', dir:1|-1} أو null = بدون ترتيب
+let salesSort = null;    // {col:'code'|'loc'|'dept'|'total', dir:1|-1} أو null = بدون ترتيب
 let salesChkFilter = 'all'; // فلتر checkbox في المبيعات: all | todo (متبقي) | out (متأشر)
 let stockSort = null;    // {col:'code'|'dept'|'qty', dir:1|-1} أو null = بدون ترتيب
 let transfersSort = null; // {col:'code'|'size'|'qty'|'locNormal'|'mapLoc'|'dept'|'total', dir:1|-1} أو null
@@ -2286,6 +2286,13 @@ function salesSortRows(rows){
       const lb = (locationMap.get(b.code) || '');
       return compareBlankLast(la, lb, dir, 'ar') || compareBlankLast(a.code, b.code, dir, 'en', true);
     }
+    if(col === 'total'){
+      const ta = stockTotalsMap.get(a.code); const tb = stockTotalsMap.get(b.code);
+      const va = ta ? ta.totalQty : null; const vb = tb ? tb.totalQty : null;
+      if(va == null) return 1;
+      if(vb == null) return -1;
+      return (va - vb) * dir;
+    }
     const da = (stockTotalsMap.get(a.code) && stockTotalsMap.get(a.code).department) || '';
     const db = (stockTotalsMap.get(b.code) && stockTotalsMap.get(b.code).department) || '';
     return compareBlankLast(da, db, dir, 'ar') || compareBlankLast(a.code, b.code, dir, 'en', true);
@@ -2402,7 +2409,7 @@ function renderSalesTable(){
     + '<th>size</th><th>qty</th>'
     + '<th class="sortable-th">loc <span class="sort-arrow" data-tab="sales" data-col="loc">' + arrowGlyph('sales','loc') + '</span><div class="sort-menu">' + sortMenuHtml('sales','loc') + '</div></th>'
     + '<th class="sortable-th">dpt <span class="sort-arrow" data-tab="sales" data-col="dept">' + arrowGlyph('sales','dept') + '</span><div class="sort-menu">' + sortMenuHtml('sales','dept') + '</div></th>'
-    + '<th>total</th>'
+    + '<th class="sortable-th">total <span class="sort-arrow" data-tab="sales" data-col="total">' + arrowGlyph('sales','total') + '</span><div class="sort-menu">' + sortMenuHtml('sales','total') + '</div></th>'
     + '</tr></thead><tbody>';
   rows.forEach((r, idx)=>{
     const stockInfo = stockTotalsMap.get(r.code);
