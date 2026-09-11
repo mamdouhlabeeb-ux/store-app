@@ -135,6 +135,43 @@ input, select{
 .upload-card p{ color:var(--muted); font-size:14.5px; margin:0 0 14px; line-height:1.7; }
 .upload-card input[type=file]{ display:none; }
 .upload-btn{ background:var(--amber); color:var(--ink); font-family:'Cairo',sans-serif; font-weight:800; padding:10px 20px; border-radius:10px; font-size:14px; display:inline-block; }
+    /* ===== Dashboard colorful app-tiles ===== */
+    #uploadCardReports,#uploadCardStock,#uploadCardSales,#uploadCardLoc,#uploadCardTransfers,#uploadCardLabel,#uploadCardLastPrice,#uploadCardMapCheck,#uploadCardMoneyMap,#uploadCardCount{ position:relative; overflow:hidden; border-radius:18px; transition:transform .18s ease, box-shadow .18s ease; }
+    #uploadCardStock,#uploadCardSales,#uploadCardLoc,#uploadCardReports{ background:linear-gradient(180deg,#eef5ff,#fff 58%); border:1px solid #cddbf8; box-shadow:0 10px 26px rgba(37,99,235,.12); }
+    #uploadCardStock::before,#uploadCardSales::before,#uploadCardLoc::before,#uploadCardReports::before{ content:""; position:absolute; top:0; inset-inline:0; height:6px; background:linear-gradient(90deg,#2563eb,#0ea5e9); }
+    #uploadCardStock .step-tag,#uploadCardSales .step-tag,#uploadCardLoc .step-tag,#uploadCardReports .step-tag{ background:#2563eb; color:#fff; }
+    #uploadCardStock h3,#uploadCardSales h3,#uploadCardLoc h3,#uploadCardReports h3{ color:#1e3a8a; }
+    #uploadCardTransfers{ background:linear-gradient(180deg,#eefbf7,#fff 58%); border:1px solid #c1e6da; box-shadow:0 10px 26px rgba(15,118,110,.14); }
+    #uploadCardTransfers::before{ content:""; position:absolute; top:0; inset-inline:0; height:6px; background:linear-gradient(90deg,#0f766e,#14b8a6); }
+    #uploadCardTransfers .step-tag{ background:#0f766e; color:#fff; }
+    #uploadCardTransfers h3{ color:#134e4a; }
+    #uploadCardTransfers .upload-btn{ background:#0f766e; color:#fff; }
+    #uploadCardLabel{ background:linear-gradient(180deg,#f6f0ff,#fff 58%); border:1px solid #dbccf7; box-shadow:0 10px 26px rgba(124,58,237,.13); }
+    #uploadCardLabel::before{ content:""; position:absolute; top:0; inset-inline:0; height:6px; background:linear-gradient(90deg,#7c3aed,#c026d3); }
+    #uploadCardLabel .step-tag{ background:#7c3aed; color:#fff; }
+    #uploadCardLabel h3{ color:#5b21b6; }
+    #uploadCardLabel .upload-btn{ background:#7c3aed; color:#fff; }
+    #uploadCardLastPrice{ background:linear-gradient(180deg,#fff1f4,#fff 58%); border:1px solid #fbc3d0; box-shadow:0 10px 26px rgba(225,29,72,.13); }
+    #uploadCardLastPrice::before{ content:""; position:absolute; top:0; inset-inline:0; height:6px; background:linear-gradient(90deg,#e11d48,#f43f5e); }
+    #uploadCardLastPrice .step-tag{ background:#e11d48; color:#fff; }
+    #uploadCardLastPrice h3{ color:#9f1239; }
+    #uploadCardLastPrice .upload-btn{ background:#e11d48; color:#fff; }
+    #uploadCardMapCheck{ background:linear-gradient(180deg,#fdf4ec,#fff 58%); border:1px solid #f0d5b0; box-shadow:0 10px 26px rgba(180,83,9,.13); }
+    #uploadCardMapCheck::before{ content:""; position:absolute; top:0; inset-inline:0; height:6px; background:linear-gradient(90deg,#b45309,#f59e0b); }
+    #uploadCardMapCheck .step-tag{ background:#b45309; color:#fff; }
+    #uploadCardMapCheck h3{ color:#92400e; }
+    #uploadCardMapCheck .upload-btn{ background:#b45309; color:#fff; }
+    #uploadCardMoneyMap{ background:linear-gradient(180deg,#ecfdf5,#fff 58%); border:1px solid #b7e3cf; box-shadow:0 10px 26px rgba(5,150,105,.13); }
+    #uploadCardMoneyMap::before{ content:""; position:absolute; top:0; inset-inline:0; height:6px; background:linear-gradient(90deg,#059669,#10b981); }
+    #uploadCardMoneyMap .step-tag{ background:#059669; color:#fff; }
+    #uploadCardMoneyMap h3{ color:#065f46; }
+    #uploadCardMoneyMap .upload-btn{ background:#059669; color:#fff; }
+    #uploadCardCount{ background:linear-gradient(180deg,#fdf2f4,#fff 58%); border:1px solid #f3c4ce; box-shadow:0 10px 26px rgba(190,18,60,.13); }
+    #uploadCardCount::before{ content:""; position:absolute; top:0; inset-inline:0; height:6px; background:linear-gradient(90deg,#be123c,#9f1239); }
+    #uploadCardCount .step-tag{ background:#be123c; color:#fff; }
+    #uploadCardCount h3{ color:#881337; }
+    #uploadCardCount .upload-btn{ background:#be123c; color:#fff; }
+    #uploadCardStock:hover,#uploadCardSales:hover,#uploadCardLoc:hover,#uploadCardReports:hover,#uploadCardTransfers:hover,#uploadCardLabel:hover,#uploadCardLastPrice:hover,#uploadCardMapCheck:hover,#uploadCardMoneyMap:hover,#uploadCardCount:hover{ transform:translateY(-4px); }
 .upload-status{ margin-top:10px; font-size:12.5px; color:var(--muted); min-height:16px; }
 .upload-status.err{ color:var(--brick); font-weight:700; }
 .upload-status.ok{ color:var(--teal); font-weight:700; }
