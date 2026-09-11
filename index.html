@@ -137,10 +137,10 @@ input, select{
 .upload-btn{ background:var(--amber); color:var(--ink); font-family:'Cairo',sans-serif; font-weight:800; padding:10px 20px; border-radius:10px; font-size:14px; display:inline-block; }
     /* ===== Dashboard colorful app-tiles ===== */
     #uploadCardReports,#uploadCardStock,#uploadCardSales,#uploadCardLoc,#uploadCardTransfers,#uploadCardLabel,#uploadCardLastPrice,#uploadCardMapCheck,#uploadCardMoneyMap,#uploadCardCount{ position:relative; overflow:hidden; border-radius:18px; transition:transform .18s ease, box-shadow .18s ease; }
-    #uploadCardStock,#uploadCardSales,#uploadCardLoc,#uploadCardReports{ background:linear-gradient(180deg,#eef5ff,#fff 58%); border:1px solid #cddbf8; box-shadow:0 10px 26px rgba(37,99,235,.12); }
-    #uploadCardStock::before,#uploadCardSales::before,#uploadCardLoc::before,#uploadCardReports::before{ content:""; position:absolute; top:0; inset-inline:0; height:6px; background:linear-gradient(90deg,#2563eb,#0ea5e9); }
-    #uploadCardStock .step-tag,#uploadCardSales .step-tag,#uploadCardLoc .step-tag,#uploadCardReports .step-tag{ background:#2563eb; color:#fff; }
-    #uploadCardStock h3,#uploadCardSales h3,#uploadCardLoc h3,#uploadCardReports h3{ color:#1e3a8a; }
+    #uploadCardStock,#uploadCardSales,#uploadCardLoc,#uploadCardReports{ background:linear-gradient(180deg,#ecfbff,#fff 58%); border:1px solid #9cddef; box-shadow:0 10px 26px rgba(8,145,178,.12); }
+    #uploadCardStock::before,#uploadCardSales::before,#uploadCardLoc::before,#uploadCardReports::before{ content:""; position:absolute; top:0; inset-inline:0; height:6px; background:linear-gradient(90deg,#0891b2,#22d3ee); }
+    #uploadCardStock .step-tag,#uploadCardSales .step-tag,#uploadCardLoc .step-tag,#uploadCardReports .step-tag{ background:#0891b2; color:#fff; }
+    #uploadCardStock h3,#uploadCardSales h3,#uploadCardLoc h3,#uploadCardReports h3{ color:#155e75; }
     #uploadCardTransfers{ background:linear-gradient(180deg,#eefbf7,#fff 58%); border:1px solid #c1e6da; box-shadow:0 10px 26px rgba(15,118,110,.14); }
     #uploadCardTransfers::before{ content:""; position:absolute; top:0; inset-inline:0; height:6px; background:linear-gradient(90deg,#0f766e,#14b8a6); }
     #uploadCardTransfers .step-tag{ background:#0f766e; color:#fff; }
@@ -504,12 +504,11 @@ service cloud.firestore {
 
   <div class="container">
     <div class="upload-row">
-      <div class="panel" id="uploadCardReports" style="padding:18px;margin-bottom:22px;">
-      <div style="margin-bottom:12px;">
-        <h2 style="font-size:20px;margin:0;">📊 تقرير المبيعات</h2>
-        <p style="color:var(--muted);font-size:13px;margin:6px 0 0 0;">افتح النافذة وارفع الشيتات الثلاثة (المخزون، المبيعات، اللوكيشن) وكل نتائج التقرير تظهر لك تحتها.</p>
-      </div>
-      <button class="upload-btn" id="openSalesPanelBtn" style="background:#2563eb;color:#fff;">فتح نافذة تقرير المبيعات</button>
+      <div class="upload-card" id="uploadCardReports" style="margin:0;">
+      <div class="step-tag">📊 تقرير المبيعات</div>
+      <h3>تقرير المبيعات</h3>
+      <p>افتح النافذة وارفع الشيتات الثلاثة (المخزون، المبيعات، اللوكيشن) وكل نتائج التقرير تظهر تحتها.</p>
+      <button class="upload-btn" id="openSalesPanelBtn">فتح نافذة تقرير المبيعات</button>
       <div class="upload-status" id="uploadStatusReports"></div>
     </div>
       <div class="upload-card" id="uploadCardTransfers">
