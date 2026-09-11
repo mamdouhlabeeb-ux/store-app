@@ -2786,6 +2786,16 @@ function handleInstallClick(){
   }
 }
 $('langBtn') && $('langBtn').addEventListener('click', toggleAppLang);
+document.addEventListener('keydown', (e)=>{
+  if((e.ctrlKey || e.metaKey) && String((e.key || '')).toLowerCase() === 'f'){
+    const act = document.querySelector('.screen.active');
+    if(act && act.id === 'screen-count'){
+      e.preventDefault();
+      const inp = $('cntSearchInput');
+      if(inp){ inp.focus(); inp.select(); }
+    }
+  }
+});
 $('installBtn').addEventListener('click', handleInstallClick);
 $('installBtnLogin').addEventListener('click', handleInstallClick);
 
