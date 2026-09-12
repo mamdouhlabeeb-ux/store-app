@@ -1016,7 +1016,7 @@ service cloud.firestore {
     .cnt-result.neg{color:#047857;}
     .cnt-result.pos{color:#b91c1c;}
     .cnt-result.zero{color:#64748b;}
-    .cnt-model-total{display:flex;align-items:center;gap:10px;font-size:14px;font-weight:800;color:#475569;margin-top:4px;}
+    .cnt-model-total{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:800;color:#475569;margin-top:4px;}
     #cntQuickAdd{display:flex;flex-direction:column;gap:10px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;margin:10px 0;box-shadow:0 1px 6px rgba(0,0,0,.05);}
     .cnt-qa-title{font-weight:800;font-size:13.5px;color:#475569;}
     .cnt-qa-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
@@ -4766,15 +4766,21 @@ function populateCntPendingDD(){
   const sel = $('cntPendingDD');
   if(!sel) return;
   const cur = sel.value;
+  const wanted = cntSelectedDepts();
+  const filterAll = wanted.length === 0 || wanted.length >= cntDeptList.length;
   sel.innerHTML = '';
   const ph = document.createElement('option');
   ph.value = '';
   ph.textContent = '⬜ أكواد لسه متجردتش';
   sel.appendChild(ph);
   cntPendingList().forEach(code=>{
+    const entry = cntIndex.get(code);
+    if(!entry) return;
+    const depts = Array.from(entry.depts.keys());
+    if(!filterAll && !depts.some(d=> wanted.indexOf(d) !== -1)) return;
     const o = document.createElement('option');
     o.value = code;
-    o.textContent = code;
+    o.textContent = depts.length ? code + ' — ' + depts.join(' / ') : code;
     sel.appendChild(o);
   });
   if(cur && cur !== '' && Array.from(sel.options).some(o=> o.value === cur)) sel.value = cur;
@@ -4971,8 +4977,8 @@ function renderCountCard(code){
     + lines
     + '</tbody></table>'
     + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding-top:10px;">'
-    + '<div class="cnt-model-total" style="margin-top:0;">الفرق الكلي للموديل <b style="font-size:26px;">'+(totalModel>0?'+':'')+totalModel+'</b> '+badge+'</div>'
-    + '<div class="cnt-floor-total" style="color:#164e63;font-weight:800;font-size:14px;">توتال الفلور للموديل: <b style="font-size:20px;">'+floorTotal+'</b></div>'
+    + '<div class="cnt-model-total" style="margin-top:0;">الفرق الكلي للموديل <b style="font-size:30px;">'+(totalModel>0?'+':'')+totalModel+'</b> '+badge+'</div>'
+    + '<div class="cnt-floor-total" style="color:#164e63;font-weight:800;font-size:18px;">توتال الفلور للموديل: <b style="font-size:26px;">'+floorTotal+'</b></div>'
     + '</div>'
     + '</div>';
 }
@@ -5059,7 +5065,7 @@ function recountCountModelTotal(scope){
       ? '<span class="cnt-badge trs">ترصيد</span>'
       : (total > 0 ? '<span class="cnt-badge deficit">عجز</span>' : '<span class="cnt-badge surplus">زيادة</span>');
     const mt = card.querySelector('.cnt-model-total');
-    if(mt) mt.innerHTML = 'الفرق الكلي للموديل <b style="font-size:26px;">'+(total>0?'+':'')+total+'</b> '+badge;
+    if(mt) mt.innerHTML = 'الفرق الكلي للموديل <b style="font-size:30px;">'+(total>0?'+':'')+total+'</b> '+badge;
     const ft = card.querySelector('.cnt-floor-total b');
     if(ft) ft.textContent = floorTotal;
   });
@@ -5257,8 +5263,9 @@ $('cntSyncBtn') && $('cntSyncBtn').addEventListener('click', cntSaveSyncNow);
     if(cb){ cb.checked = !cb.checked; }
     syncCntChips();
     renderCountResults();
+    populateCntPendingDD();
   });
-  panel.addEventListener('change', ()=>{ syncCntChips(); renderCountResults(); });
+  panel.addEventListener('change', ()=>{ syncCntChips(); renderCountResults(); populateCntPendingDD(); });
 })();
 
 // تنظيف بيانات Map Check عند المسح
