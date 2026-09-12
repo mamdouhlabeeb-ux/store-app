@@ -1017,6 +1017,8 @@ service cloud.firestore {
     .cnt-result.pos{color:#b91c1c;}
     .cnt-result.zero{color:#64748b;}
     .cnt-model-total{display:flex;align-items:center;gap:10px;font-size:18px;font-weight:800;color:#475569;margin-top:4px;}
+    .cnt-sizes input[type=number]{ -moz-appearance:textfield; appearance:textfield; }
+    .cnt-sizes input[type=number]::-webkit-inner-spin-button,.cnt-sizes input[type=number]::-webkit-outer-spin-button{ -webkit-appearance:none; margin:0; }
     #cntQuickAdd{display:flex;flex-direction:column;gap:10px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;margin:10px 0;box-shadow:0 1px 6px rgba(0,0,0,.05);}
     .cnt-qa-title{font-weight:800;font-size:13.5px;color:#475569;}
     .cnt-qa-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
@@ -4896,8 +4898,9 @@ function wireCntResults(wrap){
     const size = row.getAttribute('data-size');
     const d = row.getAttribute('data-dept');
     const key = cntSizeResultKey(code, d, size);
-    const floorEl = $('cntf_' + key); if(floorEl){ floorEl.addEventListener('input', ()=> onCntInput(code, size, d, floorEl)); floorEl.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); moveCntFocus(floorEl); } }); }
-    const stockEl = $('cnts_' + key); if(stockEl){ stockEl.addEventListener('input', ()=> onCntInput(code, size, d, stockEl)); stockEl.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); moveCntFocus(stockEl); } }); }
+    const arrowNext = (e)=>{ if(['ArrowUp','ArrowDown','ArrowRight','ArrowLeft'].indexOf(e.key) !== -1){ e.preventDefault(); cntArrowNav(e.target, e.key); } };
+    const floorEl = $('cntf_' + key); if(floorEl){ floorEl.addEventListener('input', ()=> onCntInput(code, size, d, floorEl)); floorEl.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); moveCntFocus(floorEl); } else arrowNext(e); }); }
+    const stockEl = $('cnts_' + key); if(stockEl){ stockEl.addEventListener('input', ()=> onCntInput(code, size, d, stockEl)); stockEl.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); moveCntFocus(stockEl); } else arrowNext(e); }); }
     const addLineBtn = row.querySelector('.cnt-addline-add'); if(addLineBtn){ addLineBtn.addEventListener('click', ()=> addCountLine(code, size, d)); }
   });
 }
@@ -4911,6 +4914,29 @@ function moveCntFocus(el){
   while(next && !next.classList.contains('cnt-size-row')) next = next.nextElementSibling;
   const target = next ? next.querySelector('input[id^="' + prefix + '"]') : null;
   if(target){ target.focus(); target.select(); }
+}
+
+// أسهم الكيبورد: فوق/تحت بين الصفوف في نفس العمود، يمين/شمال بين المربعات
+function cntArrowNav(el, key){
+  const row = el.closest('.cnt-size-row');
+  if(!row) return;
+  if(key === 'ArrowUp' || key === 'ArrowDown'){
+    const prefix = el.id.indexOf('cntf_') === 0 ? 'cntf_' : 'cnts_';
+    let sib = key === 'ArrowUp' ? row.previousElementSibling : row.nextElementSibling;
+    while(sib && !sib.classList.contains('cnt-size-row')){
+      sib = key === 'ArrowUp' ? sib.previousElementSibling : sib.nextElementSibling;
+    }
+    const t = sib ? sib.querySelector('input[id^="' + prefix + '"]') : null;
+    if(t){ t.focus(); t.select(); }
+    return;
+  }
+  const inputs = Array.from(row.querySelectorAll('input[type="number"]'));
+  const idx = inputs.indexOf(el);
+  if(idx === -1) return;
+  let ni = key === 'ArrowRight' ? idx + 1 : idx - 1;
+  if(ni < 0) ni = inputs.length - 1;
+  if(ni >= inputs.length) ni = 0;
+  inputs[ni].focus(); inputs[ni].select();
 }
 
 // ترتيب المقاسات فكريًا: الأرقام تصاعدي (29,30,31..) والأحجام بالترتيب XS,S,M,L,XL,XXL
