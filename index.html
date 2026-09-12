@@ -4890,10 +4890,21 @@ function wireCntResults(wrap){
     const size = row.getAttribute('data-size');
     const d = row.getAttribute('data-dept');
     const key = cntSizeResultKey(code, d, size);
-    const floorEl = $('cntf_' + key); if(floorEl){ floorEl.addEventListener('input', ()=> onCntInput(code, size, d, floorEl)); }
-    const stockEl = $('cnts_' + key); if(stockEl){ stockEl.addEventListener('input', ()=> onCntInput(code, size, d, stockEl)); }
+    const floorEl = $('cntf_' + key); if(floorEl){ floorEl.addEventListener('input', ()=> onCntInput(code, size, d, floorEl)); floorEl.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); moveCntFocus(floorEl); } }); }
+    const stockEl = $('cnts_' + key); if(stockEl){ stockEl.addEventListener('input', ()=> onCntInput(code, size, d, stockEl)); stockEl.addEventListener('keydown', (e)=>{ if(e.key === 'Enter'){ e.preventDefault(); moveCntFocus(stockEl); } }); }
     const addLineBtn = row.querySelector('.cnt-addline-add'); if(addLineBtn){ addLineBtn.addEventListener('click', ()=> addCountLine(code, size, d)); }
   });
+}
+
+// ENTER بين المقاسات: ينتقل لمقاس السطر اللي بعده في نفس العمود (Floor أو Stock)
+function moveCntFocus(el){
+  const row = el.closest('.cnt-size-row');
+  if(!row) return;
+  const prefix = el.id.indexOf('cntf_') === 0 ? 'cntf_' : 'cnts_';
+  let next = row.nextElementSibling;
+  while(next && !next.classList.contains('cnt-size-row')) next = next.nextElementSibling;
+  const target = next ? next.querySelector('input[id^="' + prefix + '"]') : null;
+  if(target){ target.focus(); target.select(); }
 }
 
 // ترتيب المقاسات فكريًا: الأرقام تصاعدي (29,30,31..) والأحجام بالترتيب XS,S,M,L,XL,XXL
@@ -4918,6 +4929,7 @@ function renderCountCard(code){
   const info = cntSizesForCode(code);
   if(!info) return '';
   let totalModel = 0;
+  let floorTotal = 0;
   let lines = '';
   sortCntSizes(info.sizes).forEach(([size, s])=>{
     let deptNames = Array.from(s.depts).join(' / ');
@@ -4926,6 +4938,7 @@ function renderCountCard(code){
     const done = cntDoneRows.get(doneKey) || {};
     const floor = (done.floor || 0);
     const stock = (done.stock || 0);
+    floorTotal += floor;
     let result = s.total - floor - stock;
     totalModel += result;
     let content = '<tr class="cnt-size-row" data-code="'+escapeAttr(code)+'" data-size="'+escapeAttr(size)+'" data-dept="'+escapeAttr(deptNames)+'">'
@@ -4958,6 +4971,7 @@ function renderCountCard(code){
     + lines
     + '</tbody></table>'
     + '<div class="cnt-model-total">الفرق الكلي للموديل <b style="font-size:26px;">'+(totalModel>0?'+':'')+totalModel+'</b> '+badge+'</div>'
+    + '<div class="cnt-floor-total" style="margin-top:8px;color:#164e63;font-weight:800;font-size:14px;">توتال الفلور للموديل: <b style="font-size:20px;">'+floorTotal+'</b></div>'
     + '</div>';
 }
 
@@ -4982,7 +4996,7 @@ function onCntInput(code, size, dept, el){
   saveCntDone();
   populateCntPendingDD();
   cntPushCloud();
-  recountCountModelTotal($('cntResults') ? $('cntResults').querySelector('.cnt-code-card') : null);
+  recountCountModelTotal($('cntResults'));
 }
 
 function addCountLine(code, size, dept, qt){
@@ -5027,17 +5041,26 @@ function addCountLine(code, size, dept, qt){
   return true;
 }
 
-function recountCountModelTotal(card){
-  if(!card) return;
-  let total = 0;
-  card.querySelectorAll('.cnt-result').forEach(el=>{
-    const raw = el.textContent.replace('+','');
-    total += (parseFloat(raw) || 0);
+function recountCountModelTotal(scope){
+  const cards = scope ? scope.querySelectorAll('.cnt-code-card') : [];
+  cards.forEach(card=>{
+    let total = 0;
+    let floorTotal = 0;
+    card.querySelectorAll('.cnt-result').forEach(el=>{
+      const raw = el.textContent.replace('+','');
+      total += (parseFloat(raw) || 0);
+    });
+    card.querySelectorAll('input[id^="cntf_"]').forEach(el=>{
+      floorTotal += (parseFloat(el.value) || 0);
+    });
+    const badge = total === 0
+      ? '<span class="cnt-badge trs">ترصيد</span>'
+      : (total > 0 ? '<span class="cnt-badge deficit">عجز</span>' : '<span class="cnt-badge surplus">زيادة</span>');
+    const mt = card.querySelector('.cnt-model-total');
+    if(mt) mt.innerHTML = 'الفرق الكلي للموديل <b style="font-size:26px;">'+(total>0?'+':'')+total+'</b> '+badge;
+    const ft = card.querySelector('.cnt-floor-total b');
+    if(ft) ft.textContent = floorTotal;
   });
-  const badge = total === 0
-    ? '<span class="cnt-badge trs">ترصيد</span>'
-    : (total > 0 ? '<span class="cnt-badge deficit">عجز</span>' : '<span class="cnt-badge surplus">زيادة</span>');
-  card.querySelector('.cnt-model-total').innerHTML = 'الفرق الكلي للموديل <b style="font-size:26px;">'+(total>0?'+':'')+total+'</b> '+badge;
 }
 
 function cntSelectDept(dept){
