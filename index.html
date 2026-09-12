@@ -5206,11 +5206,18 @@ function renderCountExport(){
       }else{
         mark = 'زيادة';
       }
-      rowsData.push([r.code, r.size, r.qty, floor, stock, result === 0 ? '' : ((result>0?'+':'')+result), result === 0 ? '' : mark, d, r.loc]);
+      rowsData.push([r.code, r.size, r.qty, floor === 0 ? '' : floor, stock === 0 ? '' : stock, result === 0 ? '0' : ((result>0?'+':'')+result), result === 0 ? '' : mark, d, r.loc]);
     });
   });
+  const ws = XLSX.utils.aoa_to_sheet(rowsData);
+  rowsData.forEach((row, ri)=>{
+    if(ri === 0) return;
+    if(row[3] === '') delete ws[XLSX.utils.encode_cell({ r: ri, c: 3 })];
+    if(row[4] === '') delete ws[XLSX.utils.encode_cell({ r: ri, c: 4 })];
+    if(row[6] === '') delete ws[XLSX.utils.encode_cell({ r: ri, c: 6 })];
+  });
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rowsData), 'الجرد');
+  XLSX.utils.book_append_sheet(wb, ws, 'الجرد');
   XLSX.writeFile(wb, branchFname('جرد_و_ترصيد') + '.xlsx');
 }
 
