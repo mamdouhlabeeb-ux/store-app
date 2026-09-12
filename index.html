@@ -4939,6 +4939,14 @@ function cntArrowNav(el, key){
   inputs[ni].focus(); inputs[ni].select();
 }
 
+// بعد ما تدوس ENTER على الكود: يُركّز أول مربع قدام أول مقاس في النتائج
+function cntFocusFirstInput(){
+  const wrap = $('cntResults');
+  if(!wrap) return;
+  const first = wrap.querySelector('.cnt-size-row input[type="number"]');
+  if(first){ first.focus(); first.select(); }
+}
+
 // ترتيب المقاسات فكريًا: الأرقام تصاعدي (29,30,31..) والأحجام بالترتيب XS,S,M,L,XL,XXL
 const CNT_SIZE_ORDER = { 'XS':0, 'S':1, 'M':2, 'L':3, 'XL':4, 'XXL':5 };
 function sortCntSizes(sizeMap){
@@ -5256,6 +5264,7 @@ $('cntSearchInput') && $('cntSearchInput').addEventListener('keydown', (e)=>{
       e.preventDefault();
       if(cntScanIncrement($('cntSearchInput').value)){ return; }
       renderCountResults();
+      cntFocusFirstInput();
     }
   });
 $('cntPendingDD') && $('cntPendingDD').addEventListener('change', (e)=>{
