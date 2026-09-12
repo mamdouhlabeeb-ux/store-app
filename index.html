@@ -4970,8 +4970,10 @@ function renderCountCard(code){
     + '<table class="cnt-sizes"><thead><tr><th>المقاس</th><th>توتال</th><th>Floor</th><th>Stock</th><th>الدبارتمنت</th><th>النتيجة</th></tr></thead><tbody>'
     + lines
     + '</tbody></table>'
-    + '<div class="cnt-model-total">الفرق الكلي للموديل <b style="font-size:26px;">'+(totalModel>0?'+':'')+totalModel+'</b> '+badge+'</div>'
-    + '<div class="cnt-floor-total" style="margin-top:8px;color:#164e63;font-weight:800;font-size:14px;">توتال الفلور للموديل: <b style="font-size:20px;">'+floorTotal+'</b></div>'
+    + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;padding-top:10px;">'
+    + '<div class="cnt-model-total" style="margin-top:0;">الفرق الكلي للموديل <b style="font-size:26px;">'+(totalModel>0?'+':'')+totalModel+'</b> '+badge+'</div>'
+    + '<div class="cnt-floor-total" style="color:#164e63;font-weight:800;font-size:14px;">توتال الفلور للموديل: <b style="font-size:20px;">'+floorTotal+'</b></div>'
+    + '</div>'
     + '</div>';
 }
 
