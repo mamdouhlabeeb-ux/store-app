@@ -5206,7 +5206,7 @@ function renderCountExport(){
       }else{
         mark = 'زيادة';
       }
-      rowsData.push([r.code, r.size, r.qty, floor, stock, result === 0 ? '' : ((result>0?'+':'')+result), result === 0 ? '' : mark, d, r.loc]);
+      rowsData.push([r.code, r.size, r.qty, floor === 0 ? '' : floor, stock === 0 ? '' : stock, result === 0 ? '' : ((result>0?'+':'')+result), result === 0 ? '' : mark, d, r.loc]);
     });
   });
   const wb = XLSX.utils.book_new();
