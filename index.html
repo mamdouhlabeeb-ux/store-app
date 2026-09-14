@@ -1198,12 +1198,6 @@ async function loadBranchConfig(){
   }
   cfg.branches.forEach((b,i)=>{ b.name = BRANCH_NAMES[i] || b.name; });
   cfg.adminPassword = cfg.adminPassword || DEFAULT_ADMIN_PASSWORD;
-  // إعادة تعيين شاملة: أول تشغيل على الكود الجديد بيمرّن كل الفروع على 152152 مرة واحدة فقط،
-  // وبعدها أي تغيير بيحصل من فرع/مدير بيتبقى محفوظ زي ما هو
-  if(cfg.resetAllTag !== '152152'){
-    cfg.branches.forEach(b=>{ b.password = '152152'; });
-    cfg.resetAllTag = '152152';
-  }
   try{ await db.collection('config').doc('branches').set(cfg); }catch(e){ console.error(e); }
   return cfg;
 }
@@ -1889,19 +1883,32 @@ function renderTransfersStats(){
   $('transStatMissing').textContent = missing;
 }
 function transferMarkKey(r){
-  return r.code + '|' + r.size;
+  return r.code + '|' + r.size + '|' + r.dest;
 }
 function upgradeTransferMarks(marks){
   const out = new Set();
   marks.forEach(m=>{
-    if(String(m).indexOf('|') > -1){ out.add(m); return; }
-    transferRows.forEach(r=>{ if(r.code === m) out.add(transferMarkKey(r)); });
-    if(!transferRows.some(r=> r.code === m)) out.add(m);
+    if(String(m).indexOf('|') === -1){
+      // مفاتيح قديمة جدًا: كود بس — علّم كل صفوفه
+      transferRows.forEach(r=>{ if(r.code === m) out.add(transferMarkKey(r)); });
+      if(!transferRows.some(r=> r.code === m)) out.add(m);
+      return;
+    }
+    const parts = String(m).split('|');
+    if(parts.length >= 3){ out.add(m); return; }
+    // مفاتيح قديمة: كود|مقاس بلا فرع — علّم الصفوف المطابقة في كل الفروع (نفس افتكاسات القديم)
+    const code = parts[0], size = parts[1];
+    transferRows.forEach(r=>{
+      if(r.code === code && String(r.size).toUpperCase() === String(size).toUpperCase()) out.add(transferMarkKey(r));
+    });
+    if(!transferRows.some(r=> r.code === code)) out.add(m);
   });
   return out;
 }
 function transferIsMarked(r){
   if(transferMarkMem.has(transferMarkKey(r))) return true;
+  const legacy = r.code + '|' + r.size;
+  if(legacy !== transferMarkKey(r) && transferMarkMem.has(legacy)) return true;
   return transferMarkMem.has(r.code);
 }
 function renderTransfersTable(){
