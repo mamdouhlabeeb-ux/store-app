@@ -1220,20 +1220,131 @@ async function saveBranchPasswordOnly(branchId, npw){
     return true;
   }catch(e){ console.error(e); return false; }
 }
-async function loadBranchData(branchId){
-  try{ const snap = await db.collection('branchData').doc(branchId).get(); if(snap.exists) return snap.data(); }catch(e){ console.error(e); }
-  return null;
+// الداتا اتقسمت: كل شيت في مستند (أو مستندات) لوحده داخل subcollection اسمه sections
+// عشان نعدي حد الـ 1MB بتاع Firestore للمستند الواحد (ده كان سبب "اتعالج لكن لم يُحفظ").
+const SECTION_KEYS = ['stock','sales','locations','transfers','sticker','lastPrice'];
+const SECTION_CHUNK = 180000; // حروف لكل جزء (آمن تحت حد 1MB حتى مع العربي)
+
+function sectionsCol(branchId){ return db.collection('branchData').doc(branchId).collection('sections'); }
+
+function splitJson(str){
+  const parts = [];
+  for(let i=0; i<str.length; i+=SECTION_CHUNK) parts.push(str.slice(i, i+SECTION_CHUNK));
+  if(parts.length === 0) parts.push('null');
+  return parts;
 }
+
+async function loadBranchData(branchId){
+  let root = null;
+  try{
+    const snap = await db.collection('branchData').doc(branchId).get();
+    if(snap.exists) root = snap.data();
+  }catch(e){ console.error('loadBranchData root:', e); }
+
+  const out = root ? Object.assign({}, root) : {};
+  try{
+    const parts = await sectionsCol(branchId).get();
+    const buckets = {};
+    parts.forEach(d=>{
+      const v = d.data() || {};
+      const nm = v.name || String(d.id).split('__')[0];
+      (buckets[nm] = buckets[nm] || []).push(v);
+    });
+    Object.keys(buckets).forEach(nm=>{
+      const json = buckets[nm].sort((a,b)=> (a.n||0) - (b.n||0)).map(x=> x.data || '').join('');
+      try{
+        const parsed = JSON.parse(json);
+        if(parsed) out[nm] = parsed;   // الجديد يغلب النسخة القديمة اللي جوه المستند الأساسي
+      }catch(err){ console.error('section parse ' + nm, err); }
+    });
+  }catch(e){ console.error('loadBranchData sections:', e); }
+
+  // تأشيرات التحويلات اتنقلت لحقل صغير في المستند الأساسي عشان تتحفظ بسرعة
+  if(root && Array.isArray(root.transferMarks)){
+    out.transfers = out.transfers || {};
+    out.transfers.marks = root.transferMarks;
+  }
+  return Object.keys(out).length ? out : null;
+}
+
 let lastSaveError = '';
+function noteSaveError(e){
+  lastSaveError = (e && e.code) ? (e.code + (e.message ? ': ' + e.message : '')) : String(e);
+  console.error('save:', e);
+}
+
+// حفظ شيت واحد بس (مقسّم لأجزاء لو كبير) + مسح الأجزاء الزيادة القديمة
+async function saveSection(branchId, name, payload){
+  if(!branchId) return false;
+  try{
+    const parts = splitJson(JSON.stringify(payload === undefined ? null : payload));
+    const col = sectionsCol(branchId);
+    let oldDocs = [];
+    try{
+      const snap = await col.where('name', '==', name).get();
+      snap.forEach(d=> oldDocs.push(d));
+    }catch(err){ console.error('list old parts:', err); }
+
+    const batch = db.batch();
+    const stamp = new Date().toISOString();
+    parts.forEach((chunk, i)=>{
+      batch.set(col.doc(name + '__' + i), { name: name, n: i, parts: parts.length, data: chunk, updatedAt: stamp });
+    });
+    oldDocs.forEach(d=>{
+      const n = (d.data() || {}).n;
+      if(typeof n === 'number' && n >= parts.length) batch.delete(d.ref);
+    });
+    await batch.commit();
+
+    // نشيل النسخة القديمة من المستند الأساسي عشان نفضّي مساحته
+    try{
+      const upd = {};
+      upd[name] = firebase.firestore.FieldValue.delete();
+      await db.collection('branchData').doc(branchId).set(upd, { merge:true });
+    }catch(err){}
+
+    lastSaveError = '';
+    return true;
+  }catch(e){ noteSaveError(e); return false; }
+}
+
+// حفظ حقول صغيرة في المستند الأساسي (photos / codeOut / transferMarks)
+async function saveRootFields(branchId, obj){
+  if(!branchId) return false;
+  try{ await db.collection('branchData').doc(branchId).set(obj, { merge:true }); lastSaveError = ''; return true; }
+  catch(e){ noteSaveError(e); return false; }
+}
+
+async function deleteAllSections(branchId){
+  try{
+    const snap = await sectionsCol(branchId).get();
+    const batch = db.batch();
+    let any = false;
+    snap.forEach(d=>{ batch.delete(d.ref); any = true; });
+    if(any) await batch.commit();
+  }catch(e){ console.error('deleteAllSections:', e); }
+}
 function saveErrHint(){
   if(!lastSaveError) return '';
   const txt = String(lastSaveError);
   const cut = Math.min(txt.length, 160);
   return ' — ' + txt.slice(0, cut);
 }
+// متوافق مع الكود القديم: بيوزّع الأوبجكت على الأقسام + الحقول الصغيرة
 async function saveBranchData(branchId, data){
-  try{ await db.collection('branchData').doc(branchId).set(data); lastSaveError = ''; return true; }
-  catch(e){ lastSaveError = (e && e.code) ? (e.code + (e.message ? ': ' + e.message : '')) : String(e); console.error('saveBranchData:', e); return false; }
+  if(!branchId) return false;
+  const d = data || {};
+  let ok = true;
+  for(const k of SECTION_KEYS){
+    if(d[k] !== undefined && d[k] !== null){
+      const r = await saveSection(branchId, k, d[k]);
+      ok = ok && r;
+    }
+  }
+  const rootObj = {};
+  Object.keys(d).forEach(k=>{ if(SECTION_KEYS.indexOf(k) === -1 && d[k] !== undefined) rootObj[k] = d[k]; });
+  if(Object.keys(rootObj).length){ const r = await saveRootFields(branchId, rootObj); ok = ok && r; }
+  return ok;
 }
 
 // ---------------- login ----------------
@@ -1334,11 +1445,45 @@ $('logoutBtn').addEventListener('click', ()=>{
 });
 
 // ---------------- Live sync بين الأجهزة المفتوحة ----------------
-let liveSync = null;
+let liveSync = null;         // المستند الأساسي (التأشيرات)
+let liveSyncSections = null; // الشيتات نفسها
+
+function applyCloudSections(out){
+  if(!out) return;
+  let touched = false;
+  if(out.stock && Array.isArray(out.stock.summary)){
+    stockSummary = out.stock.summary; rebuildStockTotalsMap(); touched = true;
+  }
+  if(out.sales && Array.isArray(out.sales.rows)){ salesRows = out.sales.rows; touched = true; }
+  if(out.locations && Array.isArray(out.locations.rows)){
+    locationMap = new Map(out.locations.rows.map(p=>[p.code, p.location])); touched = true;
+  }
+  if(out.transfers){
+    if(Array.isArray(out.transfers.rows)){ transferRows = out.transfers.rows; touched = true; }
+    if(Array.isArray(out.transfers.mapLoc)){ transferMapLoc = new Map(out.transfers.mapLoc.map(p=>[p.code, p.location])); touched = true; }
+  }
+  if(out.sticker && Array.isArray(out.sticker.sheet)) labelRows = out.sticker.sheet;
+  if(out.lastPrice && Array.isArray(out.lastPrice.rows)) lpRows = out.lastPrice.rows;
+
+  const latestUpdate = [out.stock && out.stock.uploadedAt, out.sales && out.sales.uploadedAt, out.locations && out.locations.uploadedAt, out.transfers && out.transfers.uploadedAt].filter(Boolean).sort().pop();
+  if(latestUpdate) $('lastUpdateLabel').textContent = 'آخر تحديث: ' + formatDate(latestUpdate);
+
+  if(!touched) return;
+  const hasAny = stockSummary.length || salesRows.length || transferRows.length || transferMapLoc.size;
+  if(hasAny){
+    $('resultsArea').style.display = 'block';
+    $('emptyState').style.display = 'none';
+    try{ renderStockStats(); renderStockTable(); renderSalesStats(); renderSalesTable(); renderTransfersVisibility(); }catch(e){ console.error(e); }
+  }
+}
+
+let lastSectionsSig = '';
 function startLiveSync(){
   stopLiveSync();
   const id = currentBranch ? currentBranch.id : '';
   if(!id) return;
+
+  // 1) المستند الأساسي: تأشيرات الكودات + تأشيرات التحويلات
   liveSync = db.collection('branchData').doc(id).onSnapshot(snap=>{
     const d = snap.exists ? snap.data() : null;
     if(!d) return;
@@ -1350,17 +1495,41 @@ function startLiveSync(){
         renderSalesTable();
       }
     }
-    if(d.transfers && Array.isArray(d.transfers.marks)){
-      const cm = upgradeTransferMarks(new Set(d.transfers.marks));
+    const marks = Array.isArray(d.transferMarks) ? d.transferMarks : ((d.transfers && Array.isArray(d.transfers.marks)) ? d.transfers.marks : null);
+    if(marks){
+      const cm = upgradeTransferMarks(new Set(marks));
       if(JSON.stringify(Array.from(cm).sort()) !== JSON.stringify(Array.from(transferMarkMem).sort())){
         transferMarkMem = cm;
         renderTransfersTable();
       }
     }
-    }, err=> console.error('liveSync:', err));
+  }, err=> console.error('liveSync:', err));
+
+  // 2) الشيتات نفسها (مخزون / مبيعات / لوكيشن / تحويلات / استيكر / آخر سعر)
+  liveSyncSections = db.collection('branchData').doc(id).collection('sections').onSnapshot(snap=>{
+    try{
+      const buckets = {};
+      snap.forEach(d=>{
+        const v = d.data() || {};
+        const nm = v.name || String(d.id).split('__')[0];
+        (buckets[nm] = buckets[nm] || []).push(v);
+      });
+      const sig = Object.keys(buckets).sort().map(nm=> nm + ':' + buckets[nm].map(x=> x.updatedAt || '').sort().join(',')).join('|');
+      if(sig === lastSectionsSig) return;
+      lastSectionsSig = sig;
+      const out = {};
+      Object.keys(buckets).forEach(nm=>{
+        const json = buckets[nm].sort((a,b)=> (a.n||0) - (b.n||0)).map(x=> x.data || '').join('');
+        try{ const parsed = JSON.parse(json); if(parsed) out[nm] = parsed; }catch(err){ console.error('live parse ' + nm, err); }
+      });
+      applyCloudSections(out);
+    }catch(e){ console.error('liveSyncSections:', e); }
+  }, err=> console.error('liveSyncSections:', err));
 }
 function stopLiveSync(){
   if(liveSync){ liveSync(); liveSync = null; }
+  if(liveSyncSections){ liveSyncSections(); liveSyncSections = null; }
+  lastSectionsSig = '';
 }
 
 $('resetDataBtn').addEventListener('click', async ()=>{
@@ -1370,6 +1539,7 @@ $('resetDataBtn').addEventListener('click', async ()=>{
   if(!sure) return;
   showLoading('جاري مسح البيانات...');
   try{
+    await deleteAllSections(currentBranch.id);
     await db.collection('branchData').doc(currentBranch.id).delete();
     stockSummary = []; salesRows = []; stockTotalsMap = new Map(); locationMap = new Map(); codeOutMem = new Set();
     transferRows = []; transferMapLoc = new Map(); transferMarkMem = new Set(); transfersDest = 'all'; lpRows = [];
@@ -1543,18 +1713,26 @@ function handleMapLocFile(file){
   reader.readAsArrayBuffer(file);
 }
 async function saveTransfersToCloud(){
-  try{
-    const payload = {
-      transfers: {
-        uploadedAt: new Date().toISOString(),
-        rows: transferRows,
-        mapLoc: Array.from(transferMapLoc.entries()).map(([code, location])=>({ code, location })),
-        marks: Array.from(transferMarkMem)
-      }
-    };
-    await db.collection('branchData').doc(currentBranch.id).set(payload, { merge:true });
-    return true;
-  }catch(err){ console.error(err); return false; }
+  if(!currentBranch) return false;
+  const ok = await saveSection(currentBranch.id, 'transfers', {
+    uploadedAt: new Date().toISOString(),
+    rows: transferRows,
+    mapLoc: Array.from(transferMapLoc.entries()).map(([code, location])=>({ code, location }))
+  });
+  const ok2 = await saveTransferMarks();
+  return ok && ok2;
+}
+// التأشيرات لوحدها (صغيرة) عشان التأشير يتحفظ فورًا من غير ما يرفع الشيت كله
+let transferMarksTimer = null;
+function saveTransferMarks(){
+  if(!currentBranch) return Promise.resolve(false);
+  const id = currentBranch.id;
+  clearTimeout(transferMarksTimer);
+  return new Promise(resolve=>{
+    transferMarksTimer = setTimeout(async ()=>{
+      resolve(await saveRootFields(id, { transferMarks: Array.from(transferMarkMem), transferMarksAt: new Date().toISOString() }));
+    }, 400);
+  });
 }
 // ---------------- صور اللوكيشنات (Google Drive) ----------------
 // كل فرع بيحط رابط فولدره العام (Public) مرة واحدة داخل "تحضير التحويلات" → والتطبيق بيقرا الصور ويربطها باللوكيشنات.
@@ -1608,9 +1786,7 @@ async function loadBranchPhotosCloud(){
 }
 async function saveBranchPhotosLink(link){
   try{
-    const existing = await loadBranchData(currentBranch.id) || {};
-    existing.photos = { link, updatedAt: new Date().toISOString() };
-    await saveBranchData(currentBranch.id, existing);
+    await saveRootFields(currentBranch.id, { photos: { link, updatedAt: new Date().toISOString() } });
   }catch(err){ console.error(err); }
 }
 function normLocKey(s){
@@ -1969,7 +2145,7 @@ function renderTransfersTable(){
 $('clearTransMarksBtn').addEventListener('click', ()=>{
   transferMarkMem = new Set();
   transferChkFilter = 'all';
-  saveTransfersToCloud();
+  saveTransferMarks();
   renderTransfersTable();
   showToast('تم مسح كل تأشيرات التحويلات ✓');
 });
@@ -2034,11 +2210,8 @@ function handleStockFile(file){
       renderStockStats(); renderStockTable();
       renderSalesStats(); renderSalesTable(); // totals may now resolve
 
-      const existing = await loadBranchData(currentBranch.id) || {};
       const nowIso = new Date().toISOString();
-      existing.stock = { uploadedAt: nowIso, summary };
-      existing.sales = existing.sales || null;
-      const ok = await saveBranchData(currentBranch.id, existing);
+      const ok = await saveSection(currentBranch.id, 'stock', { uploadedAt: nowIso, summary });
       clearCodeOutMarks();
       $('lastUpdateLabel').textContent = 'آخر تحديث: ' + formatDate(nowIso);
       setStatus(statusEl, ok ? ('تم ✓ (' + summary.length + ' موديل)') : ('اتعالج لكن لم يُحفظ' + saveErrHint()), ok?'ok':'err');
@@ -2104,11 +2277,8 @@ function handleSalesFile(file){
       $('resultsArea').style.display = 'block'; $('emptyState').style.display = 'none';
       renderSalesStats(); renderSalesTable();
 
-      const existing = await loadBranchData(currentBranch.id) || {};
       const nowIso = new Date().toISOString();
-      existing.sales = { uploadedAt: nowIso, rows: rowsOut };
-      existing.stock = existing.stock || null;
-      const ok = await saveBranchData(currentBranch.id, existing);
+      const ok = await saveSection(currentBranch.id, 'sales', { uploadedAt: nowIso, rows: rowsOut });
       clearCodeOutMarks();
       $('lastUpdateLabel').textContent = 'آخر تحديث: ' + formatDate(nowIso);
       setStatus(statusEl, ok ? ('تم ✓ (' + rowsOut.length + ' صنف)') : ('اتعالج لكن لم يُحفظ' + saveErrHint()), ok?'ok':'err');
@@ -2182,12 +2352,8 @@ function handleLocFile(file){
       if(parsed.length === 0){ setStatus(statusEl, 'مفيش بيانات صالحة اتقرت من الملف.', 'err'); return; }
       locationMap = new Map(parsed.map(p=>[p.code, p.location]));
       renderSalesTable();
-      const existing = await loadBranchData(currentBranch.id) || {};
       const nowIso = new Date().toISOString();
-      existing.locations = { uploadedAt: nowIso, rows: parsed };
-      existing.stock = existing.stock || null;
-      existing.sales = existing.sales || null;
-      const ok = await saveBranchData(currentBranch.id, existing);
+      const ok = await saveSection(currentBranch.id, 'locations', { uploadedAt: nowIso, rows: parsed });
       clearCodeOutMarks();
       $('lastUpdateLabel').textContent = 'آخر تحديث: ' + formatDate(nowIso);
       setStatus(statusEl, ok ? ('تم ✓ (' + parsed.length + ' كود)') : ('اتعالج لكن لم يُحفظ' + saveErrHint()), ok?'ok':'err');
@@ -2371,7 +2537,7 @@ function clearCodeOutMarks(){
 document.addEventListener('change', (e)=>{
   if(e.target.classList && e.target.classList.contains('chk-filter')){
     if(e.target.dataset.scope === 'transfers'){
-      if(e.target.value === 'clear'){ transferMarkMem = new Set(); transferChkFilter = 'all'; saveTransfersToCloud(); renderTransfersTable(); showToast('تم مسح كل تأشيرات التحويلات ✓'); }
+      if(e.target.value === 'clear'){ transferMarkMem = new Set(); transferChkFilter = 'all'; saveTransferMarks(); renderTransfersTable(); showToast('تم مسح كل تأشيرات التحويلات ✓'); }
       else { transferChkFilter = e.target.value; renderTransfersTable(); }
     }else if(e.target.dataset.scope === 'sales'){
       if(e.target.value === 'clear'){ salesChkFilter = 'all'; clearCodeOutMarks(); }
@@ -2383,7 +2549,7 @@ document.addEventListener('change', (e)=>{
   if(e.target.classList && e.target.classList.contains('transfer-chk')){
     const c = e.target.dataset.mark || e.target.dataset.code;
     if(e.target.checked) transferMarkMem.add(c); else transferMarkMem.delete(c);
-    saveTransfersToCloud();
+    saveTransferMarks();
     renderTransfersTable();
     return;
   }
@@ -2876,9 +3042,7 @@ let labelRows = [];
 async function saveLabelRows(branchId){
   if(!branchId) return;
   try{
-    const existing = await loadBranchData(branchId) || {};
-    existing.sticker = { uploadedAt: new Date().toISOString(), sheet: labelRows };
-    await saveBranchData(branchId, existing);
+    await saveSection(branchId, 'sticker', { uploadedAt: new Date().toISOString(), sheet: labelRows });
   }catch(e){ console.error(e); }
 }
 let labelSearchInput = null;
@@ -3219,9 +3383,7 @@ let lpRows = [];
 async function saveLastPriceRows(branchId){
   if(!branchId) return;
   try{
-    const existing = await loadBranchData(branchId) || {};
-    existing.lastPrice = { uploadedAt: new Date().toISOString(), rows: lpRows };
-    await saveBranchData(branchId, existing);
+    await saveSection(branchId, 'lastPrice', { uploadedAt: new Date().toISOString(), rows: lpRows });
   }catch(e){ console.error(e); }
 }
 
