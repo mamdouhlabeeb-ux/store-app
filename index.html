@@ -1186,37 +1186,54 @@ function initFirebase(){
 
 // ---------------- storage layer (Firestore) ----------------
 async function loadBranchConfig(){
-  let cfg = null;
+  let cfg = null, readFailed = false;
   try{
-    const snap = await db.collection('config').doc('branches').get();
-    if(snap.exists && snap.data().branches) cfg = snap.data();
-  }catch(e){ console.error(e); }
+    const snap = await db.collection('config').doc('branches').get({ source: 'server' });
+    if(snap.exists && snap.data() && snap.data().branches) cfg = snap.data();
+  }catch(e){ console.error(e); readFailed = true; }
+  // لو القراءة فشلت (نت ضعيف/offline) متكتبش أي حاجة على السيرفر — ارمي خطأ بس
+  if(readFailed) throw new Error('config read failed');
   if(!cfg){
+    // أول مرة بس: الملف مش موجود فعلاً على السيرفر
     const branches = [];
     for(let i=1;i<=BRANCH_COUNT;i++){ branches.push({ id:'b'+i, name: BRANCH_NAMES[i-1], password: DEFAULT_BRANCH_PASSWORD }); }
     cfg = { branches, adminPassword: DEFAULT_ADMIN_PASSWORD };
+    try{ await db.collection('config').doc('branches').set(cfg); }catch(e){ console.error(e); }
   }
   cfg.branches.forEach((b,i)=>{ b.name = BRANCH_NAMES[i] || b.name; });
   cfg.adminPassword = cfg.adminPassword || DEFAULT_ADMIN_PASSWORD;
-  try{ await db.collection('config').doc('branches').set(cfg); }catch(e){ console.error(e); }
   return cfg;
 }
 async function saveBranchConfig(cfg){
   try{ await db.collection('config').doc('branches').set(cfg); return true; }catch(e){ console.error(e); return false; }
 }
 async function saveBranchPasswordOnly(branchId, npw){
+  const ref = db.collection('config').doc('branches');
   try{
-    const snap = await db.collection('config').doc('branches').get();
-    let cfg = (snap.exists && snap.data() && snap.data().branches) ? snap.data() : null;
-    if(!cfg){
-      const branches = [];
-      for(let i=1;i<=BRANCH_COUNT;i++){ branches.push({ id:'b'+i, name: BRANCH_NAMES[i-1], password: DEFAULT_BRANCH_PASSWORD }); }
-      cfg = { branches, adminPassword: DEFAULT_ADMIN_PASSWORD };
-    }
-    const b = cfg.branches.find(x=> x.id === branchId);
-    if(b) b.password = npw;
-    cfg.adminPassword = cfg.adminPassword || DEFAULT_ADMIN_PASSWORD;
-    await db.collection('config').doc('branches').set(cfg);
+    await db.runTransaction(async tx=>{
+      const snap = await tx.get(ref);
+      if(!snap.exists || !snap.data() || !snap.data().branches) throw new Error('config missing');
+      const cfg = snap.data();
+      const b = cfg.branches.find(x=> x.id === branchId);
+      if(b) b.password = npw;
+      cfg.adminPassword = cfg.adminPassword || DEFAULT_ADMIN_PASSWORD;
+      tx.set(ref, cfg);
+    });
+    return true;
+  }catch(e){ console.error(e); return false; }
+}
+// حفظ فرع واحد بس (الاسم + الباسورد) على آخر نسخة من السيرفر من غير ما نلمس باقي الفروع
+async function saveOneBranch(branchId, name, password){
+  const ref = db.collection('config').doc('branches');
+  try{
+    await db.runTransaction(async tx=>{
+      const snap = await tx.get(ref);
+      if(!snap.exists || !snap.data() || !snap.data().branches) throw new Error('config missing');
+      const cfg = snap.data();
+      const b = cfg.branches.find(x=> x.id === branchId);
+      if(b){ b.name = name; b.password = password; }
+      tx.set(ref, cfg);
+    });
     return true;
   }catch(e){ console.error(e); return false; }
 }
@@ -1350,7 +1367,12 @@ async function saveBranchData(branchId, data){
 // ---------------- login ----------------
 async function initLogin(){
   showLoading('جاري تجهيز قائمة الفروع...');
-  branchConfig = await loadBranchConfig();
+  try{ branchConfig = await loadBranchConfig(); }
+  catch(e){
+    showLoading('مفيش اتصال بالسيرفر — بحاول تاني... اتأكد من النت');
+    setTimeout(initLogin, 5000);
+    return;
+  }
   const sel = $('branchSelect');
   sel.innerHTML = '';
   branchConfig.branches.forEach(b=>{
@@ -1407,7 +1429,7 @@ function renderAdmin(){
     saveBtn.addEventListener('click', async ()=>{
       b.name = nameInput.value.trim() || b.name;
       b.password = pwInput.value.trim() || b.password;
-      const ok = await saveBranchConfig(branchConfig);
+      const ok = await saveOneBranch(b.id, b.name, b.password);
       if(ok){ hint.classList.add('show'); setTimeout(()=>hint.classList.remove('show'), 1500); }
       else{ alert('حصل خطأ في الحفظ، جرب تاني.'); }
     });
@@ -2984,108 +3006,9 @@ $('pwSaveBtn').addEventListener('click', async ()=>{
   );
 });
 
-
-// ============================================================
-// WEEKLY STORAGE CLEANUP
-// Keeps config/branches (login + passwords) permanently.
-// Keeps current branchData permanently.
-// Removes only temporary Money Map and Inventory Count sync
-// data that has not been updated for 7 days.
-// ============================================================
-const TEMP_DATA_RETENTION_MS = 7 * 24 * 60 * 60 * 1000;
-const CLEANUP_CHECK_KEY = 'ravin_weekly_cleanup_v2';
-
-function cleanupTimestampMs(v){
-  if(v == null) return 0;
-  if(typeof v === 'number') return v;
-  if(v && typeof v.toMillis === 'function') return v.toMillis();
-  if(typeof v === 'string'){
-    const n = Date.parse(v);
-    return Number.isFinite(n) ? n : 0;
-  }
-  return 0;
-}
-
-async function deleteDocsInBatches(refs){
-  let batch = db.batch();
-  let count = 0;
-  for(const ref of refs){
-    batch.delete(ref);
-    count++;
-    if(count >= 400){
-      await batch.commit();
-      batch = db.batch();
-      count = 0;
-    }
-  }
-  if(count) await batch.commit();
-}
-
-async function deleteCollectionDocs(colRef){
-  const snap = await colRef.get();
-  if(snap.empty) return;
-  await deleteDocsInBatches(snap.docs.map(d=>d.ref));
-}
-
-async function cleanupOldTemporaryData(){
-  if(!db) return;
-
-  let last = 0;
-  try{ last = Number(localStorage.getItem(CLEANUP_CHECK_KEY) || 0); }catch(e){}
-  if(last && Date.now() - last < TEMP_DATA_RETENTION_MS) return;
-
-  const cutoff = Date.now() - TEMP_DATA_RETENTION_MS;
-
-  try{
-    // Money Map: delete branches whose last update is older than 7 days.
-    const mmSnap = await db.collection('moneyMapData').get();
-    for(const doc of mmSnap.docs){
-      const data = doc.data() || {};
-      const updated = cleanupTimestampMs(data.updatedAt);
-      if(updated && updated < cutoff){
-        try{ await deleteCollectionDocs(doc.ref.collection('parts')); }catch(e){}
-        try{ await doc.ref.delete(); }catch(e){}
-      }
-    }
-
-    // Inventory Count sync: delete sessions not updated for 7 days.
-    const cntSnap = await db.collection('jardData').get();
-    for(const doc of cntSnap.docs){
-      const data = doc.data() || {};
-      const updated = cleanupTimestampMs(data.updatedAt || data.updatedAtMs);
-      if(updated && updated < cutoff){
-        try{ await deleteCollectionDocs(doc.ref.collection('parts')); }catch(e){}
-        try{ await doc.ref.delete(); }catch(e){}
-      }
-    }
-
-    // Clear the local copies of these temporary features as well.
-    // This prevents an old local copy from being uploaded again.
-    try{
-      const removeKeys = [];
-      for(let i=0;i<localStorage.length;i++){
-        const k = localStorage.key(i);
-        if(k && (k.indexOf('moneyMap_v1_') === 0 ||
-                 k.indexOf('count_v1_') === 0 ||
-                 k.indexOf('count_sheet_v1_') === 0)){
-          removeKeys.push(k);
-        }
-      }
-      removeKeys.forEach(k=>localStorage.removeItem(k));
-    }catch(e){}
-
-    try{ localStorage.setItem(CLEANUP_CHECK_KEY, String(Date.now())); }catch(e){}
-    console.log('Weekly temporary-data cleanup completed.');
-  }catch(e){
-    console.error('Weekly cleanup failed:', e);
-  }
-}
-
 // ---------------- boot ----------------
-async function boot(){
+function boot(){
   if(initFirebase()){
-    // Cleanup runs in the background; it never blocks login.
-    cleanupOldTemporaryData();
     initLogin();
   } else {
     switchScreen('screen-setup');
@@ -4484,78 +4407,28 @@ function loadMoneyMapDB(){
 function saveMoneyMapDB(){
   try{ localStorage.setItem(moneyMapDBKey(), JSON.stringify(moneyMapRows)); }catch(e){ console.error(e); }
 }
-async function moneyMapSaveRemote(){
-  if(!currentBranch || !currentBranch.id || typeof db === 'undefined' || !db) return false;
+function moneyMapSaveRemote(){
+  if(!currentBranch || !currentBranch.id || typeof db === 'undefined' || !db) return;
   try{
-    const branchRef = db.collection('moneyMapData').doc(currentBranch.id);
-    const col = branchRef.collection('parts');
-    const json = JSON.stringify(Array.isArray(moneyMapRows) ? moneyMapRows : []);
-    const chunks = [];
-    for(let i=0;i<json.length;i+=160000) chunks.push(json.slice(i,i+160000));
-    if(chunks.length === 0) chunks.push('[]');
-
-    const oldSnap = await col.get();
-    const batch = db.batch();
-    const stamp = firebase.firestore.FieldValue.serverTimestamp();
-
-    chunks.forEach((chunk,i)=>{
-      batch.set(col.doc(String(i)), {
-        n:i,
-        parts:chunks.length,
-        data:chunk,
-        updatedAt:stamp
-      });
+    db.collection('moneyMapData').doc(currentBranch.id).set({
+      rows: moneyMapRows,
+      updatedAt: new Date().toISOString()
     });
-    oldSnap.forEach(d=>{
-      const n = Number((d.data()||{}).n);
-      if(!Number.isFinite(n) || n >= chunks.length) batch.delete(d.ref);
-    });
-    batch.set(branchRef,{updatedAt:stamp, parts:chunks.length},{merge:true});
-    await batch.commit();
-
-    // Remove the old single-document format after the new copy is safely written.
-    try{ await branchRef.set({rows:firebase.firestore.FieldValue.delete()},{merge:true}); }catch(e){}
-    return true;
-  }catch(e){
-    console.error('moneyMap save remote:', e);
-    return false;
-  }
+  }catch(e){ console.error('moneyMap save remote:', e); }
 }
 async function moneyMapLoadRemote(){
   if(!currentBranch || !currentBranch.id || typeof db === 'undefined' || !db) return;
   try{
-    const branchRef = db.collection('moneyMapData').doc(currentBranch.id);
-    const col = branchRef.collection('parts');
-    const snap = await col.get();
-
-    if(!snap.empty){
-      const docs = [];
-      snap.forEach(d=>docs.push(d.data()||{}));
-      docs.sort((a,b)=>(Number(a.n)||0)-(Number(b.n)||0));
-      const json = docs.map(x=>x.data||'').join('');
-      try{ moneyMapRows = JSON.parse(json) || []; }catch(e){ moneyMapRows = []; }
-    }else{
-      // One-time migration from the old single-document format.
-      const old = await branchRef.get();
-      if(old.exists){
-        const data = old.data() || {};
-        if(Array.isArray(data.rows)){
-          moneyMapRows = data.rows;
-          await moneyMapSaveRemote();
-        }else{
-          const localRows = localStorage.getItem(moneyMapDBKey());
-          if(localRows){
-            try{ moneyMapRows = JSON.parse(localRows) || []; }catch(e){ moneyMapRows = []; }
-          }
-          if(moneyMapRows.length) await moneyMapSaveRemote();
-        }
-      }else{
-        const localRows = localStorage.getItem(moneyMapDBKey());
-        if(localRows){
-          try{ moneyMapRows = JSON.parse(localRows) || []; }catch(e){ moneyMapRows = []; }
-        }
-        if(moneyMapRows.length) await moneyMapSaveRemote();
+    const snap = await db.collection('moneyMapData').doc(currentBranch.id).get();
+    if(snap.exists){
+      const data = snap.data() || {};
+      if(Array.isArray(data.rows)) moneyMapRows = data.rows;
+    } else {
+      const localRows = localStorage.getItem(moneyMapDBKey());
+      if(localRows){
+        try{ moneyMapRows = JSON.parse(localRows) || []; }catch(e){ moneyMapRows = []; }
       }
+      if(moneyMapRows.length) moneyMapSaveRemote();
     }
     saveMoneyMapDB();
   }catch(e){ console.error('moneyMap load remote:', e); }
@@ -4864,7 +4737,7 @@ function setCntSyncHint(msg){
   if(h && msg !== undefined) h.textContent = msg;
 }
 let cntPushTimer = null;
-async function cntPushCloud(){
+function cntPushCloud(){
   if(!db || !currentBranch || !cntSyncKey()) return;
   clearTimeout(cntPushTimer);
   setCntSyncHint('الرفع للسحابة...');
@@ -4872,106 +4745,22 @@ async function cntPushCloud(){
     const ref = cntSyncRef();
     if(!ref){ setCntSyncHint('مفيش اتصال Firebase'); return; }
     try{
-      const pack = cntSyncPack();
-      const col = ref.collection('parts');
-      const oldSnap = await col.get();
-      const batch = db.batch();
-      const stamp = firebase.firestore.FieldValue.serverTimestamp();
-
-      const writeValue = (name, value)=>{
-        const str = value == null ? '' : String(value);
-        const chunks = [];
-        for(let i=0;i<str.length;i+=160000) chunks.push(str.slice(i,i+160000));
-        if(chunks.length === 0) chunks.push('');
-        chunks.forEach((chunk,i)=>{
-          batch.set(col.doc(name + '__' + i), {
-            name:name, n:i, parts:chunks.length, data:chunk, updatedAt:stamp
-          });
-        });
-        oldSnap.forEach(d=>{
-          const v=d.data()||{};
-          if(v.name===name && (Number(v.n)>=chunks.length || !Number.isFinite(Number(v.n)))) batch.delete(d.ref);
-        });
-      };
-
-      writeValue('sheet', pack.sheet);
-      writeValue('done', pack.done);
-      batch.set(ref,{updatedAt:stamp, updatedAtMs:Date.now()},{merge:true});
-      await batch.commit();
-
-      // Remove old single-document fields after the chunked copy is safe.
-      try{
-        await ref.set({
-          sheet:firebase.firestore.FieldValue.delete(),
-          done:firebase.firestore.FieldValue.delete()
-        },{merge:true});
-      }catch(e){}
-
+      await ref.set(cntSyncPack());
       setCntSyncHint('تم الرفع للسحابة ✓');
-    }catch(e){
-      console.error(e);
-      setCntSyncHint('فشل الرفع — تأكد من الإنترنت');
-    }
-  },600);
+    }catch(e){ console.error(e); setCntSyncHint('فشل الرفع — تأكد من الإنترنت'); }
+  }, 600);
 }
 async function cntPullCloud(){
   if(!db || !currentBranch || !cntSyncKey()) return false;
   const ref = cntSyncRef();
   if(!ref){ setCntSyncHint('مفيش اتصال Firebase'); return false; }
   try{
-    const partsSnap = await ref.collection('parts').get();
-    let cloudSheet = null;
-    let cloudDone = null;
-
-    if(!partsSnap.empty){
-      const buckets = {};
-      partsSnap.forEach(d=>{
-        const v=d.data()||{};
-        if(!buckets[v.name]) buckets[v.name]=[];
-        buckets[v.name].push(v);
-      });
-      Object.keys(buckets).forEach(name=>{
-        buckets[name].sort((a,b)=>(Number(a.n)||0)-(Number(b.n)||0));
-        const value=buckets[name].map(x=>x.data||'').join('');
-        if(name==='sheet') cloudSheet=value;
-        if(name==='done') cloudDone=value;
-      });
-    }else{
-      // Backward compatibility with the old single-document format.
-      const snap = await ref.get();
-      if(!snap.exists) return false;
-      const d=snap.data()||{};
-      cloudSheet = d.sheet || null;
-      cloudDone = d.done || null;
-
-      // Migrate the old data to chunks once.
-      if(cloudSheet !== null || cloudDone !== null){
-        try{
-          if(cloudSheet !== null) localStorage.setItem(cntSheetKey(),cloudSheet);
-          if(cloudDone !== null) localStorage.setItem(cntDBKey(),cloudDone);
-          cntPushCloud();
-        }catch(e){}
-      }
-    }
-
+    const snap = await ref.get();
+    if(!snap.exists) return false;
+    const d = snap.data();
     let changed = false;
-    if(cloudSheet !== null){
-      try{
-        if((localStorage.getItem(cntSheetKey()) || null) !== cloudSheet){
-          localStorage.setItem(cntSheetKey(), cloudSheet);
-          changed = true;
-        }
-      }catch(e){}
-    }
-    if(cloudDone !== null){
-      try{
-        if((localStorage.getItem(cntDBKey()) || null) !== cloudDone){
-          localStorage.setItem(cntDBKey(), cloudDone);
-          changed = true;
-        }
-      }catch(e){}
-    }
-
+    if(d.sheet){ try{ if((localStorage.getItem(cntSheetKey()) || null) !== d.sheet){ localStorage.setItem(cntSheetKey(), d.sheet); changed = true; } }catch(e){} }
+    if(d.done){ try{ if((localStorage.getItem(cntDBKey()) || null) !== d.done){ localStorage.setItem(cntDBKey(), d.done); changed = true; } }catch(e){} }
     if(changed){
       loadCntDone();
       if(cntIndex.size === 0) loadCntSheet();
@@ -4984,11 +4773,7 @@ async function cntPullCloud(){
     }
     setCntSyncHint('تم الجلب من السحابة ✓');
     return true;
-  }catch(e){
-    console.error(e);
-    setCntSyncHint('فشل الجلب — تأكد من الإنترنت');
-    return false;
-  }
+  }catch(e){ console.error(e); setCntSyncHint('فشل الجلب — تأكد من الإنترنت'); return false; }
 }
 function cntSaveSyncNow(){
   if(!currentBranch){ showToast('اختار الفرع الأول.'); return; }
