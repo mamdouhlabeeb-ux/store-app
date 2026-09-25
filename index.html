@@ -1143,18 +1143,18 @@ service cloud.firestore {
     .turnover-tools button{white-space:nowrap;}
     .turnover-results-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 3px 14px rgba(15,23,42,.05);overflow-x:auto;}
     .turnover-table{border-collapse:collapse;width:100%;min-width:830px;}
-    .turnover-table th{background:#eef2ff;color:#3730a3;font-size:13px;font-weight:800;padding:11px 9px;border:1px solid #c7d2fe;text-align:center;white-space:nowrap;}
-    .turnover-table td{padding:9px 8px;border:1px solid #dbe3ef;text-align:center;font-size:15px;vertical-align:middle;}
-    .turnover-table td:first-child{font-weight:800;color:#1e293b;white-space:nowrap;}
-    .turnover-code-cell{direction:ltr;text-align:center!important;white-space:nowrap;}
-    .turnover-recorded-code{font-size:10.5px;color:#6366f1;margin-top:3px;direction:ltr;white-space:nowrap;}
-    .turnover-location-input,.turnover-stock-input{width:100%;min-width:92px;padding:9px 8px;border:1.5px solid #cbd5e1;border-radius:8px;background:#fff;font-family:inherit;font-size:22px;font-weight:900;color:#111827;box-sizing:border-box;}
+    .turnover-table th{background:#eef2ff;color:#3730a3;font-size:20px;font-weight:900;padding:11px 9px;border:1px solid #c7d2fe;text-align:center;white-space:nowrap;}
+    .turnover-table td{padding:9px 8px;border:1px solid #dbe3ef;text-align:center;font-size:20px;font-weight:900;vertical-align:middle;}
+    .turnover-table td:first-child{font-weight:900;color:#1e293b;white-space:nowrap;}
+    .turnover-code-cell{direction:ltr;text-align:center!important;white-space:nowrap;font-size:20px;font-weight:900;}
+    .turnover-recorded-code{font-size:20px;font-weight:900;color:#6366f1;margin-top:3px;direction:ltr;white-space:nowrap;}
+    .turnover-location-input,.turnover-stock-input{width:100%;min-width:92px;padding:9px 8px;border:1.5px solid #cbd5e1;border-radius:8px;background:#fff;font-family:inherit;font-size:20px;font-weight:900;color:#111827;box-sizing:border-box;}
     .turnover-location-input{text-align:right;min-width:125px;}
     .turnover-stock-input{text-align:center;direction:ltr;}
     .turnover-location-input::-webkit-inner-spin-button,.turnover-location-input::-webkit-outer-spin-button,.turnover-stock-input::-webkit-inner-spin-button,.turnover-stock-input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
     .turnover-location-input[type=number],.turnover-stock-input[type=number]{-moz-appearance:textfield;appearance:textfield;}
     .turnover-location-input:focus,.turnover-stock-input:focus{outline:none;border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.12);}
-    .turnover-result{font-weight:900;font-size:22px;color:#000!important;text-align:center;min-width:72px;background:#f8fafc;}
+    .turnover-result{font-weight:900;font-size:20px;color:#000!important;text-align:center;min-width:72px;background:#f8fafc;}
     .turnover-result.positive{background:#ef4444!important;}
     .turnover-result.negative{background:#22c55e!important;}
     .turnover-result.zero{background:#e2e8f0!important;}
@@ -3145,15 +3145,21 @@ function handleInstallClick(){
 }
 $('langBtn') && $('langBtn').addEventListener('click', toggleAppLang);
 document.addEventListener('keydown', (e)=>{
-  if((e.ctrlKey || e.metaKey) && String((e.key || '')).toLowerCase() === 'f'){
+  const key = String((e.key || '')).toLowerCase();
+  if((e.ctrlKey || e.metaKey) && (key === 'f' || e.code === 'KeyF')){
     const act = document.querySelector('.screen.active');
-    if(act && (act.id === 'screen-count' || act.id === 'screen-turnover')){
+    if(act && act.id === 'screen-turnover'){
       e.preventDefault();
-      const inp = act.id === 'screen-count' ? $('cntSearchInput') : $('turnoverSearchInput');
+      turnoverFocusSearchInput();
+      return;
+    }
+    if(act && act.id === 'screen-count'){
+      e.preventDefault();
+      const inp = $('cntSearchInput');
       if(inp){ inp.focus(); inp.select(); }
     }
   }
-});
+}, true);
 $('installBtn').addEventListener('click', handleInstallClick);
 $('installBtnLogin').addEventListener('click', handleInstallClick);
 
@@ -5873,6 +5879,31 @@ function turnoverUpdateHint(){
     ? 'اللوكيشن ' + location + ' هيتسجل مع كل مقاسات الكود المطابق، مش مع كل الشيت.'
     : 'اكتب اسم اللوكيشن هنا، ثم اكتب الكود في البحث؛ اللوكيشن هيتمسجل مع الكود المطابق.';
 }
+function turnoverCaptureGridFocus(results){
+  const active = document.activeElement;
+  if(!active || !results || !results.contains(active)) return null;
+  const role = active.getAttribute('data-turnover-role');
+  if(role !== 'stock' && role !== 'location') return null;
+  return {
+    role,
+    rowId: active.getAttribute('data-turnover-row-id'),
+    value: active.value,
+    selectionStart: active.selectionStart,
+    selectionEnd: active.selectionEnd
+  };
+}
+function turnoverRestoreGridFocus(results, state){
+  if(!results || !state) return;
+  const target = Array.from(results.querySelectorAll('[data-turnover-role]')).find(item=>{
+    return item.getAttribute('data-turnover-role') === state.role && item.getAttribute('data-turnover-row-id') === String(state.rowId);
+  });
+  if(!target) return;
+  target.value = state.value;
+  target.focus();
+  if(typeof target.setSelectionRange === 'function' && state.selectionStart != null && state.selectionEnd != null){
+    try{ target.setSelectionRange(state.selectionStart, state.selectionEnd); }catch(error){}
+  }
+}
 function renderTurnover(){
   const body = $('turnoverBody');
   const upload = $('turnoverUploadCard');
@@ -5882,13 +5913,16 @@ function renderTurnover(){
   const rows = turnoverVisibleRows();
   const results = $('turnoverResults');
   if(!results) return;
+  const gridFocus = turnoverCaptureGridFocus(results);
   if(!turnoverRows.length){
     results.innerHTML = '<div class="turnover-results-card"><div class="turnover-empty">ارفع شيت New Volume (D) الأول.</div></div>';
+    turnoverRestoreGridFocus(results, gridFocus);
     turnoverUpdateTotals([]);
     return;
   }
   if(!rows.length){
     results.innerHTML = '<div class="turnover-results-card"><div class="turnover-empty">' + (turnoverShowAll ? 'مفيش سطور متاحة.' : 'اكتب الكود في البحث عشان تظهر النتيجة.') + '</div></div>';
+    turnoverRestoreGridFocus(results, gridFocus);
     turnoverUpdateTotals([]);
     return;
   }
@@ -5900,7 +5934,7 @@ function renderTurnover(){
     html.push('<tr>');
     html.push('<td><div class="turnover-code-cell" dir="ltr">' + escapeHtml(turnoverRowCode(row)) + '</div><div class="turnover-recorded-code" data-turnover-code-id="' + String(row.id) + '" dir="ltr">' + escapeHtml(recordedCode) + '</div></td>');
     html.push('<td>' + escapeHtml(turnoverFormatNumber(row.qty)) + '</td>');
-    html.push('<td><input class="turnover-stock-input" type="number" step="any" min="0" data-turnover-role="stock" data-turnover-row-id="' + String(row.id) + '" value="' + escapeAttr(turnoverFormatNumber(row.stock)) + '"></td>');
+    html.push('<td><input class="turnover-stock-input" type="text" inputmode="decimal" data-turnover-role="stock" data-turnover-row-id="' + String(row.id) + '" value="' + escapeAttr(turnoverFormatNumber(row.stock)) + '"></td>');
     html.push('<td><input class="turnover-location-input" type="text" data-turnover-role="location" data-turnover-row-id="' + String(row.id) + '" value="' + escapeAttr(location) + '" placeholder="اكتب اللوكيشن"></td>');
     html.push('<td>' + escapeHtml(row.dept || '-') + '</td>');
     html.push('<td class="turnover-result ' + turnoverResultClass(result) + '" data-turnover-result-id="' + String(row.id) + '">' + escapeHtml(turnoverFormatNumber(result)) + '</td>');
@@ -5908,6 +5942,7 @@ function renderTurnover(){
   });
   html.push('</tbody></table></div>');
   results.innerHTML = html.join('');
+  turnoverRestoreGridFocus(results, gridFocus);
   turnoverUpdateTotals(rows);
 }
 function turnoverRegisterCurrentLocation(){
@@ -5949,6 +5984,13 @@ function turnoverHandleLocation(id, value){
   turnoverUpdateRecordedCode(id);
   turnoverUpdateHint();
   turnoverPersist();
+}
+function turnoverFocusSearchInput(){
+  const input = $('turnoverSearchInput');
+  if(!input) return false;
+  input.focus();
+  if(typeof input.select === 'function') input.select();
+  return true;
 }
 function turnoverFocusCell(input){
   if(!input) return;
@@ -6016,6 +6058,7 @@ function turnoverHandleGridKey(event){
   if(role !== 'stock' && role !== 'location') return;
   if(event.key === 'Enter'){
     event.preventDefault();
+    if(role === 'stock') return;
     turnoverMoveVertical(input, 1);
     return;
   }
@@ -6129,7 +6172,7 @@ $('turnoverLocationInput') && $('turnoverLocationInput').addEventListener('keydo
 $('turnoverApplyLocationBtn') && $('turnoverApplyLocationBtn').addEventListener('click', ()=>{ turnoverNormalizeSearchInputValue(false); turnoverApplyLocation(); });
 $('turnoverSearchInput') && $('turnoverSearchInput').addEventListener('input', ()=>{ turnoverShowAll = false; turnoverNormalizeSearchInputValue(false); turnoverApplyLocation(); });
 $('turnoverSearchInput') && $('turnoverSearchInput').addEventListener('change', ()=>{ turnoverNormalizeSearchInputValue(false); });
-$('turnoverSearchInput') && $('turnoverSearchInput').addEventListener('keydown', (event)=>{ if(event.key === 'Enter'){ event.preventDefault(); turnoverNormalizeSearchInputValue(true); turnoverShowAll = false; turnoverApplyLocation(); turnoverFocusFirstStock(); } });
+$('turnoverSearchInput') && $('turnoverSearchInput').addEventListener('keydown', (event)=>{ if(event.key === 'Enter'){ event.preventDefault(); event.stopPropagation(); const hasQuery = !!turnoverText(event.currentTarget.value); turnoverShowAll = !hasQuery; turnoverNormalizeSearchInputValue(true); turnoverApplyLocation(); turnoverFocusFirstStock(); } });
 $('turnoverShowAllBtn') && $('turnoverShowAllBtn').addEventListener('click', ()=>{ turnoverShowAll = true; renderTurnover(); });
 $('turnoverClearSearchBtn') && $('turnoverClearSearchBtn').addEventListener('click', ()=>{ $('turnoverSearchInput').value = ''; turnoverShowAll = false; renderTurnover(); $('turnoverSearchInput').focus(); });
 $('turnoverResults') && $('turnoverResults').addEventListener('input', (event)=>{
