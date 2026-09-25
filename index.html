@@ -1151,8 +1151,10 @@ service cloud.firestore {
     .turnover-location-input,.turnover-stock-input{width:100%;min-width:92px;padding:9px 8px;border:1.5px solid #cbd5e1;border-radius:8px;background:#fff;font-family:inherit;font-size:15px;font-weight:800;color:#111827;box-sizing:border-box;}
     .turnover-location-input{text-align:right;min-width:125px;}
     .turnover-stock-input{text-align:center;direction:ltr;}
+    .turnover-location-input::-webkit-inner-spin-button,.turnover-location-input::-webkit-outer-spin-button,.turnover-stock-input::-webkit-inner-spin-button,.turnover-stock-input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
+    .turnover-location-input[type=number],.turnover-stock-input[type=number]{-moz-appearance:textfield;appearance:textfield;}
     .turnover-location-input:focus,.turnover-stock-input:focus{outline:none;border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.12);}
-    .turnover-result{font-weight:900;font-size:18px;color:#000!important;text-align:center;min-width:72px;background:#f8fafc;}
+    .turnover-result{font-weight:900;font-size:24px;color:#000!important;text-align:center;min-width:72px;background:#f8fafc;}
     .turnover-result.positive{background:#ef4444!important;}
     .turnover-result.negative{background:#22c55e!important;}
     .turnover-result.zero{background:#e2e8f0!important;}
@@ -1171,7 +1173,7 @@ service cloud.firestore {
     </div>
   </div>
   <p style="color:var(--muted);font-size:13.5px;line-height:1.8;margin:4px 0 14px;">
-    ارفع شيت New Volume (D) بالأعمدة: الكود-المقاس، العدد، الدبارتمنت، اللوكيشن. اكتب اللوكيشن مرة واحدة في المستطيل العلوي أو عدّل اللوكيشن داخل الجدول، ثم اكتب stock؛ النتيجة = العدد في الشيت - stock.
+    ارفع شيت New Volume (D) بالأعمدة: الكود-المقاس، العدد، الدبارتمنت، اللوكيشن. اكتب اللوكيشن مرة واحدة في المستطيل العلوي، ثم اكتب الكود في البحث ليُسجل اللوكيشن مع السطر المطلوب فقط، أو عدّل اللوكيشن داخل الجدول؛ النتيجة = العدد في الشيت - stock.
   </p>
 
   <div class="upload-card" id="turnoverUploadCard" style="margin-bottom:16px;">
@@ -1185,10 +1187,10 @@ service cloud.firestore {
 
   <div id="turnoverBody" class="turnover-wrap" style="display:none;">
     <div class="turnover-location-box">
-      <div class="turnover-location-title">اللوكيشن الحالي — هيتملأ في اللوكيشن الفارغ في كل سطر تلقائيًا</div>
+      <div class="turnover-location-title">اللوكيشن الحالي — بيتسجل مع الكود اللي بتكتبه في خانة البحث فقط</div>
       <div class="turnover-location-controls">
         <input id="turnoverLocationInput" placeholder="اكتب اسم اللوكيشن هنا..." autocomplete="off">
-        <button class="btn-primary" id="turnoverApplyLocationBtn" type="button">تطبيق اللوكيشن</button>
+        <button class="btn-primary" id="turnoverApplyLocationBtn" type="button">تطبيق على نتيجة البحث</button>
       </div>
       <div class="turnover-location-hint" id="turnoverLocationHint"></div>
     </div>
@@ -1580,7 +1582,7 @@ function applyCloudSections(out){
     turnoverRows = turnoverNormalizeRows(out.turnover.rows);
     turnoverUploadedAt = typeof out.turnover.uploadedAt === 'string' ? out.turnover.uploadedAt : '';
     turnoverUpdatedAt = typeof out.turnover.updatedAt === 'string' ? out.turnover.updatedAt : '';
-    if(out.turnover.currentLocation && $('turnoverLocationInput')) $('turnoverLocationInput').value = out.turnover.currentLocation;
+    if(typeof out.turnover.currentLocation === 'string' && $('turnoverLocationInput')) $('turnoverLocationInput').value = out.turnover.currentLocation;
     if($('screen-turnover') && $('screen-turnover').classList.contains('active')) renderTurnover();
   }
 
@@ -5557,12 +5559,21 @@ function turnoverDBKey(){
 function turnoverText(value){
   return String(value === undefined || value === null ? '' : value).trim();
 }
+function turnoverLocationText(value){
+  return String(value === undefined || value === null ? '' : value).trim();
+}
 function turnoverNumber(value){
   const n = Number(turnoverText(value).replace(/,/g, ''));
   return Number.isFinite(n) ? n : 0;
 }
 function turnoverRowCode(row){
   return String(row.code || '') + (row.size && row.size !== '-' ? '-' + String(row.size) : '');
+}
+function turnoverNormalizeQueryCode(value){
+  const raw = turnoverText(value).toUpperCase().replace(/\s+/g, '');
+  const parts = splitCodeSize(raw);
+  const code = fixLeadingZero(turnoverText(parts.code));
+  return parts.size ? code + '-' + turnoverText(parts.size).toUpperCase() : code;
 }
 function turnoverNormalizeRows(rows){
   return (Array.isArray(rows) ? rows : []).map((row, index)=>({
@@ -5571,20 +5582,39 @@ function turnoverNormalizeRows(rows){
     size: turnoverText(row.size) || '-',
     qty: turnoverNumber(row.qty),
     dept: turnoverText(row.dept) || '-',
-    location: turnoverText(row.location),
+    location: turnoverLocationText(row.location),
     stock: turnoverNumber(row.stock),
     locationMode: row.locationMode === 'manual' || row.locationMode === 'sheet' ? row.locationMode : (turnoverText(row.location) ? 'sheet' : 'auto')
   })).filter(row=> row.code);
 }
 function turnoverCurrentLocation(){
   const input = $('turnoverLocationInput');
-  return input ? turnoverText(input.value).toUpperCase() : '';
+  return input ? turnoverLocationText(input.value) : '';
 }
 function turnoverLocationForRow(row){
-  return turnoverText(row.location) || turnoverCurrentLocation();
+  return turnoverLocationText(row.location);
 }
 function turnoverBaseKey(row){
   return [String(row.code || '').toUpperCase(), String(row.size || '-').toUpperCase(), String(row.dept || '-').toUpperCase()].join('|');
+}
+const turnoverSizeOrder = ['XS','S','M','L','XL','XXL'];
+function turnoverSizeKey(size){
+  const value = turnoverText(size).toUpperCase().replace(/\s+/g, '');
+  const known = turnoverSizeOrder.indexOf(value);
+  if(known >= 0) return { group:0, rank:known, label:value };
+  const numeric = Number(value);
+  if(value !== '' && Number.isFinite(numeric)) return { group:1, rank:numeric, label:value };
+  return { group:2, rank:0, label:value };
+}
+function turnoverSortRows(rows){
+  return rows.slice().sort((a,b)=>{
+    const aSize = turnoverSizeKey(a.size);
+    const bSize = turnoverSizeKey(b.size);
+    if(aSize.group !== bSize.group) return aSize.group - bSize.group;
+    if(aSize.rank !== bSize.rank) return aSize.rank - bSize.rank;
+    if(aSize.label !== bSize.label) return aSize.label.localeCompare(bSize.label);
+    return String(a.code || '').localeCompare(String(b.code || ''), undefined, { numeric:true, sensitivity:'base' });
+  });
 }
 function turnoverPayloadTime(payload){
   const t = Date.parse(turnoverText(payload && (payload.updatedAt || payload.uploadedAt)));
@@ -5636,7 +5666,7 @@ function processTurnoverRows(rows){
     const parts = splitCodeSize(rawCodeSize);
     const code = fixLeadingZero(turnoverText(parts.code).toUpperCase());
     if(!code) continue;
-    const rawLocation = turnoverText(row[3]);
+    const rawLocation = turnoverLocationText(row[3]);
     out.push({
       id: out.length,
       code,
@@ -5663,7 +5693,7 @@ function turnoverPreserveEnteredValues(newRows, oldRows){
     const old = bucket.shift();
     if(!old) return;
     row.stock = turnoverNumber(old.stock);
-    if(!row.location && old.location){
+    if((old.locationMode === 'manual' || !row.location) && old.location){
       row.location = old.location;
       row.locationMode = old.locationMode || 'manual';
     }
@@ -5690,8 +5720,9 @@ function turnoverQueryMatch(row, query, currentLocation){
   const q = query.toUpperCase().replace(/\s+/g, '');
   const location = turnoverLocationForRow(row).toUpperCase().replace(/\s+/g, '');
   let codeQuery = q;
-  const prefix = currentLocation.replace(/\s+/g, '');
+  const prefix = currentLocation.toUpperCase().replace(/\s+/g, '');
   if(prefix && codeQuery.indexOf(prefix + '-') === 0) codeQuery = codeQuery.slice(prefix.length + 1);
+  codeQuery = turnoverNormalizeQueryCode(codeQuery);
   const code = turnoverRowCode(row).toUpperCase().replace(/\s+/g, '');
   const model = String(row.code || '').toUpperCase().replace(/\s+/g, '');
   const recorded = (location ? location + '-' : '') + code;
@@ -5700,11 +5731,20 @@ function turnoverQueryMatch(row, query, currentLocation){
   if(code.indexOf(codeQuery) !== -1 || model.indexOf(codeQuery) !== -1) return true;
   return location.indexOf(codeQuery) !== -1;
 }
+function turnoverExactCodeMatch(row, query, currentLocation){
+  let codeQuery = query.toUpperCase().replace(/\s+/g, '');
+  const prefix = currentLocation.toUpperCase().replace(/\s+/g, '');
+  if(prefix && codeQuery.indexOf(prefix + '-') === 0) codeQuery = codeQuery.slice(prefix.length + 1);
+  codeQuery = turnoverNormalizeQueryCode(codeQuery);
+  const code = turnoverRowCode(row).toUpperCase().replace(/\s+/g, '');
+  const model = String(row.code || '').toUpperCase().replace(/\s+/g, '');
+  return codeQuery === code || codeQuery === model;
+}
 function turnoverVisibleRows(){
-  if(turnoverShowAll) return turnoverRows.slice();
+  if(turnoverShowAll) return turnoverSortRows(turnoverRows);
   const query = turnoverText($('turnoverSearchInput') && $('turnoverSearchInput').value);
   if(!query) return [];
-  return turnoverRows.filter(row=> turnoverQueryMatch(row, query, turnoverCurrentLocation()));
+  return turnoverSortRows(turnoverRows.filter(row=> turnoverQueryMatch(row, query, turnoverCurrentLocation())));
 }
 function turnoverUpdateTotals(rows){
   const total = rows.reduce((sum, row)=> sum + turnoverResult(row), 0);
@@ -5734,10 +5774,9 @@ function turnoverUpdateHint(){
   const hint = $('turnoverLocationHint');
   if(!hint) return;
   const location = turnoverCurrentLocation();
-  const sample = turnoverRows.find(row=> !turnoverText(row.location)) || turnoverRows[0];
   hint.textContent = location
-    ? 'هيتسجل تلقائيًا قبل الكود كده: ' + location + '-' + (sample ? turnoverRowCode(sample) : 'الكود') + ' — ويمكنك تعديل أي لوكيشن يدويًا.'
-    : 'اكتب اسم اللوكيشن هنا؛ هيتملأ تلقائيًا في اللوكيشن الفارغ، أو اكتبه مباشرة في أي سطر.';
+    ? 'اللوكيشن ' + location + ' هيتسجل مع السطر المطابق للبحث فقط، مش مع كل الشيت.'
+    : 'اكتب اسم اللوكيشن هنا، ثم اكتب الكود في البحث؛ اللوكيشن الفارغ في السطر المطابق فقط هو اللي هيتسجل.';
 }
 function renderTurnover(){
   const body = $('turnoverBody');
@@ -5778,11 +5817,19 @@ function renderTurnover(){
 }
 function turnoverApplyLocation(){
   const location = turnoverCurrentLocation();
-  if(!turnoverRows.length){ renderTurnover(); return; }
-  turnoverRows.forEach(row=>{
-    if(row.locationMode === 'auto' || !row.location) row.location = location;
-  });
-  turnoverPersist();
+  const searchInput = $('turnoverSearchInput');
+  const query = turnoverText(searchInput && searchInput.value);
+  let changed = false;
+  if(location && query && !turnoverShowAll){
+    turnoverRows.forEach(row=>{
+      if(!row.location && turnoverExactCodeMatch(row, query, location)){
+        row.location = location;
+        row.locationMode = 'manual';
+        changed = true;
+      }
+    });
+  }
+  if(changed) turnoverPersist();
   renderTurnover();
 }
 function turnoverHandleStock(id, value){
@@ -5797,11 +5844,67 @@ function turnoverHandleStock(id, value){
 function turnoverHandleLocation(id, value){
   const row = turnoverRows.find(item=> String(item.id) === String(id));
   if(!row) return;
-  row.location = turnoverText(value);
+  row.location = turnoverLocationText(value);
   row.locationMode = row.location ? 'manual' : 'auto';
   turnoverUpdateRecordedCode(id);
   turnoverUpdateHint();
   turnoverPersist();
+}
+function turnoverFocusCell(input){
+  if(!input) return;
+  input.focus();
+  if(typeof input.select === 'function') input.select();
+}
+function turnoverGridInputs(){
+  const results = $('turnoverResults');
+  return results ? Array.from(results.querySelectorAll('[data-turnover-role="stock"], [data-turnover-role="location"]')) : [];
+}
+function turnoverFocusFirstStock(){
+  turnoverFocusCell(turnoverGridInputs().find(input=> input.getAttribute('data-turnover-role') === 'stock'));
+}
+function turnoverMoveVertical(input, delta){
+  const role = input.getAttribute('data-turnover-role');
+  const inputs = turnoverGridInputs().filter(item=> item.getAttribute('data-turnover-role') === role);
+  const index = inputs.indexOf(input);
+  const target = inputs[index + delta];
+  if(target) turnoverFocusCell(target);
+}
+function turnoverMoveHorizontal(input, direction){
+  const rowId = input.getAttribute('data-turnover-row-id');
+  const sameRow = turnoverGridInputs().filter(item=> item.getAttribute('data-turnover-row-id') === rowId);
+  const rect = input.getBoundingClientRect();
+  const candidates = sameRow.filter(item=>{
+    if(item === input) return false;
+    const targetRect = item.getBoundingClientRect();
+    return direction > 0 ? targetRect.left > rect.left : targetRect.left < rect.left;
+  });
+  if(candidates.length){
+    candidates.sort((a,b)=> Math.abs(a.getBoundingClientRect().left - rect.left) - Math.abs(b.getBoundingClientRect().left - rect.left));
+    turnoverFocusCell(candidates[0]);
+    return;
+  }
+  const index = sameRow.indexOf(input);
+  const fallback = sameRow[index + direction];
+  if(fallback) turnoverFocusCell(fallback);
+}
+function turnoverHandleGridKey(event){
+  const input = event.target;
+  const role = input && input.getAttribute ? input.getAttribute('data-turnover-role') : '';
+  if(role !== 'stock' && role !== 'location') return;
+  if(event.key === 'Enter'){
+    event.preventDefault();
+    turnoverMoveVertical(input, 1);
+    return;
+  }
+  if(event.key === 'ArrowDown' || event.key === 'ArrowUp'){
+    event.preventDefault();
+    turnoverMoveVertical(input, event.key === 'ArrowDown' ? 1 : -1);
+    return;
+  }
+  if(event.key === 'ArrowRight' || event.key === 'ArrowLeft'){
+    event.preventDefault();
+    turnoverMoveHorizontal(input, event.key === 'ArrowRight' ? 1 : -1);
+  }
 }
 async function handleTurnoverFile(file){
   if(!currentBranch){ showToast('اختار الفرع الأول.'); return; }
@@ -5817,8 +5920,6 @@ async function handleTurnoverFile(file){
       const parsedRows = processTurnoverRows(rawRows);
       if(!parsedRows.length){ setStatus(statusEl, 'مفيش بيانات صالحة اتقرت من الملف.', 'err'); return; }
       turnoverPreserveEnteredValues(parsedRows, turnoverRows);
-      const location = turnoverCurrentLocation();
-      if(location) parsedRows.forEach(row=>{ if(row.locationMode === 'auto') row.location = location; });
       turnoverRows = turnoverNormalizeRows(parsedRows);
       turnoverUploadedAt = new Date().toISOString();
       turnoverUpdatedAt = new Date().toISOString();
@@ -5861,6 +5962,7 @@ async function turnoverLoad(){
   turnoverUploadedAt = payload && typeof payload.uploadedAt === 'string' ? payload.uploadedAt : '';
   turnoverUpdatedAt = payload && typeof payload.updatedAt === 'string' ? payload.updatedAt : '';
   if(payload && typeof payload.currentLocation === 'string' && $('turnoverLocationInput')) $('turnoverLocationInput').value = payload.currentLocation;
+  if(currentBranch) turnoverSaveLocal();
   renderTurnover();
 }
 async function turnoverOpen(){
@@ -5891,10 +5993,12 @@ $('openTurnoverBtn') && $('openTurnoverBtn').addEventListener('click', turnoverO
 $('turnoverBackBtn') && $('turnoverBackBtn').addEventListener('click', ()=> switchScreen('screen-dashboard'));
 $('turnoverExportBtn') && $('turnoverExportBtn').addEventListener('click', turnoverExport);
 $('fileInputTurnover') && $('fileInputTurnover').addEventListener('change', (event)=>{ const file = event.target.files && event.target.files[0]; if(file) handleTurnoverFile(file); });
-$('turnoverLocationInput') && $('turnoverLocationInput').addEventListener('input', turnoverApplyLocation);
+$('turnoverLocationInput') && $('turnoverLocationInput').addEventListener('input', ()=>{ turnoverUpdateHint(); if(currentBranch) turnoverPersist(); });
+$('turnoverLocationInput') && $('turnoverLocationInput').addEventListener('change', turnoverApplyLocation);
+$('turnoverLocationInput') && $('turnoverLocationInput').addEventListener('keydown', (event)=>{ if(event.key === 'Enter'){ event.preventDefault(); turnoverApplyLocation(); } });
 $('turnoverApplyLocationBtn') && $('turnoverApplyLocationBtn').addEventListener('click', turnoverApplyLocation);
-$('turnoverSearchInput') && $('turnoverSearchInput').addEventListener('input', ()=>{ turnoverShowAll = false; renderTurnover(); });
-$('turnoverSearchInput') && $('turnoverSearchInput').addEventListener('keydown', (event)=>{ if(event.key === 'Enter'){ event.preventDefault(); renderTurnover(); } });
+$('turnoverSearchInput') && $('turnoverSearchInput').addEventListener('input', ()=>{ turnoverShowAll = false; turnoverApplyLocation(); });
+$('turnoverSearchInput') && $('turnoverSearchInput').addEventListener('keydown', (event)=>{ if(event.key === 'Enter'){ event.preventDefault(); turnoverShowAll = false; turnoverApplyLocation(); turnoverFocusFirstStock(); } });
 $('turnoverShowAllBtn') && $('turnoverShowAllBtn').addEventListener('click', ()=>{ turnoverShowAll = true; renderTurnover(); });
 $('turnoverClearSearchBtn') && $('turnoverClearSearchBtn').addEventListener('click', ()=>{ $('turnoverSearchInput').value = ''; turnoverShowAll = false; renderTurnover(); $('turnoverSearchInput').focus(); });
 $('turnoverResults') && $('turnoverResults').addEventListener('input', (event)=>{
@@ -5904,8 +6008,12 @@ $('turnoverResults') && $('turnoverResults').addEventListener('input', (event)=>
   if(role === 'location') turnoverHandleLocation(target.getAttribute('data-turnover-row-id'), target.value);
 });
 $('turnoverResults') && $('turnoverResults').addEventListener('change', (event)=>{
-  if(event.target.getAttribute('data-turnover-role') === 'location') renderTurnover();
+  if(event.target.getAttribute('data-turnover-role') !== 'location') return;
+  const query = turnoverText($('turnoverSearchInput') && $('turnoverSearchInput').value);
+  const hasExactCode = query && turnoverRows.some(row=> turnoverExactCodeMatch(row, query, turnoverCurrentLocation()));
+  if(query && !turnoverShowAll && !hasExactCode) renderTurnover();
 });
+$('turnoverResults') && $('turnoverResults').addEventListener('keydown', turnoverHandleGridKey);
 $('turnoverUploadCard') && ['dragover','dragenter'].forEach(eventName=> $('turnoverUploadCard').addEventListener(eventName, event=>{ event.preventDefault(); $('turnoverUploadCard').classList.add('dragover'); }));
 $('turnoverUploadCard') && ['dragleave','drop'].forEach(eventName=> $('turnoverUploadCard').addEventListener(eventName, event=>{ event.preventDefault(); $('turnoverUploadCard').classList.remove('dragover'); }));
 $('turnoverUploadCard') && $('turnoverUploadCard').addEventListener('drop', event=>{ const file = event.dataTransfer && event.dataTransfer.files && event.dataTransfer.files[0]; if(file) handleTurnoverFile(file); });
