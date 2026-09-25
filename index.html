@@ -5716,29 +5716,44 @@ function turnoverResult(row){
 function turnoverResultClass(value){
   return value > 0 ? 'positive' : value < 0 ? 'negative' : 'zero';
 }
+// لو المستطيل العلوي فيه لوكيشن، وأول جزء من اللي بتكتبه في البحث بيطابق اللوكيشن دي متبوعة
+// بـ "-"، كنا بنشيل الجزء ده من النص قبل المقارنة (على اعتبار إنك كتبت "لوكيشن-كود").
+// المشكلة: لو الكود نفسه بيبدأ بنفس نص اللوكيشن (زي لوكيشن "12" وكود "12-345")، كنا
+// بنشيل جزء من الكود بالغلط فمكنش بيتطابق خالص — وده اللي كان بيخلي اللوكيشن تتطبق على
+// أكواد وتتجاهل غيرها من غير سبب واضح. الحل: نجرب الاتنين (مع الشيل ومن غيره) بدل ما نحسم
+// واحد بس، فأي احتمال صح بيتقبل.
+function turnoverQueryVariants(query, currentLocation){
+  const q = query.toUpperCase().replace(/\s+/g, '');
+  const prefix = currentLocation.toUpperCase().replace(/\s+/g, '');
+  const variants = [q];
+  if(prefix && q.indexOf(prefix + '-') === 0){
+    const stripped = q.slice(prefix.length + 1);
+    if(stripped) variants.push(stripped);
+  }
+  return variants;
+}
 function turnoverQueryMatch(row, query, currentLocation){
   const q = query.toUpperCase().replace(/\s+/g, '');
   const location = turnoverLocationForRow(row).toUpperCase().replace(/\s+/g, '');
-  let codeQuery = q;
   const prefix = currentLocation.toUpperCase().replace(/\s+/g, '');
-  if(prefix && codeQuery.indexOf(prefix + '-') === 0) codeQuery = codeQuery.slice(prefix.length + 1);
-  codeQuery = turnoverNormalizeQueryCode(codeQuery);
   const code = turnoverRowCode(row).toUpperCase().replace(/\s+/g, '');
   const model = String(row.code || '').toUpperCase().replace(/\s+/g, '');
   const recorded = (location ? location + '-' : '') + code;
-  if(prefix && codeQuery === prefix && location.indexOf(prefix) === 0) return true;
-  if(codeQuery === code || model === codeQuery || recorded === codeQuery) return true;
-  if(code.indexOf(codeQuery) !== -1 || model.indexOf(codeQuery) !== -1) return true;
-  return location.indexOf(codeQuery) !== -1;
+  if(prefix && q === prefix && location.indexOf(prefix) === 0) return true;
+  if(recorded === q) return true;
+  return turnoverQueryVariants(query, currentLocation).some(variant=>{
+    const codeQuery = turnoverNormalizeQueryCode(variant);
+    if(codeQuery === code || codeQuery === model) return true;
+    return code.indexOf(codeQuery) !== -1 || model.indexOf(codeQuery) !== -1 || location.indexOf(codeQuery) !== -1;
+  });
 }
 function turnoverExactCodeMatch(row, query, currentLocation){
-  let codeQuery = query.toUpperCase().replace(/\s+/g, '');
-  const prefix = currentLocation.toUpperCase().replace(/\s+/g, '');
-  if(prefix && codeQuery.indexOf(prefix + '-') === 0) codeQuery = codeQuery.slice(prefix.length + 1);
-  codeQuery = turnoverNormalizeQueryCode(codeQuery);
   const code = turnoverRowCode(row).toUpperCase().replace(/\s+/g, '');
   const model = String(row.code || '').toUpperCase().replace(/\s+/g, '');
-  return codeQuery === code || codeQuery === model;
+  return turnoverQueryVariants(query, currentLocation).some(variant=>{
+    const codeQuery = turnoverNormalizeQueryCode(variant);
+    return codeQuery === code || codeQuery === model;
+  });
 }
 function turnoverVisibleRows(){
   if(turnoverShowAll) return turnoverSortRows(turnoverRows);
@@ -5862,12 +5877,14 @@ function turnoverGridInputs(){
 function turnoverFocusFirstStock(){
   turnoverFocusCell(turnoverGridInputs().find(input=> input.getAttribute('data-turnover-role') === 'stock'));
 }
+// بيحدد السطر/الحقل المستهدف الأول (من نفس الـ DOM الحالي)، وبعدين يسيب turnoverFocusAfterCommit
+// هو اللي يقفل التعديل الحالي ويدور على الحقل بعناصره الجديدة بعد أي إعادة رسم.
 function turnoverMoveVertical(input, delta){
   const role = input.getAttribute('data-turnover-role');
   const inputs = turnoverGridInputs().filter(item=> item.getAttribute('data-turnover-role') === role);
   const index = inputs.indexOf(input);
   const target = inputs[index + delta];
-  if(target) turnoverFocusCell(target);
+  turnoverFocusAfterCommit(input, role, target ? target.getAttribute('data-turnover-row-id') : null, index + delta);
 }
 function turnoverMoveHorizontal(input, direction){
   const rowId = input.getAttribute('data-turnover-row-id');
@@ -5878,14 +5895,34 @@ function turnoverMoveHorizontal(input, direction){
     const targetRect = item.getBoundingClientRect();
     return direction > 0 ? targetRect.left > rect.left : targetRect.left < rect.left;
   });
+  let target = null;
   if(candidates.length){
     candidates.sort((a,b)=> Math.abs(a.getBoundingClientRect().left - rect.left) - Math.abs(b.getBoundingClientRect().left - rect.left));
-    turnoverFocusCell(candidates[0]);
-    return;
+    target = candidates[0];
+  }else{
+    const index = sameRow.indexOf(input);
+    target = sameRow[index + direction] || null;
   }
-  const index = sameRow.indexOf(input);
-  const fallback = sameRow[index + direction];
-  if(fallback) turnoverFocusCell(fallback);
+  if(!target) return;
+  turnoverFocusAfterCommit(input, target.getAttribute('data-turnover-role'), target.getAttribute('data-turnover-row-id'), null);
+}
+// تعديل خانة "اللوكيشن" ممكن يعمل blur/change يشغّل renderTurnover() ويبدّل كل عناصر
+// الجدول (شوف الـ change listener على #turnoverResults تحت). لو ركّزنا على العنصر
+// القديم (target) قبل ما ده يحصل، العنصر بيتشال من الصفحة والفوكس بيختفي، وده كان
+// سبب اختفاء الحقل وتوقف التنقل بالإنتر. الحل: نقفل التعديل الحالي الأول (blur)
+// ونستنى أي إعادة رسم تحصل، وبعدين ندوّر على الحقل المطلوب من جديد في الـ DOM الحالي.
+function turnoverFocusAfterCommit(input, targetRole, targetRowId, fallbackIndex){
+  if(!targetRole) return;
+  if(document.activeElement === input) input.blur();
+  let target = null;
+  if(targetRowId != null){
+    target = turnoverGridInputs().find(item=> item.getAttribute('data-turnover-role') === targetRole && item.getAttribute('data-turnover-row-id') === String(targetRowId));
+  }
+  if(!target && fallbackIndex != null){
+    const inputs = turnoverGridInputs().filter(item=> item.getAttribute('data-turnover-role') === targetRole);
+    if(inputs.length) target = inputs[Math.max(0, Math.min(fallbackIndex, inputs.length - 1))];
+  }
+  if(target) turnoverFocusCell(target);
 }
 function turnoverHandleGridKey(event){
   const input = event.target;
