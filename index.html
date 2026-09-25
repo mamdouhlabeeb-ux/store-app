@@ -1562,12 +1562,6 @@ $('logoutBtn').addEventListener('click', ()=>{
 let liveSync = null;         // المستند الأساسي (التأشيرات)
 let liveSyncSections = null; // الشيتات نفسها
 
-function turnoverIsEditing(){
-  const active = document.activeElement;
-  if(!active) return false;
-  if(active.id === 'turnoverSearchInput' || active.id === 'turnoverLocationInput') return true;
-  return !!(active.getAttribute && active.getAttribute('data-turnover-role'));
-}
 function applyCloudSections(out){
   if(!out) return;
   let touched = false;
@@ -1588,15 +1582,8 @@ function applyCloudSections(out){
     turnoverRows = turnoverNormalizeRows(out.turnover.rows);
     turnoverUploadedAt = typeof out.turnover.uploadedAt === 'string' ? out.turnover.uploadedAt : '';
     turnoverUpdatedAt = typeof out.turnover.updatedAt === 'string' ? out.turnover.updatedAt : '';
-    // ده بيتشغّل كل ما حاجة تتحفظ على السيرفر - حتى لو إحنا نفسنا اللي حفظنا التو (كل
-    // تعديل بيتبعت للسحابة بعد نص ثانية تقريبًا، وبعدين الرجّاعة دي بتوصل تاني هنا).
-    // كان بيعيد رسم الجدول كامل ويمسح الفوكس من أي خانة إنت واقف فيها بتكتب - وده
-    // اللي كان بيخلي خانة الاستوك (أو اللوكيشن) تختفي فجأة وانت لسه بتكتب أو دوست إنتر.
-    // فبقينا منسيبوش يلمس الشاشة أو خانة اللوكيشن العلوية لو إنت لسه واقف بتكتب فيهم.
-    if(!turnoverIsEditing()){
-      if(typeof out.turnover.currentLocation === 'string' && $('turnoverLocationInput')) $('turnoverLocationInput').value = out.turnover.currentLocation;
-      if($('screen-turnover') && $('screen-turnover').classList.contains('active')) renderTurnover();
-    }
+    if(typeof out.turnover.currentLocation === 'string' && $('turnoverLocationInput')) $('turnoverLocationInput').value = out.turnover.currentLocation;
+    if($('screen-turnover') && $('screen-turnover').classList.contains('active')) renderTurnover();
   }
 
   const latestUpdate = [out.stock && out.stock.uploadedAt, out.sales && out.sales.uploadedAt, out.locations && out.locations.uploadedAt, out.transfers && out.transfers.uploadedAt, out.turnover && (out.turnover.updatedAt || out.turnover.uploadedAt)].filter(Boolean).sort().pop();
@@ -5579,19 +5566,27 @@ function turnoverNumber(value){
   const n = Number(turnoverText(value).replace(/,/g, ''));
   return Number.isFinite(n) ? n : 0;
 }
+function turnoverNormalizeCodePart(value){
+  const code = turnoverText(value).toUpperCase().replace(/\s+/g, '');
+  if(!code) return '';
+  if(/^[RO]/.test(code)) return code;
+  const fixed = fixLeadingZero(code);
+  return /^[RO]/.test(fixed) ? fixed : 'R' + fixed;
+}
 function turnoverRowCode(row){
-  return String(row.code || '') + (row.size && row.size !== '-' ? '-' + String(row.size) : '');
+  const code = turnoverNormalizeCodePart(row && row.code);
+  return code + (row && row.size && row.size !== '-' ? '-' + String(row.size) : '');
 }
 function turnoverNormalizeQueryCode(value){
   const raw = turnoverText(value).toUpperCase().replace(/\s+/g, '');
   const parts = splitCodeSize(raw);
-  const code = fixLeadingZero(turnoverText(parts.code));
+  const code = turnoverNormalizeCodePart(parts.code);
   return parts.size ? code + '-' + turnoverText(parts.size).toUpperCase() : code;
 }
 function turnoverNormalizeRows(rows){
   return (Array.isArray(rows) ? rows : []).map((row, index)=>({
     id: index,
-    code: turnoverText(row.code),
+    code: turnoverNormalizeCodePart(row.code),
     size: turnoverText(row.size) || '-',
     qty: turnoverNumber(row.qty),
     dept: turnoverText(row.dept) || '-',
@@ -5608,7 +5603,7 @@ function turnoverLocationForRow(row){
   return turnoverLocationText(row.location);
 }
 function turnoverBaseKey(row){
-  return [String(row.code || '').toUpperCase(), String(row.size || '-').toUpperCase(), String(row.dept || '-').toUpperCase()].join('|');
+  return [turnoverNormalizeCodePart(row.code), String(row.size || '-').toUpperCase(), String(row.dept || '-').toUpperCase()].join('|');
 }
 const turnoverSizeOrder = ['XS','S','M','L','XL','XXL'];
 function turnoverSizeKey(size){
@@ -5677,7 +5672,7 @@ function processTurnoverRows(rows){
     const qty = qtyText === '' ? NaN : Number(qtyText);
     if(!Number.isFinite(qty)) continue;
     const parts = splitCodeSize(rawCodeSize);
-    const code = fixLeadingZero(turnoverText(parts.code).toUpperCase());
+    const code = turnoverNormalizeCodePart(parts.code);
     if(!code) continue;
     const rawLocation = turnoverLocationText(row[3]);
     out.push({
@@ -5735,16 +5730,6 @@ function turnoverResultClass(value){
 // بنشيل جزء من الكود بالغلط فمكنش بيتطابق خالص — وده اللي كان بيخلي اللوكيشن تتطبق على
 // أكواد وتتجاهل غيرها من غير سبب واضح. الحل: نجرب الاتنين (مع الشيل ومن غيره) بدل ما نحسم
 // واحد بس، فأي احتمال صح بيتقبل.
-// بعض الأكواد في شيت الرفع بتبدأ بحرف O أو R (زيادة عن الأرقام)، وإنت غالبًا بتكتب
-// الكود من غير الحرف ده. فبنولّد من كود السطر (والموديل بتاعه) نسخة من غير أول حرف O/R
-// عشان لو اللي كتبته من غير الحرف يتطابق برضه، ونفس الكلام لو كان فيه أكتر من حرف واحد
-// زيادة في الأول (زي "OR" أو "RO").
-function turnoverCodeVariants(code){
-  const variants = [code];
-  const stripped = code.replace(/^[OR]+/, '');
-  if(stripped !== code) variants.push(stripped);
-  return variants;
-}
 function turnoverQueryVariants(query, currentLocation){
   const q = query.toUpperCase().replace(/\s+/g, '');
   const prefix = currentLocation.toUpperCase().replace(/\s+/g, '');
@@ -5760,27 +5745,47 @@ function turnoverQueryMatch(row, query, currentLocation){
   const location = turnoverLocationForRow(row).toUpperCase().replace(/\s+/g, '');
   const prefix = currentLocation.toUpperCase().replace(/\s+/g, '');
   const code = turnoverRowCode(row).toUpperCase().replace(/\s+/g, '');
-  const model = String(row.code || '').toUpperCase().replace(/\s+/g, '');
-  const codeVariants = turnoverCodeVariants(code);
-  const modelVariants = turnoverCodeVariants(model);
+  const model = turnoverNormalizeCodePart(row.code);
   const recorded = (location ? location + '-' : '') + code;
   if(prefix && q === prefix && location.indexOf(prefix) === 0) return true;
   if(recorded === q) return true;
   return turnoverQueryVariants(query, currentLocation).some(variant=>{
     const codeQuery = turnoverNormalizeQueryCode(variant);
-    if(codeVariants.includes(codeQuery) || modelVariants.includes(codeQuery)) return true;
+    if(codeQuery === code || codeQuery === model) return true;
     return code.indexOf(codeQuery) !== -1 || model.indexOf(codeQuery) !== -1 || location.indexOf(codeQuery) !== -1;
   });
 }
 function turnoverExactCodeMatch(row, query, currentLocation){
   const code = turnoverRowCode(row).toUpperCase().replace(/\s+/g, '');
-  const model = String(row.code || '').toUpperCase().replace(/\s+/g, '');
-  const codeVariants = turnoverCodeVariants(code);
-  const modelVariants = turnoverCodeVariants(model);
+  const model = turnoverNormalizeCodePart(row.code);
   return turnoverQueryVariants(query, currentLocation).some(variant=>{
     const codeQuery = turnoverNormalizeQueryCode(variant);
-    return codeVariants.includes(codeQuery) || modelVariants.includes(codeQuery);
+    return codeQuery === code || codeQuery === model;
   });
+}
+function turnoverNormalizeSearchInputValue(force){
+  const input = $('turnoverSearchInput');
+  if(!input) return;
+  const raw = turnoverText(input.value);
+  if(!raw) return;
+  const upperRaw = raw.toUpperCase().replace(/\s+/g, '');
+  const location = turnoverCurrentLocation().toUpperCase().replace(/\s+/g, '');
+  if(location && upperRaw === location) return;
+  let prefix = '';
+  let query = upperRaw;
+  if(location && upperRaw.indexOf(location + '-') === 0){
+    prefix = upperRaw.slice(0, location.length + 1);
+    query = upperRaw.slice(location.length + 1);
+  }
+  const normalized = turnoverNormalizeQueryCode(query);
+  if(!normalized) return;
+  const hasCode = turnoverRows.some(row=>{
+    const model = turnoverNormalizeCodePart(row.code);
+    const full = turnoverNormalizeQueryCode(turnoverRowCode(row));
+    return normalized === model || normalized === full;
+  });
+  if(!hasCode && !force) return;
+  input.value = prefix + normalized;
 }
 function turnoverVisibleRows(){
   if(turnoverShowAll) return turnoverSortRows(turnoverRows);
@@ -5868,9 +5873,10 @@ function turnoverApplyLocation(){
   // مرة تغيّر الكود أو اللوكيشن، حتى لو كان عنده قيمة قبل كده.
   if(location && query && !turnoverShowAll){
     const matches = turnoverRows.filter(row=> turnoverQueryMatch(row, query, location));
-    if(matches.length === 1 && matches[0].location !== location){
-      matches[0].location = location;
-      matches[0].locationMode = 'manual';
+    const exactMatches = matches.filter(row=> turnoverExactCodeMatch(row, query, location));
+    if(exactMatches.length === 1 && exactMatches[0].location !== location){
+      exactMatches[0].location = location;
+      exactMatches[0].locationMode = 'manual';
       changed = true;
     }
   }
@@ -5909,12 +5915,15 @@ function turnoverFocusFirstStock(){
 }
 // بيحدد السطر/الحقل المستهدف الأول (من نفس الـ DOM الحالي)، وبعدين يسيب turnoverFocusAfterCommit
 // هو اللي يقفل التعديل الحالي ويدور على الحقل بعناصره الجديدة بعد أي إعادة رسم.
-function turnoverMoveVertical(input, delta){
+function turnoverMoveVertical(input, delta, hideOnEnd){
   const role = input.getAttribute('data-turnover-role');
   const inputs = turnoverGridInputs().filter(item=> item.getAttribute('data-turnover-role') === role);
   const index = inputs.indexOf(input);
   const target = inputs[index + delta];
-  if(!target) return; // مفيش خانة تانية ننتقل لها (سطر واحد ظاهر مثلاً) - سيبها زي ما هي من غير blur لغاية بلاش
+  if(!target){
+    if(hideOnEnd) input.blur();
+    return;
+  }
   turnoverFocusAfterCommit(input, role, target.getAttribute('data-turnover-row-id'), index + delta);
 }
 function turnoverMoveHorizontal(input, direction){
@@ -5961,12 +5970,12 @@ function turnoverHandleGridKey(event){
   if(role !== 'stock' && role !== 'location') return;
   if(event.key === 'Enter'){
     event.preventDefault();
-    turnoverMoveVertical(input, 1);
+    turnoverMoveVertical(input, 1, true);
     return;
   }
   if(event.key === 'ArrowDown' || event.key === 'ArrowUp'){
     event.preventDefault();
-    turnoverMoveVertical(input, event.key === 'ArrowDown' ? 1 : -1);
+    turnoverMoveVertical(input, event.key === 'ArrowDown' ? 1 : -1, false);
     return;
   }
   if(event.key === 'ArrowRight' || event.key === 'ArrowLeft'){
@@ -6061,12 +6070,13 @@ $('openTurnoverBtn') && $('openTurnoverBtn').addEventListener('click', turnoverO
 $('turnoverBackBtn') && $('turnoverBackBtn').addEventListener('click', ()=> switchScreen('screen-dashboard'));
 $('turnoverExportBtn') && $('turnoverExportBtn').addEventListener('click', turnoverExport);
 $('fileInputTurnover') && $('fileInputTurnover').addEventListener('change', (event)=>{ const file = event.target.files && event.target.files[0]; if(file) handleTurnoverFile(file); });
-$('turnoverLocationInput') && $('turnoverLocationInput').addEventListener('input', ()=>{ turnoverUpdateHint(); if(currentBranch) turnoverPersist(); turnoverApplyLocation(); });
+$('turnoverLocationInput') && $('turnoverLocationInput').addEventListener('input', ()=>{ turnoverUpdateHint(); if(currentBranch) turnoverPersist(); });
 $('turnoverLocationInput') && $('turnoverLocationInput').addEventListener('change', turnoverApplyLocation);
-$('turnoverLocationInput') && $('turnoverLocationInput').addEventListener('keydown', (event)=>{ if(event.key === 'Enter'){ event.preventDefault(); turnoverApplyLocation(); } });
+$('turnoverLocationInput') && $('turnoverLocationInput').addEventListener('keydown', (event)=>{ if(event.key === 'Enter'){ event.preventDefault(); turnoverApplyLocation(); event.currentTarget.blur(); } });
 $('turnoverApplyLocationBtn') && $('turnoverApplyLocationBtn').addEventListener('click', turnoverApplyLocation);
-$('turnoverSearchInput') && $('turnoverSearchInput').addEventListener('input', ()=>{ turnoverShowAll = false; turnoverApplyLocation(); });
-$('turnoverSearchInput') && $('turnoverSearchInput').addEventListener('keydown', (event)=>{ if(event.key === 'Enter'){ event.preventDefault(); turnoverShowAll = false; turnoverApplyLocation(); turnoverFocusFirstStock(); } });
+$('turnoverSearchInput') && $('turnoverSearchInput').addEventListener('input', ()=>{ turnoverShowAll = false; turnoverNormalizeSearchInputValue(false); turnoverApplyLocation(); });
+$('turnoverSearchInput') && $('turnoverSearchInput').addEventListener('change', ()=>{ turnoverNormalizeSearchInputValue(false); });
+$('turnoverSearchInput') && $('turnoverSearchInput').addEventListener('keydown', (event)=>{ if(event.key === 'Enter'){ event.preventDefault(); turnoverNormalizeSearchInputValue(true); turnoverShowAll = false; turnoverApplyLocation(); turnoverFocusFirstStock(); } });
 $('turnoverShowAllBtn') && $('turnoverShowAllBtn').addEventListener('click', ()=>{ turnoverShowAll = true; renderTurnover(); });
 $('turnoverClearSearchBtn') && $('turnoverClearSearchBtn').addEventListener('click', ()=>{ $('turnoverSearchInput').value = ''; turnoverShowAll = false; renderTurnover(); $('turnoverSearchInput').focus(); });
 $('turnoverResults') && $('turnoverResults').addEventListener('input', (event)=>{
