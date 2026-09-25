@@ -5552,6 +5552,10 @@ let turnoverSaveTimer = null;
 let turnoverLoadToken = 0;
 let turnoverUploadedAt = '';
 let turnoverUpdatedAt = '';
+let turnoverCodeIndexRows = null;
+let turnoverCodeIndex = new Map();
+let turnoverQueryCacheRows = null;
+let turnoverQueryCache = new Map();
 
 function turnoverDBKey(){
   return 'turnover_v1_' + (currentBranch ? currentBranch.id : 'anon');
@@ -5580,16 +5584,28 @@ function turnoverCodeLookupKey(value){
   code = code.replace(/^[RO]+/, '').replace(/^0+/, '').replace(/^[O]+/, '').replace(/^0+/, '');
   return code.replace(/[\s\-]+/g, '');
 }
+function turnoverEnsureCodeIndex(rows){
+  if(turnoverCodeIndexRows === rows) return;
+  turnoverCodeIndex = new Map();
+  (Array.isArray(rows) ? rows : []).forEach(row=>{
+    const code = turnoverNormalizeCodePart(row && row.code);
+    const key = turnoverCodeLookupKey(code);
+    if(!key) return;
+    const candidates = turnoverCodeIndex.get(key) || [];
+    if(!candidates.includes(code)) candidates.push(code);
+    turnoverCodeIndex.set(key, candidates);
+  });
+  turnoverCodeIndexRows = rows;
+  turnoverQueryCacheRows = rows;
+  turnoverQueryCache = new Map();
+}
 function turnoverResolveStoredCode(value, rows){
   const raw = turnoverText(value).toUpperCase().replace(/\s+/g, '');
   if(!raw) return '';
   const parts = splitCodeSize(raw);
   const key = turnoverCodeLookupKey(parts.code);
-  const candidates = [];
-  (Array.isArray(rows) ? rows : []).forEach(row=>{
-    const code = turnoverNormalizeCodePart(row && row.code);
-    if(code && turnoverCodeLookupKey(code) === key && !candidates.includes(code)) candidates.push(code);
-  });
+  turnoverEnsureCodeIndex(rows);
+  const candidates = turnoverCodeIndex.get(key) || [];
   const exact = candidates.find(code=> code === parts.code || code === fixLeadingZero(parts.code));
   if(exact) return exact;
   if(candidates.length === 1) return candidates[0];
@@ -5601,9 +5617,14 @@ function turnoverRowCode(row){
 }
 function turnoverNormalizeQueryCode(value){
   const raw = turnoverText(value).toUpperCase().replace(/\s+/g, '');
+  if(!raw) return '';
+  turnoverEnsureCodeIndex(turnoverRows);
+  if(turnoverQueryCache.has(raw)) return turnoverQueryCache.get(raw);
   const parts = splitCodeSize(raw);
   const code = turnoverResolveStoredCode(parts.code, turnoverRows);
-  return parts.size ? code + '-' + turnoverText(parts.size).toUpperCase() : code;
+  const normalized = parts.size ? code + '-' + turnoverText(parts.size).toUpperCase() : code;
+  turnoverQueryCache.set(raw, normalized);
+  return normalized;
 }
 function turnoverNormalizeRows(rows){
   return (Array.isArray(rows) ? rows : []).map((row, index)=>({
@@ -5894,9 +5915,7 @@ function turnoverRegisterCurrentLocation(){
   const searchInput = $('turnoverSearchInput');
   const query = turnoverText(searchInput && searchInput.value);
   if(!location || !query) return false;
-  turnoverNormalizeSearchInputValue(true);
-  const currentQuery = turnoverText(searchInput && searchInput.value);
-  const variants = turnoverQueryVariants(currentQuery, location).filter(Boolean);
+  const variants = turnoverQueryVariants(query, location).filter(Boolean);
   if(!variants.length) return false;
   let changed = false;
   turnoverRows.forEach(row=>{
@@ -6084,6 +6103,7 @@ async function turnoverOpen(){
   if(turnoverRows.length) $('turnoverSearchInput').focus();
 }
 function turnoverExport(){
+  turnoverNormalizeSearchInputValue(true);
   turnoverRegisterCurrentLocation();
   const rows = turnoverSortRows(turnoverRows);
   if(!rows.length){ showToast('لسه مفيش بيانات Turnover للتصدير.'); return; }
@@ -6104,9 +6124,9 @@ $('turnoverBackBtn') && $('turnoverBackBtn').addEventListener('click', ()=> swit
 $('turnoverExportBtn') && $('turnoverExportBtn').addEventListener('click', turnoverExport);
 $('fileInputTurnover') && $('fileInputTurnover').addEventListener('change', (event)=>{ const file = event.target.files && event.target.files[0]; if(file) handleTurnoverFile(file); });
 $('turnoverLocationInput') && $('turnoverLocationInput').addEventListener('input', ()=>{ turnoverUpdateHint(); if(currentBranch) turnoverPersist(); });
-$('turnoverLocationInput') && $('turnoverLocationInput').addEventListener('change', turnoverApplyLocation);
-$('turnoverLocationInput') && $('turnoverLocationInput').addEventListener('keydown', (event)=>{ if(event.key === 'Enter'){ event.preventDefault(); turnoverApplyLocation(); event.currentTarget.blur(); } });
-$('turnoverApplyLocationBtn') && $('turnoverApplyLocationBtn').addEventListener('click', turnoverApplyLocation);
+$('turnoverLocationInput') && $('turnoverLocationInput').addEventListener('change', ()=>{ turnoverNormalizeSearchInputValue(false); turnoverApplyLocation(); });
+$('turnoverLocationInput') && $('turnoverLocationInput').addEventListener('keydown', (event)=>{ if(event.key === 'Enter'){ event.preventDefault(); turnoverNormalizeSearchInputValue(false); turnoverApplyLocation(); event.currentTarget.blur(); } });
+$('turnoverApplyLocationBtn') && $('turnoverApplyLocationBtn').addEventListener('click', ()=>{ turnoverNormalizeSearchInputValue(false); turnoverApplyLocation(); });
 $('turnoverSearchInput') && $('turnoverSearchInput').addEventListener('input', ()=>{ turnoverShowAll = false; turnoverNormalizeSearchInputValue(false); turnoverApplyLocation(); });
 $('turnoverSearchInput') && $('turnoverSearchInput').addEventListener('change', ()=>{ turnoverNormalizeSearchInputValue(false); });
 $('turnoverSearchInput') && $('turnoverSearchInput').addEventListener('keydown', (event)=>{ if(event.key === 'Enter'){ event.preventDefault(); turnoverNormalizeSearchInputValue(true); turnoverShowAll = false; turnoverApplyLocation(); turnoverFocusFirstStock(); } });
