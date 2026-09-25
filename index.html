@@ -1146,7 +1146,7 @@ service cloud.firestore {
     .turnover-table th{background:#eef2ff;color:#3730a3;font-size:14px;font-weight:900;padding:6px 5px;border:1px solid #c7d2fe;text-align:center;white-space:nowrap;}
     .turnover-table td{padding:4px 5px;border:1px solid #dbe3ef;text-align:center;font-size:20px;font-weight:900;vertical-align:middle;}
     .turnover-table td:first-child{font-weight:900;color:#1e293b;white-space:nowrap;}
-    .turnover-code-cell{direction:ltr;text-align:center!important;white-space:nowrap;font-size:14px;font-weight:900;}
+    .turnover-size-cell{direction:ltr;text-align:center!important;white-space:nowrap;font-size:20px;font-weight:900;}
     .turnover-recorded-code{font-size:14px;font-weight:900;color:#6366f1;margin-top:1px;direction:ltr;white-space:nowrap;}
     .turnover-location-input,.turnover-stock-input{width:100%;min-width:75px;padding:5px 6px;border:1.5px solid #cbd5e1;border-radius:6px;background:#fff;font-family:inherit;font-size:20px;font-weight:900;line-height:1.1;color:#111827;box-sizing:border-box;}
     .turnover-location-input{text-align:center;min-width:105px;}
@@ -5933,13 +5933,12 @@ function renderTurnover(){
     turnoverUpdateTotals([]);
     return;
   }
-  const html = ['<div class="turnover-results-card"><table class="turnover-table"><thead><tr><th>الكود-المقاس</th><th>العدد في الشيت</th><th>stock</th><th>اللوكيشن</th><th>الدبارتمنت</th><th>النتيجة</th></tr></thead><tbody>'];
+  const html = ['<div class="turnover-results-card"><table class="turnover-table"><thead><tr><th>المقاس</th><th>العدد في الشيت</th><th>stock</th><th>اللوكيشن</th><th>الدبارتمنت</th><th>النتيجة</th></tr></thead><tbody>'];
   rows.forEach(row=>{
     const location = turnoverLocationForRow(row);
-    const recordedCode = location ? location + '-' + turnoverRowCode(row) : turnoverRowCode(row);
     const result = turnoverResult(row);
     html.push('<tr>');
-    html.push('<td><div class="turnover-code-cell" dir="ltr">' + escapeHtml(turnoverRowCode(row)) + '</div><div class="turnover-recorded-code" data-turnover-code-id="' + String(row.id) + '" dir="ltr">' + escapeHtml(recordedCode) + '</div></td>');
+    html.push('<td><div class="turnover-size-cell" dir="ltr">' + escapeHtml(turnoverText(row.size) || '-') + '</div></td>');
     html.push('<td>' + escapeHtml(turnoverFormatNumber(row.qty)) + '</td>');
     html.push('<td><input class="turnover-stock-input" type="text" inputmode="decimal" data-turnover-role="stock" data-turnover-row-id="' + String(row.id) + '" value="' + escapeAttr(turnoverFormatNumber(row.stock)) + '"></td>');
     html.push('<td><input class="turnover-location-input" type="text" data-turnover-role="location" data-turnover-row-id="' + String(row.id) + '" value="' + escapeAttr(location) + '" placeholder="اكتب اللوكيشن"></td>');
