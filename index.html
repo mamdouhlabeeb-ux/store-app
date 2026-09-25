@@ -1148,13 +1148,13 @@ service cloud.firestore {
     .turnover-table td:first-child{font-weight:800;color:#1e293b;white-space:nowrap;}
     .turnover-code-cell{direction:ltr;text-align:center!important;white-space:nowrap;}
     .turnover-recorded-code{font-size:10.5px;color:#6366f1;margin-top:3px;direction:ltr;white-space:nowrap;}
-    .turnover-location-input,.turnover-stock-input{width:100%;min-width:92px;padding:9px 8px;border:1.5px solid #cbd5e1;border-radius:8px;background:#fff;font-family:inherit;font-size:15px;font-weight:800;color:#111827;box-sizing:border-box;}
+    .turnover-location-input,.turnover-stock-input{width:100%;min-width:92px;padding:9px 8px;border:1.5px solid #cbd5e1;border-radius:8px;background:#fff;font-family:inherit;font-size:22px;font-weight:900;color:#111827;box-sizing:border-box;}
     .turnover-location-input{text-align:right;min-width:125px;}
     .turnover-stock-input{text-align:center;direction:ltr;}
     .turnover-location-input::-webkit-inner-spin-button,.turnover-location-input::-webkit-outer-spin-button,.turnover-stock-input::-webkit-inner-spin-button,.turnover-stock-input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
     .turnover-location-input[type=number],.turnover-stock-input[type=number]{-moz-appearance:textfield;appearance:textfield;}
     .turnover-location-input:focus,.turnover-stock-input:focus{outline:none;border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.12);}
-    .turnover-result{font-weight:900;font-size:18px;color:#000!important;text-align:center;min-width:72px;background:#f8fafc;}
+    .turnover-result{font-weight:900;font-size:22px;color:#000!important;text-align:center;min-width:72px;background:#f8fafc;}
     .turnover-result.positive{background:#ef4444!important;}
     .turnover-result.negative{background:#22c55e!important;}
     .turnover-result.zero{background:#e2e8f0!important;}
@@ -1173,7 +1173,7 @@ service cloud.firestore {
     </div>
   </div>
   <p style="color:var(--muted);font-size:13.5px;line-height:1.8;margin:4px 0 14px;">
-    ارفع شيت New Volume (D) بالأعمدة: الكود-المقاس، العدد، الدبارتمنت، اللوكيشن. اكتب اللوكيشن مرة واحدة في المستطيل العلوي، ثم اكتب الكود في البحث ليُسجل اللوكيشن مع كل مقاسات الكود، أو عدّل اللوكيشن داخل الجدول؛ النتيجة = العدد في الشيت - stock. التنزيل بيشمل كل صفوف الشيت مع اللوكيشن والكود بعد تسجيله.
+    ارفع شيت New Volume (D) بالأعمدة: الكود-المقاس، العدد، الدبارتمنت، اللوكيشن. اكتب اللوكيشن مرة واحدة في المستطيل العلوي، ثم اكتب الكود في البحث ليُسجل اللوكيشن مع كل مقاسات الكود، أو عدّل اللوكيشن داخل الجدول؛ الكود يتحول تلقائيًا للصيغة الموجودة في الشيت، والأكواد العادية تبقى كما هي. النتيجة = العدد في الشيت - stock. التنزيل بيشمل كل صفوف الشيت مع اللوكيشن والكود بعد تسجيله.
   </p>
 
   <div class="upload-card" id="turnoverUploadCard" style="margin-bottom:16px;">
@@ -1187,10 +1187,10 @@ service cloud.firestore {
 
   <div id="turnoverBody" class="turnover-wrap" style="display:none;">
     <div class="turnover-location-box">
-      <div class="turnover-location-title">اللوكيشن الحالي — بيتسجل مع الكود اللي بتكتبه في خانة البحث فقط</div>
+      <div class="turnover-location-title">اللوكيشن الحالي — بيتسجل مع الكود اللي بتكتبه في خانة البحث</div>
       <div class="turnover-location-controls">
         <input id="turnoverLocationInput" placeholder="اكتب اسم اللوكيشن هنا..." autocomplete="off">
-        <button class="btn-primary" id="turnoverApplyLocationBtn" type="button">تطبيق على نتيجة البحث</button>
+        <button class="btn-primary" id="turnoverApplyLocationBtn" type="button">تطبيق على الكود</button>
       </div>
       <div class="turnover-location-hint" id="turnoverLocationHint"></div>
     </div>
@@ -5569,9 +5569,31 @@ function turnoverNumber(value){
 function turnoverNormalizeCodePart(value){
   const code = turnoverText(value).toUpperCase().replace(/\s+/g, '');
   if(!code) return '';
-  if(/^[RO]/.test(code)) return code;
-  const fixed = fixLeadingZero(code);
-  return /^[RO]/.test(fixed) ? fixed : 'R' + fixed;
+  return /^[RO]/.test(code) ? code : fixLeadingZero(code);
+}
+function turnoverCodeLookupKey(value){
+  const raw = turnoverText(value).toUpperCase().replace(/\s+/g, '');
+  if(!raw) return '';
+  let code = splitCodeSize(raw).code;
+  code = code.replace(/[٠-٩]/g, digit => '٠١٢٣٤٥٦٧٨٩'.indexOf(digit));
+  code = code.replace(/[۰-۹]/g, digit => '۰۱۲۳۴۵۶۷۸۹'.indexOf(digit));
+  code = code.replace(/^[RO]+/, '').replace(/^0+/, '').replace(/^[O]+/, '').replace(/^0+/, '');
+  return code.replace(/[\s\-]+/g, '');
+}
+function turnoverResolveStoredCode(value, rows){
+  const raw = turnoverText(value).toUpperCase().replace(/\s+/g, '');
+  if(!raw) return '';
+  const parts = splitCodeSize(raw);
+  const key = turnoverCodeLookupKey(parts.code);
+  const candidates = [];
+  (Array.isArray(rows) ? rows : []).forEach(row=>{
+    const code = turnoverNormalizeCodePart(row && row.code);
+    if(code && turnoverCodeLookupKey(code) === key && !candidates.includes(code)) candidates.push(code);
+  });
+  const exact = candidates.find(code=> code === parts.code || code === fixLeadingZero(parts.code));
+  if(exact) return exact;
+  if(candidates.length === 1) return candidates[0];
+  return turnoverNormalizeCodePart(parts.code);
 }
 function turnoverRowCode(row){
   const code = turnoverNormalizeCodePart(row && row.code);
@@ -5580,7 +5602,7 @@ function turnoverRowCode(row){
 function turnoverNormalizeQueryCode(value){
   const raw = turnoverText(value).toUpperCase().replace(/\s+/g, '');
   const parts = splitCodeSize(raw);
-  const code = turnoverNormalizeCodePart(parts.code);
+  const code = turnoverResolveStoredCode(parts.code, turnoverRows);
   return parts.size ? code + '-' + turnoverText(parts.size).toUpperCase() : code;
 }
 function turnoverNormalizeRows(rows){
@@ -5745,22 +5767,31 @@ function turnoverQueryMatch(row, query, currentLocation){
   const location = turnoverLocationForRow(row).toUpperCase().replace(/\s+/g, '');
   const prefix = currentLocation.toUpperCase().replace(/\s+/g, '');
   const code = turnoverRowCode(row).toUpperCase().replace(/\s+/g, '');
-  const model = turnoverNormalizeCodePart(row.code);
+  const codeKey = turnoverCodeLookupKey(code);
+  const modelKey = turnoverCodeLookupKey(turnoverNormalizeCodePart(row.code));
   const recorded = (location ? location + '-' : '') + code;
   if(prefix && q === prefix && location.indexOf(prefix) === 0) return true;
   if(recorded === q) return true;
   return turnoverQueryVariants(query, currentLocation).some(variant=>{
-    const codeQuery = turnoverNormalizeQueryCode(variant);
-    if(codeQuery === code || codeQuery === model) return true;
-    return code.indexOf(codeQuery) !== -1 || model.indexOf(codeQuery) !== -1 || location.indexOf(codeQuery) !== -1;
+    const queryParts = splitCodeSize(turnoverNormalizeQueryCode(variant));
+    const queryCodeKey = turnoverCodeLookupKey(queryParts.code);
+    if(!queryCodeKey) return false;
+    if(queryParts.size){
+      const rowSize = turnoverText(row.size).toUpperCase().replace(/\s+/g, '');
+      return queryCodeKey === codeKey && queryParts.size.toUpperCase() === rowSize;
+    }
+    if(queryCodeKey === codeKey || queryCodeKey === modelKey) return true;
+    return codeKey.indexOf(queryCodeKey) !== -1 || modelKey.indexOf(queryCodeKey) !== -1 || location.indexOf(queryCodeKey) !== -1;
   });
 }
 function turnoverExactCodeMatch(row, query, currentLocation){
-  const code = turnoverRowCode(row).toUpperCase().replace(/\s+/g, '');
-  const model = turnoverNormalizeCodePart(row.code);
+  const codeKey = turnoverCodeLookupKey(turnoverRowCode(row));
+  const rowSize = turnoverText(row.size).toUpperCase().replace(/\s+/g, '');
   return turnoverQueryVariants(query, currentLocation).some(variant=>{
-    const codeQuery = turnoverNormalizeQueryCode(variant);
-    return codeQuery === code || codeQuery === model;
+    const queryParts = splitCodeSize(turnoverNormalizeQueryCode(variant));
+    const queryCodeKey = turnoverCodeLookupKey(queryParts.code);
+    if(!queryCodeKey || queryCodeKey !== codeKey) return false;
+    return !queryParts.size || queryParts.size.toUpperCase() === rowSize;
   });
 }
 function turnoverNormalizeSearchInputValue(force){
@@ -5779,11 +5810,7 @@ function turnoverNormalizeSearchInputValue(force){
   }
   const normalized = turnoverNormalizeQueryCode(query);
   if(!normalized) return;
-  const hasCode = turnoverRows.some(row=>{
-    const model = turnoverNormalizeCodePart(row.code);
-    const full = turnoverNormalizeQueryCode(turnoverRowCode(row));
-    return normalized === model || normalized === full;
-  });
+  const hasCode = turnoverRows.some(row=> turnoverExactCodeMatch(row, normalized, ''));
   if(!hasCode && !force) return;
   input.value = prefix + normalized;
 }
@@ -5867,13 +5894,13 @@ function turnoverRegisterCurrentLocation(){
   const searchInput = $('turnoverSearchInput');
   const query = turnoverText(searchInput && searchInput.value);
   if(!location || !query) return false;
-  const variants = turnoverQueryVariants(query, location).map(turnoverNormalizeQueryCode).filter(Boolean);
+  turnoverNormalizeSearchInputValue(true);
+  const currentQuery = turnoverText(searchInput && searchInput.value);
+  const variants = turnoverQueryVariants(currentQuery, location).filter(Boolean);
   if(!variants.length) return false;
   let changed = false;
   turnoverRows.forEach(row=>{
-    const model = turnoverNormalizeCodePart(row.code);
-    const full = turnoverNormalizeQueryCode(turnoverRowCode(row));
-    if(!variants.some(value=> value === model || value === full)) return;
+    if(!variants.some(value=> turnoverExactCodeMatch(row, value, location))) return;
     if(row.location === location) return;
     row.location = location;
     row.locationMode = 'manual';
@@ -5918,15 +5945,12 @@ function turnoverFocusFirstStock(){
 }
 // بيحدد السطر/الحقل المستهدف الأول (من نفس الـ DOM الحالي)، وبعدين يسيب turnoverFocusAfterCommit
 // هو اللي يقفل التعديل الحالي ويدور على الحقل بعناصره الجديدة بعد أي إعادة رسم.
-function turnoverMoveVertical(input, delta, hideOnEnd){
+function turnoverMoveVertical(input, delta){
   const role = input.getAttribute('data-turnover-role');
   const inputs = turnoverGridInputs().filter(item=> item.getAttribute('data-turnover-role') === role);
   const index = inputs.indexOf(input);
   const target = inputs[index + delta];
-  if(!target){
-    if(hideOnEnd) input.blur();
-    return;
-  }
+  if(!target) return;
   turnoverFocusAfterCommit(input, role, target.getAttribute('data-turnover-row-id'), index + delta);
 }
 function turnoverMoveHorizontal(input, direction){
@@ -5973,12 +5997,12 @@ function turnoverHandleGridKey(event){
   if(role !== 'stock' && role !== 'location') return;
   if(event.key === 'Enter'){
     event.preventDefault();
-    turnoverMoveVertical(input, 1, true);
+    turnoverMoveVertical(input, 1);
     return;
   }
   if(event.key === 'ArrowDown' || event.key === 'ArrowUp'){
     event.preventDefault();
-    turnoverMoveVertical(input, event.key === 'ArrowDown' ? 1 : -1, false);
+    turnoverMoveVertical(input, event.key === 'ArrowDown' ? 1 : -1);
     return;
   }
   if(event.key === 'ArrowRight' || event.key === 'ArrowLeft'){
