@@ -1168,12 +1168,12 @@ service cloud.firestore {
   <div class="panel-head">
     <h2 style="font-family:'Cairo',sans-serif;">Turnover rate</h2>
     <div style="display:flex;gap:10px;align-items:center;">
-      <button class="export-btn" id="turnoverExportBtn" type="button">تنزيل الاكسيل</button>
+      <button class="export-btn" id="turnoverExportBtn" type="button">تنزيل الاكسيل — كل البيانات</button>
       <button class="link-btn" id="turnoverBackBtn" type="button">رجوع</button>
     </div>
   </div>
   <p style="color:var(--muted);font-size:13.5px;line-height:1.8;margin:4px 0 14px;">
-    ارفع شيت New Volume (D) بالأعمدة: الكود-المقاس، العدد، الدبارتمنت، اللوكيشن. اكتب اللوكيشن مرة واحدة في المستطيل العلوي، ثم اكتب الكود في البحث ليُسجل اللوكيشن مع السطر المطلوب فقط، أو عدّل اللوكيشن داخل الجدول؛ النتيجة = العدد في الشيت - stock.
+    ارفع شيت New Volume (D) بالأعمدة: الكود-المقاس، العدد، الدبارتمنت، اللوكيشن. اكتب اللوكيشن مرة واحدة في المستطيل العلوي، ثم اكتب الكود في البحث ليُسجل اللوكيشن مع كل مقاسات الكود، أو عدّل اللوكيشن داخل الجدول؛ النتيجة = العدد في الشيت - stock. التنزيل بيشمل كل صفوف الشيت مع اللوكيشن والكود بعد تسجيله.
   </p>
 
   <div class="upload-card" id="turnoverUploadCard" style="margin-bottom:16px;">
@@ -5822,8 +5822,8 @@ function turnoverUpdateHint(){
   if(!hint) return;
   const location = turnoverCurrentLocation();
   hint.textContent = location
-    ? 'اللوكيشن ' + location + ' هيتسجل مع السطر المطابق للبحث فقط، مش مع كل الشيت.'
-    : 'اكتب اسم اللوكيشن هنا، ثم اكتب الكود في البحث؛ اللوكيشن الفارغ في السطر المطابق فقط هو اللي هيتسجل.';
+    ? 'اللوكيشن ' + location + ' هيتسجل مع كل مقاسات الكود المطابق، مش مع كل الشيت.'
+    : 'اكتب اسم اللوكيشن هنا، ثم اكتب الكود في البحث؛ اللوكيشن هيتمسجل مع الكود المطابق.';
 }
 function renderTurnover(){
   const body = $('turnoverBody');
@@ -5862,25 +5862,28 @@ function renderTurnover(){
   results.innerHTML = html.join('');
   turnoverUpdateTotals(rows);
 }
-function turnoverApplyLocation(){
+function turnoverRegisterCurrentLocation(){
   const location = turnoverCurrentLocation();
   const searchInput = $('turnoverSearchInput');
   const query = turnoverText(searchInput && searchInput.value);
+  if(!location || !query) return false;
+  const variants = turnoverQueryVariants(query, location).map(turnoverNormalizeQueryCode).filter(Boolean);
+  if(!variants.length) return false;
   let changed = false;
-  // بدل ما نتأكد من التطابق بدالة تانية منفصلة عن اللي بيحدد السطور الظاهرة في نتيجة
-  // البحث (ده كان بيخليهم يختلفوا أحيانًا وميسجلش)، بقينا بنستخدم نفس السطور الظاهرة
-  // فعليًا: لو البحث ورّى سطر واحد بالظبط، اللوكيشن الحالي بيتسجل عليه - وبيتحدّث كل
-  // مرة تغيّر الكود أو اللوكيشن، حتى لو كان عنده قيمة قبل كده.
-  if(location && query && !turnoverShowAll){
-    const matches = turnoverRows.filter(row=> turnoverQueryMatch(row, query, location));
-    const exactMatches = matches.filter(row=> turnoverExactCodeMatch(row, query, location));
-    if(exactMatches.length === 1 && exactMatches[0].location !== location){
-      exactMatches[0].location = location;
-      exactMatches[0].locationMode = 'manual';
-      changed = true;
-    }
-  }
+  turnoverRows.forEach(row=>{
+    const model = turnoverNormalizeCodePart(row.code);
+    const full = turnoverNormalizeQueryCode(turnoverRowCode(row));
+    if(!variants.some(value=> value === model || value === full)) return;
+    if(row.location === location) return;
+    row.location = location;
+    row.locationMode = 'manual';
+    changed = true;
+  });
   if(changed) turnoverPersist();
+  return changed;
+}
+function turnoverApplyLocation(){
+  turnoverRegisterCurrentLocation();
   renderTurnover();
 }
 function turnoverHandleStock(id, value){
@@ -6057,10 +6060,16 @@ async function turnoverOpen(){
   if(turnoverRows.length) $('turnoverSearchInput').focus();
 }
 function turnoverExport(){
-  const rows = turnoverVisibleRows();
-  if(!rows.length){ showToast('اكتب كود أو اعرض كل السطور قبل التنزيل.'); return; }
-  const data = [['الكود-المقاس', 'العدد في الشيت', 'stock', 'اللوكيشن', 'الدبارتمنت', 'النتيجة']];
-  rows.forEach(row=> data.push([turnoverRowCode(row), row.qty, row.stock, turnoverLocationForRow(row), row.dept, turnoverResult(row)]));
+  turnoverRegisterCurrentLocation();
+  const rows = turnoverSortRows(turnoverRows);
+  if(!rows.length){ showToast('لسه مفيش بيانات Turnover للتصدير.'); return; }
+  const data = [['الكود-المقاس', 'العدد في الشيت', 'stock', 'اللوكيشن', 'الكود بعد تسجيل اللوكيشن', 'الدبارتمنت', 'النتيجة']];
+  rows.forEach(row=>{
+    const location = turnoverLocationForRow(row);
+    const code = turnoverRowCode(row);
+    const recordedCode = location ? location + '-' + code : code;
+    data.push([code, row.qty, row.stock, location, recordedCode, row.dept, turnoverResult(row)]);
+  });
   const workbook = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(workbook, XLSX.utils.aoa_to_sheet(data), 'Turnover rate');
   XLSX.writeFile(workbook, branchFname('Turnover_rate') + '.xlsx');
