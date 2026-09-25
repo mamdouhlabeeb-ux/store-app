@@ -1130,40 +1130,47 @@ service cloud.firestore {
   </div>
 </div>
 
-<div class="screen" id="screen-turnover" style="padding:28px 20px 60px;max-width:1180px;margin:0 auto;">
+<div class="screen" id="screen-turnover" style="padding:16px 12px 24px;max-width:1180px;margin:0 auto;">
   <style>
-    .turnover-wrap{display:flex;flex-direction:column;gap:16px;}
-    .turnover-location-box{background:linear-gradient(135deg,#eef2ff,#fff 70%);border:1px solid #c7d2fe;border-radius:16px;padding:15px 16px;box-shadow:0 4px 14px rgba(79,70,229,.08);}
-    .turnover-location-title{font-size:14px;font-weight:800;color:#312e81;margin-bottom:9px;}
-    .turnover-location-controls{display:flex;gap:9px;align-items:center;flex-wrap:wrap;}
-    #turnoverLocationInput{flex:1 1 230px;min-width:180px;padding:11px 13px;border:1.5px solid #a5b4fc;border-radius:10px;background:#fff;font-family:inherit;font-size:16px;font-weight:800;color:#1e1b4b;text-align:right;box-sizing:border-box;}
-    .turnover-location-hint{font-size:12px;color:#4f46e5;margin-top:8px;font-weight:700;line-height:1.7;}
-    .turnover-tools{display:flex;gap:9px;align-items:center;flex-wrap:wrap;padding:12px 0 0;}
-    #turnoverSearchInput{flex:1 1 260px;min-width:190px;padding:11px 14px;border:1.5px solid var(--line);border-radius:10px;font-size:16px;font-weight:700;font-family:inherit;color:var(--ink);background:#fff;direction:ltr;text-align:left;box-sizing:border-box;}
+    .turnover-wrap{display:flex;flex-direction:column;gap:8px;}
+    .turnover-location-box{background:linear-gradient(135deg,#eef2ff,#fff 70%);border:1px solid #c7d2fe;border-radius:11px;padding:9px 10px;box-shadow:0 3px 10px rgba(79,70,229,.08);}
+    .turnover-location-title{font-size:12px;font-weight:800;color:#312e81;margin-bottom:5px;}
+    .turnover-location-controls{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+    #turnoverLocationInput{flex:1 1 230px;min-width:180px;padding:7px 9px;border:1.5px solid #a5b4fc;border-radius:7px;background:#fff;font-family:inherit;font-size:14px;font-weight:800;color:#1e1b4b;text-align:center;box-sizing:border-box;}
+    .turnover-location-hint{font-size:11px;color:#4f46e5;margin-top:4px;font-weight:700;line-height:1.35;}
+    .turnover-tools{display:flex;gap:6px;align-items:center;flex-wrap:wrap;padding:6px 0 0;}
+    #turnoverSearchInput{flex:1 1 260px;min-width:190px;padding:7px 9px;border:1.5px solid var(--line);border-radius:7px;font-size:14px;font-weight:700;font-family:inherit;color:var(--ink);background:#fff;direction:ltr;text-align:left;box-sizing:border-box;}
     .turnover-tools button{white-space:nowrap;}
-    .turnover-results-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:0 3px 14px rgba(15,23,42,.05);overflow-x:auto;}
-    .turnover-table{border-collapse:collapse;width:100%;min-width:830px;}
-    .turnover-table th{background:#eef2ff;color:#3730a3;font-size:20px;font-weight:900;padding:11px 9px;border:1px solid #c7d2fe;text-align:center;white-space:nowrap;}
-    .turnover-table td{padding:9px 8px;border:1px solid #dbe3ef;text-align:center;font-size:20px;font-weight:900;vertical-align:middle;}
+    .turnover-results-card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:7px;box-shadow:0 2px 9px rgba(15,23,42,.05);overflow-x:auto;}
+    .turnover-table{border-collapse:collapse;width:100%;min-width:760px;}
+    .turnover-table th{background:#eef2ff;color:#3730a3;font-size:14px;font-weight:900;padding:6px 5px;border:1px solid #c7d2fe;text-align:center;white-space:nowrap;}
+    .turnover-table td{padding:4px 5px;border:1px solid #dbe3ef;text-align:center;font-size:20px;font-weight:900;vertical-align:middle;}
     .turnover-table td:first-child{font-weight:900;color:#1e293b;white-space:nowrap;}
-    .turnover-code-cell{direction:ltr;text-align:center!important;white-space:nowrap;font-size:20px;font-weight:900;}
-    .turnover-recorded-code{font-size:20px;font-weight:900;color:#6366f1;margin-top:3px;direction:ltr;white-space:nowrap;}
-    .turnover-location-input,.turnover-stock-input{width:100%;min-width:92px;padding:9px 8px;border:1.5px solid #cbd5e1;border-radius:8px;background:#fff;font-family:inherit;font-size:20px;font-weight:900;color:#111827;box-sizing:border-box;}
-    .turnover-location-input{text-align:right;min-width:125px;}
+    .turnover-code-cell{direction:ltr;text-align:center!important;white-space:nowrap;font-size:14px;font-weight:900;}
+    .turnover-recorded-code{font-size:14px;font-weight:900;color:#6366f1;margin-top:1px;direction:ltr;white-space:nowrap;}
+    .turnover-location-input,.turnover-stock-input{width:100%;min-width:75px;padding:5px 6px;border:1.5px solid #cbd5e1;border-radius:6px;background:#fff;font-family:inherit;font-size:20px;font-weight:900;line-height:1.1;color:#111827;box-sizing:border-box;}
+    .turnover-location-input{text-align:center;min-width:105px;}
     .turnover-stock-input{text-align:center;direction:ltr;}
     .turnover-location-input::-webkit-inner-spin-button,.turnover-location-input::-webkit-outer-spin-button,.turnover-stock-input::-webkit-inner-spin-button,.turnover-stock-input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
     .turnover-location-input[type=number],.turnover-stock-input[type=number]{-moz-appearance:textfield;appearance:textfield;}
     .turnover-location-input:focus,.turnover-stock-input:focus{outline:none;border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.12);}
-    .turnover-result{font-weight:900;font-size:20px;color:#000!important;text-align:center;min-width:72px;background:#f8fafc;}
+    .turnover-result{font-weight:900;font-size:20px;line-height:1.1;color:#000!important;text-align:center;min-width:60px;background:#f8fafc;}
     .turnover-result.positive{background:#ef4444!important;}
     .turnover-result.negative{background:#22c55e!important;}
     .turnover-result.zero{background:#e2e8f0!important;}
-    .turnover-total-card{display:flex;align-items:center;justify-content:space-between;gap:12px;background:linear-gradient(90deg,#312e81,#4f46e5);color:#fff;border-radius:14px;padding:15px 19px;box-shadow:0 6px 18px rgba(79,70,229,.2);}
-    .turnover-total-card span{font-size:15px;font-weight:800;}
-    .turnover-total-card strong{font-size:28px;font-weight:900;line-height:1;}
-    .turnover-empty{padding:32px 18px;text-align:center;color:var(--muted);font-size:14px;font-weight:700;line-height:1.9;}
-    .turnover-meta{font-size:12.5px;color:var(--muted);font-weight:700;line-height:1.8;}
-    @media (max-width:650px){ #turnoverLocationInput{width:100%;} .turnover-total-card strong{font-size:24px;} }
+    .turnover-total-card{position:sticky;bottom:6px;z-index:4;display:flex;align-items:center;justify-content:space-between;gap:12px;background:linear-gradient(90deg,#312e81,#4f46e5);color:#fff;border-radius:10px;padding:9px 12px;box-shadow:0 4px 12px rgba(79,70,229,.2);}
+    .turnover-total-card span{font-size:13px;font-weight:800;}
+    .turnover-total-card strong{font-size:22px;font-weight:900;line-height:1;}
+    .turnover-empty{padding:18px 12px;text-align:center;color:var(--muted);font-size:13px;font-weight:700;line-height:1.5;}
+    .turnover-meta{font-size:11px;color:var(--muted);font-weight:700;line-height:1.3;}
+    #screen-turnover>.panel-head{margin-bottom:6px;}
+    #screen-turnover>.panel-head h2{font-size:18px;}
+    #turnoverUploadCard{padding:10px 12px;}
+    #turnoverUploadCard .step-tag{margin-bottom:5px;}
+    #turnoverUploadCard h3{font-size:16px;margin-bottom:3px;}
+    #turnoverUploadCard p{font-size:12px;margin-bottom:7px;line-height:1.3;}
+    #turnoverUploadCard .upload-btn{padding:7px 14px;font-size:12px;}
+    @media (max-width:650px){ #turnoverLocationInput{width:100%;} .turnover-total-card strong{font-size:20px;} .turnover-table{min-width:700px;} }
   </style>
   <div class="panel-head">
     <h2 style="font-family:'Cairo',sans-serif;">Turnover rate</h2>
@@ -1172,11 +1179,11 @@ service cloud.firestore {
       <button class="link-btn" id="turnoverBackBtn" type="button">رجوع</button>
     </div>
   </div>
-  <p style="color:var(--muted);font-size:13.5px;line-height:1.8;margin:4px 0 14px;">
+  <p style="color:var(--muted);font-size:12px;line-height:1.4;margin:2px 0 8px;">
     ارفع شيت New Volume (D) بالأعمدة: الكود-المقاس، العدد، الدبارتمنت، اللوكيشن. اكتب اللوكيشن مرة واحدة في المستطيل العلوي، ثم اكتب الكود في البحث ليُسجل اللوكيشن مع كل مقاسات الكود، أو عدّل اللوكيشن داخل الجدول؛ الكود يتحول تلقائيًا للصيغة الموجودة في الشيت، والأكواد العادية تبقى كما هي. النتيجة = العدد في الشيت - stock. التنزيل بيشمل كل صفوف الشيت مع اللوكيشن والكود بعد تسجيله.
   </p>
 
-  <div class="upload-card" id="turnoverUploadCard" style="margin-bottom:16px;">
+  <div class="upload-card" id="turnoverUploadCard" style="margin-bottom:8px;">
     <div class="step-tag">شيت New Volume (D)</div>
     <h3>اختيار ملف</h3>
     <p>الكود-المقاس، العدد، الدبارتمنت، اللوكيشن</p>
@@ -6010,8 +6017,13 @@ function turnoverMoveVertical(input, delta){
   const role = input.getAttribute('data-turnover-role');
   const inputs = turnoverGridInputs().filter(item=> item.getAttribute('data-turnover-role') === role);
   const index = inputs.indexOf(input);
+  if(index < 0) return;
   const target = inputs[index + delta];
   if(!target) return;
+  if(role === 'stock'){
+    turnoverFocusCell(target);
+    return;
+  }
   turnoverFocusAfterCommit(input, role, target.getAttribute('data-turnover-row-id'), index + delta);
 }
 function turnoverMoveHorizontal(input, direction){
@@ -6058,7 +6070,6 @@ function turnoverHandleGridKey(event){
   if(role !== 'stock' && role !== 'location') return;
   if(event.key === 'Enter'){
     event.preventDefault();
-    if(role === 'stock') return;
     turnoverMoveVertical(input, 1);
     return;
   }
