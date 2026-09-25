@@ -1154,7 +1154,7 @@ service cloud.firestore {
     .turnover-location-input::-webkit-inner-spin-button,.turnover-location-input::-webkit-outer-spin-button,.turnover-stock-input::-webkit-inner-spin-button,.turnover-stock-input::-webkit-outer-spin-button{-webkit-appearance:none;margin:0;}
     .turnover-location-input[type=number],.turnover-stock-input[type=number]{-moz-appearance:textfield;appearance:textfield;}
     .turnover-location-input:focus,.turnover-stock-input:focus{outline:none;border-color:#6366f1;box-shadow:0 0 0 3px rgba(99,102,241,.12);}
-    .turnover-result{font-weight:900;font-size:24px;color:#000!important;text-align:center;min-width:72px;background:#f8fafc;}
+    .turnover-result{font-weight:900;font-size:18px;color:#000!important;text-align:center;min-width:72px;background:#f8fafc;}
     .turnover-result.positive{background:#ef4444!important;}
     .turnover-result.negative{background:#22c55e!important;}
     .turnover-result.zero{background:#e2e8f0!important;}
@@ -5837,7 +5837,11 @@ function turnoverApplyLocation(){
   let changed = false;
   if(location && query && !turnoverShowAll){
     turnoverRows.forEach(row=>{
-      if(!row.location && turnoverExactCodeMatch(row, query, location)){
+      // كان بيتطبق بس لو السطر مفهوش لوكيشن خالص (row.location فاضي)، فبعد أول كود
+      // كان بيسجل عليه، أي كود تاني (أو حتى لوكيشن جديد) ميكنش بيتسجل لو السطر جاله
+      // أي قيمة قديمة من الشيت. دلوقتي بيطبّق على أي سطر مطابق للكود بالظبط، ويحدّث
+      // اللوكيشن حتى لو كانت متسجلة قبل كده.
+      if(turnoverExactCodeMatch(row, query, location) && row.location !== location){
         row.location = location;
         row.locationMode = 'manual';
         changed = true;
@@ -6030,7 +6034,7 @@ $('openTurnoverBtn') && $('openTurnoverBtn').addEventListener('click', turnoverO
 $('turnoverBackBtn') && $('turnoverBackBtn').addEventListener('click', ()=> switchScreen('screen-dashboard'));
 $('turnoverExportBtn') && $('turnoverExportBtn').addEventListener('click', turnoverExport);
 $('fileInputTurnover') && $('fileInputTurnover').addEventListener('change', (event)=>{ const file = event.target.files && event.target.files[0]; if(file) handleTurnoverFile(file); });
-$('turnoverLocationInput') && $('turnoverLocationInput').addEventListener('input', ()=>{ turnoverUpdateHint(); if(currentBranch) turnoverPersist(); });
+$('turnoverLocationInput') && $('turnoverLocationInput').addEventListener('input', ()=>{ turnoverUpdateHint(); if(currentBranch) turnoverPersist(); turnoverApplyLocation(); });
 $('turnoverLocationInput') && $('turnoverLocationInput').addEventListener('change', turnoverApplyLocation);
 $('turnoverLocationInput') && $('turnoverLocationInput').addEventListener('keydown', (event)=>{ if(event.key === 'Enter'){ event.preventDefault(); turnoverApplyLocation(); } });
 $('turnoverApplyLocationBtn') && $('turnoverApplyLocationBtn').addEventListener('click', turnoverApplyLocation);
