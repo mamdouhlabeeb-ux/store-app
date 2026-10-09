@@ -5734,30 +5734,56 @@ function processTurnoverRows(rows){
   const out = [];
   if(!rows || !rows.length) return out;
   let startIdx = 0;
-  if(isNaN(parseFloat((rows[0] || [])[1]))) startIdx = 1;
-  for(let i=startIdx; i<rows.length; i++){
-    const row = rows[i] || [];
-    const rawCodeSize = turnoverText(row[0]);
-    if(!rawCodeSize) continue;
-    const qtyText = turnoverText(row[1]).replace(/,/g, '');
-    const qty = qtyText === '' ? NaN : Number(qtyText);
-    if(!Number.isFinite(qty)) continue;
-    const parts = splitCodeSize(rawCodeSize);
-    const code = turnoverNormalizeCodePart(parts.code);
-    if(!code) continue;
-    const rawLocation = turnoverLocationText(row[3]);
-    out.push({
-      id: out.length,
-      code,
-      size: turnoverText(parts.size) || '-',
-      qty,
-      dept: shortDept(turnoverText(row[2])) || '-',
-      location: rawLocation === '-' ? '' : rawLocation,
-      stock: 0,
-      locationMode: rawLocation && rawLocation !== '-' ? 'sheet' : 'auto'
+  let cCode = 0, cQty = 1, cDept = 2, cLoc = 3;
+  if(isNaN(parseFloat((rows[0] || [])[1]))){
+    startIdx = 1;
+    // نقرا أسماء الأعمدة من أول سطر عشان لو ترتيب الأعمدة اختلف أو فيه عمود زيادة، اللوكيشن يتقري صح
+    (rows[0] || []).forEach((h, i)=>{
+      const s = turnoverText(h).toLowerCase();
+      if(!s) return;
+      if(/loc|لوكيش|موقع|مكان/.test(s)) cLoc = i;
+      else if(/dep|دبار|قسم/.test(s)) cDept = i;
+      else if(/qty|quant|عدد|كمي|volume/.test(s)) cQty = i;
+      else if(/code|كود|item|صنف/.test(s)) cCode = i;
     });
   }
-  return out;
+  const build = (locCol)=>{
+    const res = [];
+    for(let i=startIdx; i<rows.length; i++){
+      const row = rows[i] || [];
+      const rawCodeSize = turnoverText(row[cCode]);
+      if(!rawCodeSize) continue;
+      const qtyText = turnoverText(row[cQty]).replace(/,/g, '');
+      const qty = qtyText === '' ? NaN : Number(qtyText);
+      if(!Number.isFinite(qty)) continue;
+      const parts = splitCodeSize(rawCodeSize);
+      const code = turnoverNormalizeCodePart(parts.code);
+      if(!code) continue;
+      const rawLocation = turnoverLocationText(row[locCol]);
+      res.push({
+        id: res.length,
+        code,
+        size: turnoverText(parts.size) || '-',
+        qty,
+        dept: shortDept(turnoverText(row[cDept])) || '-',
+        location: rawLocation === '-' ? '' : rawLocation,
+        stock: 0,
+        locationMode: rawLocation && rawLocation !== '-' ? 'sheet' : 'auto'
+      });
+    }
+    return res;
+  };
+  let res = build(cLoc);
+  // لو عمود اللوكيشن طلع فاضي بالكامل، نجرب الأعمدة اللي بعده (احتمال فيه عمود زيادة في الشيت)
+  if(!res.some(r=> r.location)){
+    const maxCols = rows.slice(0, 50).reduce((m, r)=> Math.max(m, (r || []).length), 0);
+    for(let c = 0; c < maxCols; c++){
+      if(c === cCode || c === cQty || c === cDept || c === cLoc) continue;
+      const alt = build(c);
+      if(alt.some(r=> r.location)){ res = alt; break; }
+    }
+  }
+  return res;
 }
 function turnoverPreserveEnteredValues(newRows, oldRows){
   const buckets = new Map();
@@ -6155,7 +6181,7 @@ async function handleTurnoverFile(file){
       const cloudOk = await turnoverCloudSave(payload, currentBranch.id);
       $('turnoverBody').style.display = 'flex';
       renderTurnover();
-      setStatus(statusEl, cloudOk ? 'تم ✓ (' + turnoverRows.length + ' سطر)' : ('اتعالج محليًا، والسحابة لسه محتاجة اتصال' + saveErrHint()), cloudOk ? 'ok' : 'err');
+      setStatus(statusEl, cloudOk ? 'تم ✓ (' + turnoverRows.length + ' سطر — منهم ' + turnoverRows.filter(r=> r.location).length + ' فيهم لوكيشن)' : ('اتعالج محليًا، والسحابة لسه محتاجة اتصال' + saveErrHint()), cloudOk ? 'ok' : 'err');
       turnoverSetStatus(cloudOk ? 'الشيت جاهز — ' + turnoverRows.length + ' سطر' : 'الشيت اتقرا محليًا', cloudOk ? 'ok' : '');
     }catch(error){
       console.error(error);
