@@ -1773,6 +1773,11 @@ $('resetDataBtn').addEventListener('click', async ()=>{
 async function openDashboard(){
   showLoading('جاري تحميل بيانات الفرع...');
   $('branchPill').textContent = currentBranch.name;
+  { // كارت ORDERS يظهر لحساب CST و QC فقط
+    const nm = String(currentBranch.name || '').trim().toLowerCase();
+    const ordCard = $('uploadCardOrders');
+    if(ordCard) ordCard.style.display = (nm === 'cst' || nm === 'qc') ? '' : 'none';
+  }
   const data = await loadBranchData(currentBranch.id);
   hideLoading();
   switchScreen('screen-dashboard');
@@ -3231,19 +3236,36 @@ function handleInstallClick(){
   }
 }
 $('langBtn') && $('langBtn').addEventListener('click', toggleAppLang);
+// CTRL+F: ينقل المؤشر لخانة البحث/الكود في الشاشة المفتوحة (بدل بحث المتصفح)
+function findScreenSearchInput(act){
+  if(!act) return null;
+  switch(act.id){
+    case 'screen-dashboard': {
+      const tab = act.querySelector('.tab-panel.active');   // تقرير المبيعات / ملخص المخزون
+      return tab ? (tab.querySelector('#salesSearchInput') || tab.querySelector('#searchInput')) : null;
+    }
+    case 'screen-turnover': return $('turnoverSearchInput');
+    case 'screen-count': return $('cntSearchInput');
+    case 'screen-orders': return $('ordersSearchInput');
+    case 'screen-mapcheck': return $('mapCheckCodeInput');
+    case 'screen-moneymap': return $('moneyMapCodeInput');
+    case 'screen-label': return $('labelCodeSearch');
+    case 'screen-lastprice': {
+      const ins = document.querySelectorAll('#lastPriceStream .lp-row input');
+      return ins.length ? ins[ins.length - 1] : null;
+    }
+  }
+  return null;
+}
 document.addEventListener('keydown', (e)=>{
   const key = String((e.key || '')).toLowerCase();
-  if((e.ctrlKey || e.metaKey) && (key === 'f' || e.code === 'KeyF')){
+  if((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (key === 'f' || e.code === 'KeyF')){
     const act = document.querySelector('.screen.active');
-    if(act && act.id === 'screen-turnover'){
+    const inp = findScreenSearchInput(act);
+    if(inp && inp.offsetParent !== null && !inp.disabled){   // ظاهرة وتتكتب فيها
       e.preventDefault();
-      turnoverFocusSearchInput();
-      return;
-    }
-    if(act && act.id === 'screen-count'){
-      e.preventDefault();
-      const inp = $('cntSearchInput');
-      if(inp){ inp.focus(); inp.select(); }
+      inp.focus();
+      if(typeof inp.select === 'function') inp.select();
     }
   }
 }, true);
@@ -6461,7 +6483,11 @@ function ordExport(){
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), 'ORDERS');
   XLSX.writeFile(wb, branchFname('ORDERS') + '.xlsx');
 }
-$('openOrdersBtn') && $('openOrdersBtn').addEventListener('click', ()=>{ switchScreen('screen-orders'); });
+$('openOrdersBtn') && $('openOrdersBtn').addEventListener('click', ()=>{
+  const nm = String(currentBranch && currentBranch.name || '').trim().toLowerCase();
+  if(nm !== 'cst' && nm !== 'qc') return;
+  switchScreen('screen-orders');
+});
 $('ordersBackBtn') && $('ordersBackBtn').addEventListener('click', ()=> switchScreen('screen-dashboard'));
 $('ordersExportBtn') && $('ordersExportBtn').addEventListener('click', ordExport);
 $('fileInputOrders') && $('fileInputOrders').addEventListener('change', (event)=>{ const file = event.target.files && event.target.files[0]; if(file) ordHandleFile(file); });
