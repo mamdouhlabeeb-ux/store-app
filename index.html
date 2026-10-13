@@ -571,7 +571,7 @@ service cloud.firestore {
         <button class="upload-btn" id="openTurnoverBtn">فتح Turnover rate</button>
         <div class="upload-status" id="uploadStatusTurnoverCard"></div>
       </div>
-      <div class="upload-card" id="uploadCardOrders">
+      <div class="upload-card" id="uploadCardOrders" style="display:none;">
         <div class="step-tag">11 - ORDERS</div>
         <h3>ORDERS</h3>
         <p>ارفع شيت الأوردرات — يربط رقم العميل بالأوردر والكود والسعر ويكشف المرتجع: مرتجع فقط / مباع ومرتجع / مرتجع وتم بيعه تاني برقم أوردر جديد</p>
@@ -1289,7 +1289,24 @@ function showToast(msg){
   toastTimer = setTimeout(()=> t.classList.remove('show'), 9000);
 }
 function hideLoading(){ $('loadingOverlay').classList.remove('show'); }
-function switchScreen(id){ document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active')); $(id).classList.add('active'); }
+function ordersAllowed(){
+  // كارت/شاشة ORDERS لحسابي CST (b2) و QC (b34) فقط
+  try{
+    if(!currentBranch) return false;
+    const nm = String(currentBranch.name || '').trim().toLowerCase();
+    const id = String(currentBranch.id || '').trim().toLowerCase();
+    return nm === 'cst' || nm === 'qc' || id === 'b2' || id === 'b34';
+  }catch(e){ return false; }
+}
+function applyOrdersVisibility(){
+  const c = document.getElementById('uploadCardOrders');
+  if(c) c.style.display = ordersAllowed() ? '' : 'none';
+}
+function switchScreen(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  $(id).classList.add('active');
+  if(id === 'screen-dashboard' || id === 'screen-login') applyOrdersVisibility();
+}
 function escapeHtml(str){ const d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
 function escapeAttr(str){ return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function formatDate(iso){ if(!iso) return ''; const d = new Date(iso); return d.toLocaleString('en-GB', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }); }
@@ -1773,11 +1790,7 @@ $('resetDataBtn').addEventListener('click', async ()=>{
 async function openDashboard(){
   showLoading('جاري تحميل بيانات الفرع...');
   $('branchPill').textContent = currentBranch.name;
-  { // كارت ORDERS يظهر لحساب CST و QC فقط
-    const nm = String(currentBranch.name || '').trim().toLowerCase();
-    const ordCard = $('uploadCardOrders');
-    if(ordCard) ordCard.style.display = (nm === 'cst' || nm === 'qc') ? '' : 'none';
-  }
+  applyOrdersVisibility();
   const data = await loadBranchData(currentBranch.id);
   hideLoading();
   switchScreen('screen-dashboard');
@@ -6484,8 +6497,7 @@ function ordExport(){
   XLSX.writeFile(wb, branchFname('ORDERS') + '.xlsx');
 }
 $('openOrdersBtn') && $('openOrdersBtn').addEventListener('click', ()=>{
-  const nm = String(currentBranch && currentBranch.name || '').trim().toLowerCase();
-  if(nm !== 'cst' && nm !== 'qc') return;
+  if(!ordersAllowed()) return;
   switchScreen('screen-orders');
 });
 $('ordersBackBtn') && $('ordersBackBtn').addEventListener('click', ()=> switchScreen('screen-dashboard'));
