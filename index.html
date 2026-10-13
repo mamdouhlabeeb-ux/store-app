@@ -6362,6 +6362,11 @@ function ordAnalyze(rows){
   }
   const byPhone = {};
   lines.forEach(l=>{ (byPhone[l.phone] = byPhone[l.phone] || []).push(l); });
+  const getDayStr = (ts)=>{
+    if(!ts || isNaN(ts)) return '';
+    const d = new Date(ts);
+    return d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
+  };
   const results = [];
   let phonesTotal = 0, phonesWithSalesOnly = 0;
   Object.keys(byPhone).forEach(phone=>{
@@ -6373,48 +6378,57 @@ function ordAnalyze(rows){
     const sales = ls.filter(l=>!l.isRet);
     const rets = ls.filter(l=>l.isRet);
     if(!rets.length){ phonesWithSalesOnly++; return; }
+    // ربط كل مرتجع بالبيعة الأصلية اللي قبله بنفس الكود (عشان نعرف الأوردر الأصلي)
     const used = new Set();
-    const origRefs = [];
+    const allOrigRefs = [];
     rets.forEach(r=>{
       const cands = sales.filter(s=> !used.has(s) && s.code === r.code && s.pos < r.pos);
-      if(!cands.length) return;
+      if(!cands.length){ r.origSale = null; return; }
       let pick = null;
       for(let k = cands.length - 1; k >= 0; k--){ if(Math.abs(cands[k].sub + r.sub) < 0.01){ pick = cands[k]; break; } }
       if(!pick) pick = cands[cands.length - 1];
       used.add(pick);
-      if(origRefs.indexOf(pick.ref) < 0) origRefs.push(pick.ref);
+      r.origSale = pick;
+      if(allOrigRefs.indexOf(pick.ref) < 0) allOrigRefs.push(pick.ref);
     });
-    const firstRetPos = rets[0].pos;
-    const getDayStr = (ts)=>{
-      if(!ts || isNaN(ts)) return '';
-      const d = new Date(ts);
-      return d.getFullYear() + '-' + (d.getMonth()+1) + '-' + d.getDate();
-    };
-    const retDayStr = getDayStr(rets[0].ts);
-    const retCodes = ordUniq(rets.map(l=>l.code).filter(x=> x));
-    const postSales = sales.filter(s=> s.pos > firstRetPos && !used.has(s) && origRefs.indexOf(s.ref) < 0 && getDayStr(s.ts) === retDayStr);
-    const postCodes = ordUniq(postSales.map(l=>l.code).filter(x=> x));
-    const resale = postSales.filter(s=> s.code && retCodes.indexOf(s.code) >= 0);
-    const rec = {
-      phone: phone,
-      retRefs: ordUniq(rets.map(l=>l.ref)),
-      origRefs: origRefs,
-      retCodes: retCodes,
-      retTotal: rets.reduce((s, l)=> s + Math.abs(l.sub), 0),
-      retDate: ordFmtDate(rets[0].dateRaw),
-      newRefs: [], newCodes: [], same: [], retNotNew: [], newNotRet: []
-    };
-    if(resale.length){
-      rec.kind = 'resold';
-      rec.newRefs = ordUniq(postSales.map(l=>l.ref));
-      rec.newCodes = postCodes;
-      rec.same = retCodes.filter(x=> postCodes.indexOf(x) >= 0);
-      rec.retNotNew = retCodes.filter(x=> postCodes.indexOf(x) < 0);
-      rec.newNotRet = postCodes.filter(x=> retCodes.indexOf(x) < 0);
-    } else {
-      rec.kind = 'returnOnly';
-    }
-    results.push(rec);
+    // تجميع المرتجعات حسب رقم أوردر المرتجع — كل أوردر مرتجع في سطر لوحده
+    const groups = {};
+    const groupKeys = [];
+    rets.forEach(r=>{
+      const key = r.ref || ('#' + r.idx);
+      if(!groups[key]){ groups[key] = []; groupKeys.push(key); }
+      groups[key].push(r);
+    });
+    groupKeys.forEach(key=>{
+      const grp = groups[key];
+      const retCodes = ordUniq(grp.map(l=>l.code).filter(x=> x));
+      const origRefs = ordUniq(grp.map(l=> l.origSale && l.origSale.ref).filter(x=> x));
+      const firstRetPos = grp.reduce((m, l)=> Math.min(m, l.pos), grp[0].pos);
+      const retDayStr = getDayStr(grp[0].ts);
+      const postSales = sales.filter(s=> s.pos > firstRetPos && !used.has(s) && allOrigRefs.indexOf(s.ref) < 0 && getDayStr(s.ts) === retDayStr);
+      const newRefs = ordUniq(postSales.filter(s=> s.code && retCodes.indexOf(s.code) >= 0).map(s=> s.ref));
+      const newCodes = ordUniq(postSales.filter(s=> newRefs.indexOf(s.ref) >= 0).map(l=> l.code).filter(x=> x));
+      const rec = {
+        phone: phone,
+        retRefs: ordUniq(grp.map(l=>l.ref)),
+        origRefs: origRefs,
+        retCodes: retCodes,
+        retTotal: grp.reduce((s, l)=> s + Math.abs(l.sub), 0),
+        retDate: ordFmtDate(grp[0].dateRaw),
+        newRefs: [], newCodes: [], same: [], retNotNew: [], newNotRet: []
+      };
+      if(newRefs.length){
+        rec.kind = 'resold';
+        rec.newRefs = newRefs;
+        rec.newCodes = newCodes;
+        rec.same = retCodes.filter(x=> newCodes.indexOf(x) >= 0);
+        rec.retNotNew = retCodes.filter(x=> newCodes.indexOf(x) < 0);
+        rec.newNotRet = newCodes.filter(x=> retCodes.indexOf(x) < 0);
+      } else {
+        rec.kind = 'returnOnly';
+      }
+      results.push(rec);
+    });
   });
   const stats = {
     lines: lines.length, noPhoneLines: noPhoneLines, phones: phonesTotal, salesOnly: phonesWithSalesOnly,
@@ -6431,12 +6445,7 @@ function ordKindLabel(r){
 }
 function ordCodesNote(r){
   if(r.kind !== 'resold') return '';
-  if(!r.retNotNew.length && !r.newNotRet.length) return 'نفس الأكواد اتباعت تاني';
-  const parts = [];
-  if(r.retNotNew.length) parts.push('أكواد مرتجعة ولم تُباع: ' + r.retNotNew.join(' ، '));
-  if(r.newNotRet.length) parts.push('أكواد جديدة في الفاتورة: ' + r.newNotRet.join(' ، '));
-  if(r.same.length) parts.push('أكواد اتباعت تاني كما هي: ' + r.same.join(' ، '));
-  return 'تم تغيير أكواد — ' + parts.join(' | ');
+  return 'الكود المرتجع: ' + r.retCodes.join(' ، ') + ' — الكود الجديد: ' + r.newCodes.join(' ، ');
 }
 let ordData = null, ordFilter = 'all';
 function ordRender(){
@@ -6476,7 +6485,7 @@ function ordHandleFile(file){
       ordFilter = 'all';
       $('ordersBody').style.display = 'block';
       const s = ordData.stats;
-      setStatus(statusEl, 'تم ✓ — ' + s.lines + ' سطر، ' + s.phones + ' عميل، ' + ordData.results.length + ' عميل عنده مرتجع' + (s.noPhoneLines ? ' (' + s.noPhoneLines + ' سطر بدون تليفون اتجاهلوا)' : ''), 'ok');
+      setStatus(statusEl, 'تم ✓ — ' + s.lines + ' سطر، ' + s.phones + ' عميل، ' + ordData.results.length + ' أوردر فيه مرتجع' + (s.noPhoneLines ? ' (' + s.noPhoneLines + ' سطر بدون تليفون اتجاهلوا)' : ''), 'ok');
       ordRender();
     }catch(error){
       console.error(error);
