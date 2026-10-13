@@ -6405,6 +6405,8 @@ function ordAnalyze(rows){
       const origRefs = ordUniq(grp.map(l=> l.origSale && l.origSale.ref).filter(x=> x));
       const firstRetPos = grp.reduce((m, l)=> Math.min(m, l.pos), grp[0].pos);
       const retDayStr = getDayStr(grp[0].ts);
+      // تبديل: نفس رقم الأوردر فيه كود جديد مختلف عن الكود المرتجع
+      const swapSales = sales.filter(s=> s.ref === key && s.code && retCodes.indexOf(s.code) < 0);
       const postSales = sales.filter(s=> s.pos > firstRetPos && !used.has(s) && allOrigRefs.indexOf(s.ref) < 0 && getDayStr(s.ts) === retDayStr);
       const newRefs = ordUniq(postSales.filter(s=> s.code && retCodes.indexOf(s.code) >= 0).map(s=> s.ref));
       const newCodes = ordUniq(postSales.filter(s=> newRefs.indexOf(s.ref) >= 0).map(l=> l.code).filter(x=> x));
@@ -6417,15 +6419,20 @@ function ordAnalyze(rows){
         retDate: ordFmtDate(grp[0].dateRaw),
         newRefs: [], newCodes: [], same: [], retNotNew: [], newNotRet: []
       };
-      if(newRefs.length){
+      if(swapSales.length){
+        rec.kind = 'swap';
+        rec.newCodes = ordUniq(swapSales.map(s=> s.code));
+      } else if(newRefs.length){
         rec.kind = 'resold';
         rec.newRefs = newRefs;
         rec.newCodes = newCodes;
-        rec.same = retCodes.filter(x=> newCodes.indexOf(x) >= 0);
-        rec.retNotNew = retCodes.filter(x=> newCodes.indexOf(x) < 0);
-        rec.newNotRet = newCodes.filter(x=> retCodes.indexOf(x) < 0);
       } else {
         rec.kind = 'returnOnly';
+      }
+      if(rec.kind !== 'returnOnly'){
+        rec.same = retCodes.filter(x=> rec.newCodes.indexOf(x) >= 0);
+        rec.retNotNew = retCodes.filter(x=> rec.newCodes.indexOf(x) < 0);
+        rec.newNotRet = rec.newCodes.filter(x=> retCodes.indexOf(x) < 0);
       }
       results.push(rec);
     });
@@ -6433,18 +6440,20 @@ function ordAnalyze(rows){
   const stats = {
     lines: lines.length, noPhoneLines: noPhoneLines, phones: phonesTotal, salesOnly: phonesWithSalesOnly,
     returnOnly: results.filter(x=>x.kind === 'returnOnly').length,
-    resold: results.filter(x=>x.kind === 'resold').length
+    resold: results.filter(x=>x.kind === 'resold').length,
+    swap: results.filter(x=>x.kind === 'swap').length
   };
-  const order = { resold:0, returnOnly:1 };
+  const order = { swap:0, resold:1, returnOnly:2 };
   results.sort((a, b)=> (order[a.kind] - order[b.kind]) || a.phone.localeCompare(b.phone));
   return { results: results, stats: stats };
 }
 function ordKindLabel(r){
   if(r.kind === 'returnOnly') return 'مرتجع فقط ولم يتم بيعه مرة أخرى';
+  if(r.kind === 'swap') return 'تبديل أكواد';
   return 'مرتجع وتم بيعه مرة أخرى برقم أوردر ' + r.newRefs.join(' ، ');
 }
 function ordCodesNote(r){
-  if(r.kind !== 'resold') return '';
+  if(r.kind === 'returnOnly') return '';
   return 'الكود المرتجع: ' + r.retCodes.join(' ، ') + ' — الكود الجديد: ' + r.newCodes.join(' ، ');
 }
 let ordData = null, ordFilter = 'all';
@@ -6456,10 +6465,11 @@ function ordRender(){
   $('ordersSummary').innerHTML =
     '<button type="button" class="ord-chip' + (ordFilter==='all'?' on':'') + '" data-f="all">الكل (' + ordData.results.length + ')</button>' +
     '<button type="button" class="ord-chip c1' + (ordFilter==='returnOnly'?' on':'') + '" data-f="returnOnly">مرتجع فقط (' + st.returnOnly + ')</button>' +
-    '<button type="button" class="ord-chip c2' + (ordFilter==='resold'?' on':'') + '" data-f="resold">مرتجع وتم بيعه تاني (' + st.resold + ')</button>';
+    '<button type="button" class="ord-chip c2' + (ordFilter==='resold'?' on':'') + '" data-f="resold">مرتجع وتم بيعه تاني (' + st.resold + ')</button>' +
+    '<button type="button" class="ord-chip c3' + (ordFilter==='swap'?' on':'') + '" data-f="swap">تبديل أكواد (' + st.swap + ')</button>';
   const list = ordData.results.filter(r=> (ordFilter==='all' || r.kind===ordFilter) && (!q || r.phone.indexOf(q.replace(/\D/g,'') || q) >= 0 || r.retRefs.concat(r.origRefs, r.newRefs).join(' ').toLowerCase().indexOf(q) >= 0 || r.retCodes.concat(r.newCodes).join(' ').toLowerCase().indexOf(q) >= 0));
   if(!list.length){ box.innerHTML = '<div class="turnover-empty">مفيش نتائج.</div>'; return; }
-  const cls = { returnOnly:'k1', resold:'k2' };
+  const cls = { returnOnly:'k1', resold:'k2', swap:'k3' };
   let h = '<div class="ord-wrap"><table class="ord-table"><thead><tr><th>التليفون</th><th>الحالة</th><th>أوردر المرتجع</th><th>أوردر البيع الأصلي</th><th>الأكواد المرتجعة</th><th>أوردر البيع الجديد</th><th>الأكواد</th></tr></thead><tbody>';
   list.forEach(r=>{
     h += '<tr class="' + cls[r.kind] + '"><td class="ltr">' + escapeHtml(r.phone) + '</td>' +
@@ -6468,7 +6478,7 @@ function ordRender(){
       '<td class="ltr">' + (r.origRefs.length ? escapeHtml(r.origRefs.join(' ، ')) : '<span class="sm">—</span>') + '</td>' +
       '<td class="ltr">' + escapeHtml(r.retCodes.join(' ، ')) + '</td>' +
       '<td class="ltr">' + (r.newRefs.length ? '<b>' + escapeHtml(r.newRefs.join(' ، ')) + '</b>' : '<span class="sm">—</span>') + '</td>' +
-      '<td>' + (r.kind==='resold' ? escapeHtml(ordCodesNote(r)) : '<span class="sm">—</span>') + '</td></tr>';
+      '<td>' + (r.kind!=='returnOnly' ? escapeHtml(ordCodesNote(r)) : '<span class="sm">—</span>') + '</td></tr>';
   });
   box.innerHTML = h + '</tbody></table></div>';
 }
