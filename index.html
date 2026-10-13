@@ -6402,14 +6402,17 @@ function ordAnalyze(rows){
     groupKeys.forEach(key=>{
       const grp = groups[key];
       const retCodes = ordUniq(grp.map(l=>l.code).filter(x=> x));
-      const origRefs = ordUniq(grp.map(l=> l.origSale && l.origSale.ref).filter(x=> x));
-      const firstRetPos = grp.reduce((m, l)=> Math.min(m, l.pos), grp[0].pos);
       const retDayStr = getDayStr(grp[0].ts);
       // تبديل: نفس رقم الأوردر فيه كود جديد مختلف عن الكود المرتجع
       const swapSales = sales.filter(s=> s.ref === key && s.code && retCodes.indexOf(s.code) < 0);
-      const postSales = sales.filter(s=> s.pos > firstRetPos && !used.has(s) && allOrigRefs.indexOf(s.ref) < 0 && getDayStr(s.ts) === retDayStr);
-      const newRefs = ordUniq(postSales.filter(s=> s.code && retCodes.indexOf(s.code) >= 0).map(s=> s.ref));
-      const newCodes = ordUniq(postSales.filter(s=> newRefs.indexOf(s.ref) >= 0).map(l=> l.code).filter(x=> x));
+      // بالتاريخ فقط (من غير توقيت): كل سطور البيع في نفس اليوم اللي فيها كود من أكواد المرتجع
+      const sameDaySales = sales.filter(s=> s.code && retCodes.indexOf(s.code) >= 0 && getDayStr(s.ts) === retDayStr);
+      // الأوردر الأصلي = الأوردر اللي رقمه نفس رقم أوردر المرتجع (من غير كلمة REFUND)، وإلا آخر بيع مطابق
+      const baseRef = key.replace(/(?:\s*refund\s*)+$/i, '').trim();
+      const baseRefs = ordUniq(sameDaySales.filter(s=> s.ref === baseRef).map(s=> s.ref));
+      const origRefs = baseRefs.length ? baseRefs : ordUniq(grp.map(l=> l.origSale && l.origSale.ref).filter(x=> x));
+      const newRefs = ordUniq(sameDaySales.filter(s=> origRefs.indexOf(s.ref) < 0).map(s=> s.ref));
+      const newCodes = ordUniq(sameDaySales.filter(s=> newRefs.indexOf(s.ref) >= 0).map(l=> l.code).filter(x=> x));
       const rec = {
         phone: phone,
         retRefs: ordUniq(grp.map(l=>l.ref)),
