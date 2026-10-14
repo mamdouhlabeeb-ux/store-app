@@ -1250,6 +1250,7 @@ service cloud.firestore {
     .ord-table tr.k2 td.st{background:#e6f4ea;color:#137333;}
     .ord-table tr.k3 td.st{background:#fef7e0;color:#b06000;}
     .ord-table .sm{font-size:11px;color:#8a9099;font-weight:600;margin-top:3px;}
+.ord-table .sm.amt{color:#0f172a;font-weight:800;font-variant-numeric:tabular-nums;}
     .ord-codes{font-family:'Consolas','SFMono-Regular',ui-monospace,monospace;font-size:12.5px;font-weight:700;letter-spacing:.3px;}
     .ord-table td.ord-ret{background:#fdf5f4;}
     .ord-table td.ord-new{background:#f3faf6;}
@@ -6352,6 +6353,7 @@ function ordAnalyze(rows){
   if(!f) throw new Error('مش لاقي أعمدة Phone / Order Ref / Barcode / Quantity في الهيدر');
   const c = f.col;
   const lines = [];
+  const orderTotals = {};
   let prevRef = '', prevPhone = '', prevDate = '';
   let noPhoneLines = 0;
   for(let i = f.row + 1; i < rows.length; i++){
@@ -6368,6 +6370,7 @@ function ordAnalyze(rows){
     if(cont){ if(!ref) ref = prevRef; ph = prevPhone; }
     if((dt === '' || dt == null) && ref && ref === prevRef) dt = prevDate;
     if(ref){ prevRef = ref; prevPhone = ph; prevDate = dt; }
+    if(ref) orderTotals[ref] = (orderTotals[ref] || 0) + sub;
     if(!ph){ noPhoneLines++; continue; }
     lines.push({
       idx: i, ref: ref, phone: ph, code: code, qty: qty, sub: sub,
@@ -6425,7 +6428,7 @@ function ordAnalyze(rows){
       const sameDaySales = sales.filter(s=> s.code && retCodes.indexOf(s.code) >= 0 && getDayStr(s.ts) === retDayStr);
       // الأوردر الأصلي = الأوردر اللي رقمه نفس رقم أوردر المرتجع (من غير كلمة REFUND)، وإلا آخر بيع مطابق
       const baseRef = key.replace(/(?:\s*refund\s*)+$/i, '').trim();
-      const baseRefs = ordUniq(sameDaySales.filter(s=> s.ref === baseRef).map(s=> s.ref));
+      const baseRefs = ordUniq(sales.filter(s=> s.ref === baseRef).map(s=> s.ref));
       const origRefs = baseRefs.length ? baseRefs : ordUniq(grp.map(l=> l.origSale && l.origSale.ref).filter(x=> x));
       const newRefs = ordUniq(sameDaySales.filter(s=> origRefs.indexOf(s.ref) < 0).map(s=> s.ref));
       const newCodes = ordUniq(sameDaySales.filter(s=> newRefs.indexOf(s.ref) >= 0).map(l=> l.code).filter(x=> x));
@@ -6464,7 +6467,7 @@ function ordAnalyze(rows){
   };
   const order = { swap:0, resold:1, returnOnly:2 };
   results.sort((a, b)=> (order[a.kind] - order[b.kind]) || a.phone.localeCompare(b.phone));
-  return { results: results, stats: stats };
+  return { results: results, stats: stats, orderTotals: orderTotals };
 }
 function ordKindLabel(r){
   if(r.kind === 'returnOnly') return 'مرتجع فقط ولم يتم بيعه مرة أخرى';
@@ -6475,11 +6478,29 @@ function ordCodesNote(r){
   if(r.kind === 'returnOnly') return '';
   return 'الكود المرتجع: ' + r.retCodes.join(' ، ') + ' — الكود الجديد: ' + r.newCodes.join(' ، ');
 }
+function ordMoney(v){
+  if(v == null || isNaN(v)) return '';
+  return Number(v).toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 });
+}
+function ordSum(refs, totals){
+  if(!refs || !refs.length) return '';
+  totals = totals || {};
+  let s = 0; refs.forEach(x=>{ s += (totals[x] || 0); });
+  return Math.round(s * 100) / 100;
+}
+function ordRefAmt(refs, totals, bold){
+  if(!refs.length) return '';
+  return refs.map(x=>{
+    const nm = bold ? '<b>' + escapeHtml(x) + '</b>' : escapeHtml(x);
+    return nm + '<div class="sm amt">' + ordMoney(totals[x]) + '</div>';
+  }).join('');
+}
 let ordData = null, ordFilter = 'all';
 function ordRender(){
   const box = $('ordersResults'); if(!box) return;
   if(!ordData){ box.innerHTML = ''; return; }
   const st = ordData.stats;
+  const tot = ordData.orderTotals || {};
   const q = ordNorm($('ordersSearchInput') ? $('ordersSearchInput').value : '');
   $('ordersSummary').innerHTML =
     '<button type="button" class="ord-chip' + (ordFilter==='all'?' on':'') + '" data-f="all">الكل (' + ordData.results.length + ')</button>' +
@@ -6497,9 +6518,9 @@ function ordRender(){
     h += '<tr class="' + cls[r.kind] + '">' +
       '<td class="ord-phone">' + escapeHtml(r.phone) + '</td>' +
       '<td class="st">' + escapeHtml(ordKindLabel(r)) + '</td>' +
-      '<td class="ltr">' + (r.origRefs.length ? escapeHtml(r.origRefs.join(' ، ')) : '<span class="sm">—</span>') + '</td>' +
-      '<td class="ltr">' + escapeHtml(r.retRefs.join(' ، ')) + '<div class="sm">' + escapeHtml(r.retDate) + '</div></td>' +
-      '<td class="ltr">' + (r.newRefs.length ? '<b>' + escapeHtml(r.newRefs.join(' ، ')) + '</b>' : '<span class="sm">—</span>') + '</td>' +
+      '<td class="ltr">' + (r.origRefs.length ? ordRefAmt(r.origRefs, tot, false) : '<span class="sm">الأوردر الأصلي غير متواجد بالشيت المرفوع</span>') + '</td>' +
+      '<td class="ltr">' + ordRefAmt(r.retRefs, tot, false) + '<div class="sm">' + escapeHtml(r.retDate) + '</div></td>' +
+      '<td class="ltr">' + (r.newRefs.length ? ordRefAmt(r.newRefs, tot, true) : '<span class="sm">—</span>') + '</td>' +
       '<td class="ltr ord-codes ord-ret">' + escapeHtml(r.retCodes.join(' ، ')) + '</td>' +
       '<td class="ltr ord-codes ord-new">' + (r.newCodes.length ? escapeHtml(r.newCodes.join(' ، ')) : '<span class="sm">—</span>') + '</td>' +
       '</tr>';
@@ -6531,9 +6552,9 @@ function ordHandleFile(file){
 }
 function ordExport(){
   if(!ordData || !ordData.results.length){ showToast('مفيش نتائج للتصدير.'); return; }
-  const data = [['التليفون','الحالة','أوردر البيع الأصلي','أوردر المرتجع','أوردر البيع الجديد','الأكواد المرتجعة','الأكواد الجديدة','تاريخ المرتجع','إجمالي المرتجع']];
+  const data = [['التليفون','الحالة','أوردر البيع الأصلي','إجمالي الأوردر الأصلي','أوردر المرتجع','إجمالي أوردر المرتجع','أوردر البيع الجديد','إجمالي الأوردر الجديد','الأكواد المرتجعة','الأكواد الجديدة','تاريخ المرتجع','إجمالي المرتجع']];
   ordData.results.forEach(r=>{
-    data.push([r.phone, ordKindLabel(r), r.origRefs.join(' , '), r.retRefs.join(' , '), r.newRefs.join(' , '), r.retCodes.join(' , '), r.newCodes.join(' , '), r.retDate, r.retTotal]);
+    data.push([r.phone, ordKindLabel(r), r.origRefs.length ? r.origRefs.join(' , ') : 'الأوردر الأصلي غير متواجد بالشيت المرفوع', ordSum(r.origRefs, ordData.orderTotals), r.retRefs.join(' , '), ordSum(r.retRefs, ordData.orderTotals), r.newRefs.join(' , '), ordSum(r.newRefs, ordData.orderTotals), r.retCodes.join(' , '), r.newCodes.join(' , '), r.retDate, r.retTotal]);
   });
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), 'ORDERS');
