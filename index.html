@@ -1232,20 +1232,36 @@ service cloud.firestore {
 
 <div class="screen" id="screen-orders" style="padding:16px 12px 40px;max-width:1180px;margin:0 auto;">
   <style>
-    #screen-orders .ord-wrap{background:#fff;border:1px solid var(--line);border-radius:10px;padding:6px;overflow-x:auto;}
-    .ord-table{border-collapse:collapse;width:100%;min-width:900px;}
-    .ord-table th{background:#fff7ed;color:#9a3412;font-size:13px;font-weight:900;padding:7px 6px;border:1px solid #fed7aa;text-align:center;white-space:nowrap;}
-    .ord-table td{padding:6px;border:1px solid #e2e8f0;text-align:center;font-size:13px;font-weight:700;vertical-align:middle;word-break:break-word;}
+    #screen-orders .ord-wrap{background:#fff;border:1px solid #cdd3db;border-radius:12px;overflow:auto;max-height:calc(100vh - 250px);box-shadow:0 8px 24px rgba(16,24,40,.06);}
+    .ord-table{border-collapse:separate;border-spacing:0;width:100%;min-width:1040px;font-variant-numeric:tabular-nums;}
+    .ord-table th,.ord-table td{padding:10px 10px;border-bottom:1px solid #bcc3cd;border-left:1px solid #bcc3cd;text-align:center;vertical-align:middle;background:#fff;word-break:break-word;}
+    .ord-table th:last-child,.ord-table td:last-child{border-left:none;}
+    .ord-table thead th{position:sticky;z-index:6;background:#eef1f4;color:#333a44;font-weight:800;white-space:nowrap;line-height:1;}
+    .ord-table .ord-letters th{top:0;height:24px;padding:3px 10px;background:#e5e8ed;color:#6b7280;font-size:10.5px;font-weight:700;letter-spacing:.6px;}
+    .ord-table .ord-names th{top:24px;height:42px;color:#1b2231;font-size:12.5px;border-bottom:2px solid #98a2b0;}
+    .ord-table td{font-size:13px;font-weight:600;color:#1b2231;}
     .ord-table td.ltr{direction:ltr;}
-    .ord-table td.st{font-weight:900;}
-    .ord-table .sm{font-size:11px;color:var(--muted);font-weight:700;}
-    .ord-table tr.k1 td.st{background:#fee2e2;color:#991b1b;}
-    .ord-table tr.k2 td.st{background:#dcfce7;color:#166534;}
-    .ord-table tr.k3 td.st{background:#fef9c3;color:#854d0e;}
-    .ord-chips{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0;}
-    .ord-chip{padding:7px 12px;border-radius:999px;border:1.5px solid #fdba74;background:#fff;color:#9a3412;font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer;}
-    .ord-chip.on{background:#ea580c;color:#fff;border-color:#ea580c;}
-    #ordersSearchInput{width:100%;max-width:420px;padding:8px 10px;border:1.5px solid var(--line);border-radius:7px;font-size:14px;font-weight:700;font-family:inherit;box-sizing:border-box;direction:ltr;text-align:left;}
+    .ord-table tbody td.ord-phone{position:sticky;right:0;z-index:4;direction:ltr;white-space:nowrap;font-weight:700;letter-spacing:.3px;box-shadow:-7px 0 9px -7px rgba(16,24,40,.30);}
+    .ord-table .ord-letters .ord-letterA{position:sticky;top:0;right:0;z-index:8;background:#e5e8ed;}
+    .ord-table .ord-names .ord-phonehead{position:sticky;top:24px;right:0;z-index:8;border-bottom:2px solid #98a2b0;}
+    .ord-table tbody tr:hover td{background:#eef4fd;}
+    .ord-table td.st{font-weight:800;}
+    .ord-table tr.k1 td.st{background:#fdecea;color:#c5221f;}
+    .ord-table tr.k2 td.st{background:#e6f4ea;color:#137333;}
+    .ord-table tr.k3 td.st{background:#fef7e0;color:#b06000;}
+    .ord-table .sm{font-size:11px;color:#8a9099;font-weight:600;margin-top:3px;}
+    .ord-codes{font-family:'Consolas','SFMono-Regular',ui-monospace,monospace;font-size:12.5px;font-weight:700;letter-spacing:.3px;}
+    .ord-table td.ord-ret{background:#fdf5f4;}
+    .ord-table td.ord-new{background:#f3faf6;}
+    .ord-table .ord-ret{border-left:2px solid #98a2b0;border-right:2px solid #98a2b0;}
+    .ord-table tbody tr:hover td.ord-ret{background:#fbe8e6;}
+    .ord-table tbody tr:hover td.ord-new{background:#e5f5ec;}
+    .ord-chips{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;}
+    .ord-chip{padding:7px 14px;border-radius:9px;border:1px solid #cdd3db;background:#fff;color:#333a44;font-family:inherit;font-size:12.5px;font-weight:800;cursor:pointer;transition:background .12s,border-color .12s,box-shadow .12s;}
+    .ord-chip:hover{background:#eef4fd;border-color:#aab2bd;}
+    .ord-chip.on{background:#1a73e8;color:#fff;border-color:#1a73e8;box-shadow:0 2px 6px rgba(26,115,232,.28);}
+    #ordersSearchInput{width:100%;max-width:460px;padding:9px 12px;border:1px solid #cdd3db;border-radius:9px;font-size:14px;font-weight:700;font-family:inherit;box-sizing:border-box;direction:ltr;text-align:left;background:#fff;}
+    #ordersSearchInput:focus{outline:none;border-color:#1a73e8;box-shadow:0 0 0 3px rgba(26,115,232,.15);}
     #ordersUploadCard input[type=file]{display:none;}
   </style>
   <div class="panel-head">
@@ -6473,15 +6489,20 @@ function ordRender(){
   const list = ordData.results.filter(r=> (ordFilter==='all' || r.kind===ordFilter) && (!q || r.phone.indexOf(q.replace(/\D/g,'') || q) >= 0 || r.retRefs.concat(r.origRefs, r.newRefs).join(' ').toLowerCase().indexOf(q) >= 0 || r.retCodes.concat(r.newCodes).join(' ').toLowerCase().indexOf(q) >= 0));
   if(!list.length){ box.innerHTML = '<div class="turnover-empty">مفيش نتائج.</div>'; return; }
   const cls = { returnOnly:'k1', resold:'k2', swap:'k3' };
-  let h = '<div class="ord-wrap"><table class="ord-table"><thead><tr><th>التليفون</th><th>الحالة</th><th>أوردر المرتجع</th><th>أوردر البيع الأصلي</th><th>الأكواد المرتجعة</th><th>أوردر البيع الجديد</th><th>الأكواد</th></tr></thead><tbody>';
+  let h = '<div class="ord-wrap"><table class="ord-table"><thead>' +
+    '<tr class="ord-letters"><th class="ord-letterA">A</th><th>B</th><th>C</th><th>D</th><th>E</th><th>F</th><th>G</th></tr>' +
+    '<tr class="ord-names"><th class="ord-phonehead">التليفون</th><th>الحالة</th><th>أوردر البيع الأصلي</th><th>أوردر المرتجع</th><th>أوردر البيع الجديد</th><th class="ord-ret">الأكواد المرتجعة</th><th class="ord-new">الأكواد الجديدة</th></tr>' +
+    '</thead><tbody>';
   list.forEach(r=>{
-    h += '<tr class="' + cls[r.kind] + '"><td class="ltr">' + escapeHtml(r.phone) + '</td>' +
+    h += '<tr class="' + cls[r.kind] + '">' +
+      '<td class="ord-phone">' + escapeHtml(r.phone) + '</td>' +
       '<td class="st">' + escapeHtml(ordKindLabel(r)) + '</td>' +
-      '<td class="ltr">' + escapeHtml(r.retRefs.join(' ، ')) + '<div class="sm">' + escapeHtml(r.retDate) + '</div></td>' +
       '<td class="ltr">' + (r.origRefs.length ? escapeHtml(r.origRefs.join(' ، ')) : '<span class="sm">—</span>') + '</td>' +
-      '<td class="ltr">' + escapeHtml(r.retCodes.join(' ، ')) + '</td>' +
+      '<td class="ltr">' + escapeHtml(r.retRefs.join(' ، ')) + '<div class="sm">' + escapeHtml(r.retDate) + '</div></td>' +
       '<td class="ltr">' + (r.newRefs.length ? '<b>' + escapeHtml(r.newRefs.join(' ، ')) + '</b>' : '<span class="sm">—</span>') + '</td>' +
-      '<td>' + (r.kind!=='returnOnly' ? escapeHtml(ordCodesNote(r)) : '<span class="sm">—</span>') + '</td></tr>';
+      '<td class="ltr ord-codes ord-ret">' + escapeHtml(r.retCodes.join(' ، ')) + '</td>' +
+      '<td class="ltr ord-codes ord-new">' + (r.newCodes.length ? escapeHtml(r.newCodes.join(' ، ')) : '<span class="sm">—</span>') + '</td>' +
+      '</tr>';
   });
   box.innerHTML = h + '</tbody></table></div>';
 }
@@ -6510,9 +6531,9 @@ function ordHandleFile(file){
 }
 function ordExport(){
   if(!ordData || !ordData.results.length){ showToast('مفيش نتائج للتصدير.'); return; }
-  const data = [['التليفون','الحالة','رقم أوردر المرتجع','تاريخ المرتجع','رقم أوردر البيع الأصلي','الأكواد المرتجعة','إجمالي المرتجع','رقم أوردر البيع الجديد','الأكواد الجديدة','ملاحظة الأكواد']];
+  const data = [['التليفون','الحالة','أوردر البيع الأصلي','أوردر المرتجع','أوردر البيع الجديد','الأكواد المرتجعة','الأكواد الجديدة','تاريخ المرتجع','إجمالي المرتجع']];
   ordData.results.forEach(r=>{
-    data.push([r.phone, ordKindLabel(r), r.retRefs.join(' , '), r.retDate, r.origRefs.join(' , '), r.retCodes.join(' , '), r.retTotal, r.newRefs.join(' , '), r.newCodes.join(' , '), ordCodesNote(r)]);
+    data.push([r.phone, ordKindLabel(r), r.origRefs.join(' , '), r.retRefs.join(' , '), r.newRefs.join(' , '), r.retCodes.join(' , '), r.newCodes.join(' , '), r.retDate, r.retTotal]);
   });
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), 'ORDERS');
