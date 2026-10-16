@@ -1424,7 +1424,7 @@ service cloud.firestore {
     <input id="tgtNewStart" placeholder="يبدأ من يوم (اختياري)" inputmode="numeric" autocomplete="off" style="width:150px;text-align:center;">
     <button class="btn-primary" id="tgtAddBtn" type="button">إضافة وإعادة التوزيع</button>
   </div>
-  <p class="tgt-note">المفروض لحد النهارده = التارجت اليومي × (اليوم من الشهر − أيام الإجازة)، بحد أقصى أيام عمل البائع. ولو البائع ليه "يبدأ من يوم" (معيّن جديد) فبيتحسب له التارجت اليومي × (اليوم من الشهر − يوم البداية)، يعني بدأ 13 والنهارده 16 = 3 أيام. النسبة الشهرية = المحقق ÷ التارجت الشهري، والنسبة اليومية = المحقق ÷ المفروض لحد النهارده. UPT = الكمية ÷ عدد الفواتير، ATV = إجمالي Tax Incl. ÷ عدد الفواتير.</p>
+  <p class="tgt-note">المفروض لحد النهارده = التارجت اليومي × (اليوم من الشهر − أيام الإجازة)، بحد أقصى أيام عمل البائع. صف "الفرع" تحت بيحسب على إجمالي الشيت كله (مش مجموع السيلز): التارجت اليومي = تارجت الفرع ÷ أيام الشهر الفعلية (28/29/30/31)، والمفروض = اليومي × اليوم من الشهر. ولو البائع ليه "يبدأ من يوم" (معيّن جديد) فبيتحسب له التارجت اليومي × (اليوم من الشهر − يوم البداية)، يعني بدأ 13 والنهارده 16 = 3 أيام. النسبة الشهرية = المحقق ÷ التارجت الشهري، والنسبة اليومية = المحقق ÷ المفروض لحد النهارده. UPT = الكمية ÷ عدد الفواتير، ATV = إجمالي Tax Incl. ÷ عدد الفواتير.</p>
 
   <div class="tgt-dash-title">📊 داش بورد الفرع</div>
   <div id="tgtDash"></div>
@@ -6845,6 +6845,8 @@ function tgtAggregate(rows, det, map){
   }
   const agg = {};
   const recSets = {};
+  const allRc = new Set();
+  const tot = { amt:0, qty:0, rc:0 };
   let hasDates = false;
   items.forEach(it=>{
     let day = 0;
@@ -6852,6 +6854,8 @@ function tgtAggregate(rows, det, map){
       if(maxYM && (it.dt.y * 100 + it.dt.m) !== maxYM) return;   // نحسب آخر شهر في الشيت بس
       day = it.dt.d; hasDates = true;
     }
+    tot.amt += it.amt; tot.qty += it.qty;
+    if(it.rc && !allRc.has(it.rc)){ allRc.add(it.rc); tot.rc += 1; }
     const nm = it.name || '(بدون اسم)';
     const k = tgtNorm(nm);
     const a = agg[k] || (agg[k] = { name:nm, d:{} });
@@ -6864,7 +6868,8 @@ function tgtAggregate(rows, det, map){
     }
   });
   Object.keys(agg).forEach(k=> Object.keys(agg[k].d).forEach(d=>{ const v = agg[k].d[d]; v[0] = Math.round(v[0]*100)/100; v[1] = Math.round(v[1]*100)/100; }));
-  return { agg, hasDates, ym: maxYM };
+  tot.amt = Math.round(tot.amt * 100) / 100; tot.qty = Math.round(tot.qty * 100) / 100;
+  return { agg, hasDates, ym: maxYM, tot };
 }
 function tgtReadNames(rows2){
   if(!rows2 || !rows2.length) return [];
@@ -6893,7 +6898,7 @@ function tgtBuildFromRaw(userMap){
   const res = tgtAggregate(tgtRaw.rows1, det, map);
   tgt.agg = res.agg;
   tgt.meta = {
-    fileName: tgtRaw.fileName, uploadedAt: new Date().toISOString(), hasDates: res.hasDates, ym: res.ym,
+    fileName: tgtRaw.fileName, uploadedAt: new Date().toISOString(), hasDates: res.hasDates, ym: res.ym, tot: res.tot,
     cols: { seller: det.headers[map.seller] || '', amt: det.headers[map.amt] || '', qty: det.headers[map.qty] || '', rc: det.headers[map.rc] || '', date: det.headers[map.date] || '' }
   };
   tgtRaw.det = det; tgtRaw.map = map;
@@ -6970,8 +6975,18 @@ function tgtCompute(){
   });
   let totAmt = 0, totQty = 0, totRc = 0;
   Object.keys(tgt.agg).forEach(k=> Object.keys(tgt.agg[k].d).forEach(d=>{ const v = tgt.agg[k].d[d]; totAmt += v[0]; totQty += v[1]; totRc += v[2]; }));
-  const totExp = locked + active.reduce((t,r)=> t + r.exp, 0);
-  return { rows, active, leavers, locked, pool, daily, elapsed, today, wd, off, unmatched, totAmt, totQty, totRc, totExp };
+  if(tgt.meta && tgt.meta.tot && isFinite(tgt.meta.tot.rc)) totRc = tgt.meta.tot.rc;   // فواتير فريدة على مستوى الفرع كله
+  const ym = tgt.meta && tgt.meta.ym;
+  const now = new Date();
+  const by = ym ? Math.floor(ym / 100) : now.getFullYear(), bm = ym ? (ym % 100) : (now.getMonth() + 1);
+  const dim = new Date(by, bm, 0).getDate();
+  const B = tgt.branchTarget || 0;
+  const bDaily = B / dim, bToday = Math.min(today, dim), bExp = bDaily * bToday;
+  const br = { dim, today: bToday, daily: bDaily, target: B, exp: bExp, amt: totAmt, qty: totQty, rc: totRc,
+    mp: B > 0 ? totAmt / B * 100 : null, dp: bExp > 0 ? totAmt / bExp * 100 : null,
+    upt: totRc > 0 ? totQty / totRc : null, atv: totRc > 0 ? totAmt / totRc : null };
+  const totExp = bExp;
+  return { rows, active, leavers, locked, pool, daily, elapsed, today, wd, off, unmatched, totAmt, totQty, totRc, totExp, br };
 }
 function tgtPill(p, kind){
   if(p == null) return '<span class="tgt-pill n">—</span>';
@@ -7056,12 +7071,11 @@ function tgtRender(){
       '<td><button class="tgt-del" type="button" data-act="del" title="حذف">✕</button></td></tr>';
   });
   if(!T.length) html += '<tr><td colspan="16" style="padding:22px;color:#6C7480;">مفيش بيانات لسه.</td></tr>';
-  const sumT = T.reduce((t,r)=> t + r.target, 0), sumA = T.reduce((t,r)=> t + r.amt, 0), sumE = T.reduce((t,r)=> t + r.exp, 0);
-  const sumQ = T.reduce((t,r)=> t + r.qty, 0), sumR = T.reduce((t,r)=> t + r.rc, 0);
-  if(T.length){
-    html += '</tbody><tfoot><tr><td></td><td class="nm">الإجمالي</td><td></td><td></td><td class="num">' + tgtF(sumT) + '</td><td></td><td class="num">' + tgtF(sumE) + '</td><td class="num">' + tgtF(sumA) + '</td>' +
-      '<td>' + tgtPill(sumT > 0 ? sumA / sumT * 100 : null, 'm') + '</td><td>' + tgtPill(sumE > 0 ? sumA / sumE * 100 : null, 'd') + '</td>' +
-      '<td class="num">' + tgtF(sumR > 0 ? sumQ / sumR : null, 2) + '</td><td class="num">' + tgtF(sumR > 0 ? sumA / sumR : null, 0) + '</td><td class="num">' + tgtF(sumR) + '</td><td class="num">' + tgtF(sumQ) + '</td><td></td><td></td></tr></tfoot></table>';
+  const BR = C.br;
+  if(T.length || C.totAmt){
+    html += '</tbody><tfoot><tr><td></td><td class="nm">🏢 الفرع (إجمالي الشيت)</td><td></td><td class="num">' + BR.dim + ' يوم</td><td class="num">' + tgtF(BR.target) + '</td><td class="num">' + tgtF(BR.daily) + '</td><td class="num">' + tgtF(BR.exp) + '</td><td class="num">' + tgtF(BR.amt) + '</td>' +
+      '<td>' + tgtPill(BR.mp, 'm') + '</td><td>' + tgtPill(BR.dp, 'd') + '</td>' +
+      '<td class="num">' + tgtF(BR.upt, 2) + '</td><td class="num">' + tgtF(BR.atv, 0) + '</td><td class="num">' + tgtF(BR.rc) + '</td><td class="num">' + tgtF(BR.qty) + '</td><td></td><td></td></tr></tfoot></table>';
   } else html += '</tbody></table>';
   $('tgtTable').innerHTML = html;
 
@@ -7214,7 +7228,7 @@ function tgtExport(){
   const C = tgtCompute();
   const data = [['اسم البائع','الحالة','أيام العمل','يبدأ من يوم','التارجت الشهري','التارجت اليومي','المفروض لحد اليوم ' + C.today,'المحقق','النسبة الشهرية %','النسبة اليومية %','UPT','ATV','الفواتير','القطع']];
   C.rows.forEach(r=> data.push([r.s.name, r.left ? 'ترك العمل (حتى يوم ' + (r.s.leftDay || C.today) + ')' : 'مستمر', r.left ? '' : r.days, r.start || '', Math.round(r.target), r.left ? '' : Math.round(r.daily), r.left ? '' : Math.round(r.exp), Math.round(r.amt), r.mp == null ? '' : Math.round(r.mp * 10) / 10, r.dp == null ? '' : Math.round(r.dp * 10) / 10, r.upt == null ? '' : Math.round(r.upt * 100) / 100, r.atv == null ? '' : Math.round(r.atv), r.rc, r.qty]));
-  data.push([]); data.push(['تارجت الفرع', tgt.branchTarget, '', '', '', '', '', 'إجمالي المحقق', Math.round(C.totAmt)]);
+  const BR = C.br; data.push([]); data.push(['الفرع (إجمالي الشيت)', '', BR.dim, '', Math.round(BR.target), Math.round(BR.daily), Math.round(BR.exp), Math.round(BR.amt), BR.mp == null ? '' : Math.round(BR.mp * 10) / 10, BR.dp == null ? '' : Math.round(BR.dp * 10) / 10, BR.upt == null ? '' : Math.round(BR.upt * 100) / 100, BR.atv == null ? '' : Math.round(BR.atv), BR.rc, BR.qty]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), 'Target');
   XLSX.writeFile(wb, branchFname('Target') + '.xlsx');
