@@ -1340,7 +1340,7 @@ service cloud.firestore {
     .tgt-pill.g{background:#dcfce7;color:#166534;} .tgt-pill.y{background:#fef9c3;color:#854d0e;} .tgt-pill.r{background:#fee2e2;color:#991b1b;} .tgt-pill.n{background:#f1f5f9;color:#64748b;}
     .tgt-add{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:12px 0 4px;padding:12px;background:#f0fdf4;border:1px dashed #6ee7b7;border-radius:12px;}
     .tgt-add input{padding:8px 10px;border:1px solid #cdd3db;border-radius:9px;font-family:inherit;font-size:16px;font-weight:700;}
-    #tgtNewName{flex:1 1 200px;min-width:150px;} #tgtNewDays{width:90px;text-align:center;}
+    #tgtNewName{flex:1 1 200px;min-width:150px;} #tgtNewDays,#tgtNewStart{width:90px;text-align:center;} .tgt-add input{font-size:16px;}
     .tgt-note{font-size:12px;color:#6C7480;line-height:1.7;margin:6px 2px;}
     .tgt-warn{background:#fffbeb;border:1px solid #fcd34d;color:#92400e;border-radius:10px;padding:8px 12px;font-size:12.5px;font-weight:700;margin:8px 0;line-height:1.9;}
     .tgt-warn button{border:1px solid #f59e0b;background:#fff;border-radius:999px;padding:2px 10px;margin:0 3px;font-family:inherit;font-weight:800;font-size:12px;cursor:pointer;}
@@ -1421,9 +1421,10 @@ service cloud.firestore {
     <b style="font-size:13px;">➕ إضافة بائع جديد</b>
     <input id="tgtNewName" placeholder="اسم البائع" autocomplete="off">
     <input id="tgtNewDays" placeholder="أيام العمل" inputmode="numeric" autocomplete="off">
+    <input id="tgtNewStart" placeholder="يبدأ من يوم (اختياري)" inputmode="numeric" autocomplete="off" style="width:150px;text-align:center;">
     <button class="btn-primary" id="tgtAddBtn" type="button">إضافة وإعادة التوزيع</button>
   </div>
-  <p class="tgt-note">المفروض لحد النهارده = التارجت اليومي × (اليوم من الشهر − أيام الإجازة)، بحد أقصى أيام عمل البائع. النسبة الشهرية = المحقق ÷ التارجت الشهري، والنسبة اليومية = المحقق ÷ المفروض لحد النهارده. UPT = الكمية ÷ عدد الفواتير، ATV = إجمالي Tax Incl. ÷ عدد الفواتير.</p>
+  <p class="tgt-note">المفروض لحد النهارده = التارجت اليومي × (اليوم من الشهر − أيام الإجازة)، بحد أقصى أيام عمل البائع. ولو البائع ليه "يبدأ من يوم" (معيّن جديد) فبيتحسب له التارجت اليومي × (اليوم من الشهر − يوم البداية)، يعني بدأ 13 والنهارده 16 = 3 أيام. النسبة الشهرية = المحقق ÷ التارجت الشهري، والنسبة اليومية = المحقق ÷ المفروض لحد النهارده. UPT = الكمية ÷ عدد الفواتير، ATV = إجمالي Tax Incl. ÷ عدد الفواتير.</p>
 
   <div class="tgt-dash-title">📊 داش بورد الفرع</div>
   <div id="tgtDash"></div>
@@ -6746,7 +6747,8 @@ function tgtNormalizeState(p){
   if(p.todayDay > 0) o.todayDay = Math.min(31, Math.round(p.todayDay));
   o.sellers = (Array.isArray(p.sellers) ? p.sellers : []).filter(s=> s && s.name && !tgtIsHeaderName(s.name)).map(s=>({
     id: s.id || tgtId(), name: String(s.name), days: s.days > 0 ? Math.round(s.days) : null,
-    status: s.status === 'left' ? 'left' : 'active', leftDay: s.leftDay > 0 ? Math.round(s.leftDay) : 0
+    status: s.status === 'left' ? 'left' : 'active', leftDay: s.leftDay > 0 ? Math.round(s.leftDay) : 0,
+    startDay: s.startDay > 0 ? Math.round(s.startDay) : 0
   }));
   o.agg = (p.agg && typeof p.agg === 'object') ? p.agg : {};
   o.meta = p.meta || null;
@@ -6947,7 +6949,7 @@ function tgtCompute(){
     const maxDay = left ? (s.leftDay || today) : 99;
     let amt = 0, qty = 0, rc = 0;
     if(a) Object.keys(a.d).forEach(k=>{ const d = +k; if(d === 0 || d <= maxDay){ const v = a.d[k]; amt += v[0]; qty += v[1]; rc += v[2]; } });
-    return { s, left, days: s.days > 0 ? s.days : wd, amt, qty, rc };
+    return { s, left, days: s.days > 0 ? s.days : wd, start: s.startDay > 0 ? s.startDay : 0, amt, qty, rc };
   });
   const leavers = rows.filter(r=> r.left), active = rows.filter(r=> !r.left);
   const locked = leavers.reduce((t,r)=> t + r.amt, 0);
@@ -6956,7 +6958,7 @@ function tgtCompute(){
   const daily = sumDays > 0 ? pool / sumDays : 0;
   rows.forEach(r=>{
     if(r.left){ r.target = r.amt; r.daily = 0; r.exp = r.amt; }
-    else { r.daily = daily; r.target = daily * r.days; r.exp = daily * Math.min(r.days, elapsed); }
+    else { r.daily = daily; r.target = daily * r.days; const el = r.start > 0 ? Math.max(0, Math.min(r.days, today - r.start)) : Math.min(r.days, elapsed); r.el = el; r.exp = daily * el; }
     r.mp = (!r.left && r.target > 0) ? r.amt / r.target * 100 : null;
     r.dp = (!r.left && r.exp > 0) ? r.amt / r.exp * 100 : null;
     r.upt = r.rc > 0 ? r.qty / r.rc : null;
@@ -7035,7 +7037,7 @@ function tgtRender(){
 
   // الجدول
   const T = C.rows;
-  let html = '<table class="tgt-table"><thead><tr><th>#</th><th>اسم البائع</th><th>الحالة</th><th>أيام العمل</th><th>التارجت الشهري</th><th>التارجت اليومي</th><th>المفروض لحد ' + C.today + '</th><th>المحقق</th><th>النسبة الشهرية %</th><th>النسبة اليومية %</th><th>UPT</th><th>ATV</th><th>الفواتير</th><th>القطع</th><th></th></tr></thead><tbody>';
+  let html = '<table class="tgt-table"><thead><tr><th>#</th><th>اسم البائع</th><th>الحالة</th><th>أيام العمل</th><th>التارجت الشهري</th><th>التارجت اليومي</th><th>المفروض لحد ' + C.today + '</th><th>المحقق</th><th>النسبة الشهرية %</th><th>النسبة اليومية %</th><th>UPT</th><th>ATV</th><th>الفواتير</th><th>القطع</th><th>يبدأ من يوم</th><th></th></tr></thead><tbody>';
   T.forEach((r,i)=>{
     html += '<tr class="' + (r.left ? 'left' : '') + '" data-id="' + r.s.id + '">' +
       '<td>' + (i+1) + '</td>' +
@@ -7050,15 +7052,16 @@ function tgtRender(){
       '<td>' + tgtPill(r.mp, 'm') + '</td><td>' + tgtPill(r.dp, 'd') + '</td>' +
       '<td class="num">' + tgtF(r.upt, 2) + '</td><td class="num">' + tgtF(r.atv, 0) + '</td>' +
       '<td class="num">' + tgtF(r.rc) + '</td><td class="num">' + tgtF(r.qty) + '</td>' +
+      '<td>' + (r.left ? '—' : '<input class="tgt-in" data-role="startDay" inputmode="numeric" placeholder="—" value="' + (r.start || '') + '">') + '</td>' +
       '<td><button class="tgt-del" type="button" data-act="del" title="حذف">✕</button></td></tr>';
   });
-  if(!T.length) html += '<tr><td colspan="15" style="padding:22px;color:#6C7480;">مفيش بيانات لسه.</td></tr>';
+  if(!T.length) html += '<tr><td colspan="16" style="padding:22px;color:#6C7480;">مفيش بيانات لسه.</td></tr>';
   const sumT = T.reduce((t,r)=> t + r.target, 0), sumA = T.reduce((t,r)=> t + r.amt, 0), sumE = T.reduce((t,r)=> t + r.exp, 0);
   const sumQ = T.reduce((t,r)=> t + r.qty, 0), sumR = T.reduce((t,r)=> t + r.rc, 0);
   if(T.length){
     html += '</tbody><tfoot><tr><td></td><td class="nm">الإجمالي</td><td></td><td></td><td class="num">' + tgtF(sumT) + '</td><td></td><td class="num">' + tgtF(sumE) + '</td><td class="num">' + tgtF(sumA) + '</td>' +
       '<td>' + tgtPill(sumT > 0 ? sumA / sumT * 100 : null, 'm') + '</td><td>' + tgtPill(sumE > 0 ? sumA / sumE * 100 : null, 'd') + '</td>' +
-      '<td class="num">' + tgtF(sumR > 0 ? sumQ / sumR : null, 2) + '</td><td class="num">' + tgtF(sumR > 0 ? sumA / sumR : null, 0) + '</td><td class="num">' + tgtF(sumR) + '</td><td class="num">' + tgtF(sumQ) + '</td><td></td></tr></tfoot></table>';
+      '<td class="num">' + tgtF(sumR > 0 ? sumQ / sumR : null, 2) + '</td><td class="num">' + tgtF(sumR > 0 ? sumA / sumR : null, 0) + '</td><td class="num">' + tgtF(sumR) + '</td><td class="num">' + tgtF(sumQ) + '</td><td></td><td></td></tr></tfoot></table>';
   } else html += '</tbody></table>';
   $('tgtTable').innerHTML = html;
 
@@ -7209,18 +7212,18 @@ async function tgtOpen(){
 }
 function tgtExport(){
   const C = tgtCompute();
-  const data = [['اسم البائع','الحالة','أيام العمل','التارجت الشهري','التارجت اليومي','المفروض لحد اليوم ' + C.today,'المحقق','النسبة الشهرية %','النسبة اليومية %','UPT','ATV','الفواتير','القطع']];
-  C.rows.forEach(r=> data.push([r.s.name, r.left ? 'ترك العمل (حتى يوم ' + (r.s.leftDay || C.today) + ')' : 'مستمر', r.left ? '' : r.days, Math.round(r.target), r.left ? '' : Math.round(r.daily), r.left ? '' : Math.round(r.exp), Math.round(r.amt), r.mp == null ? '' : Math.round(r.mp * 10) / 10, r.dp == null ? '' : Math.round(r.dp * 10) / 10, r.upt == null ? '' : Math.round(r.upt * 100) / 100, r.atv == null ? '' : Math.round(r.atv), r.rc, r.qty]));
-  data.push([]); data.push(['تارجت الفرع', tgt.branchTarget, '', '', '', '', 'إجمالي المحقق', Math.round(C.totAmt)]);
+  const data = [['اسم البائع','الحالة','أيام العمل','يبدأ من يوم','التارجت الشهري','التارجت اليومي','المفروض لحد اليوم ' + C.today,'المحقق','النسبة الشهرية %','النسبة اليومية %','UPT','ATV','الفواتير','القطع']];
+  C.rows.forEach(r=> data.push([r.s.name, r.left ? 'ترك العمل (حتى يوم ' + (r.s.leftDay || C.today) + ')' : 'مستمر', r.left ? '' : r.days, r.start || '', Math.round(r.target), r.left ? '' : Math.round(r.daily), r.left ? '' : Math.round(r.exp), Math.round(r.amt), r.mp == null ? '' : Math.round(r.mp * 10) / 10, r.dp == null ? '' : Math.round(r.dp * 10) / 10, r.upt == null ? '' : Math.round(r.upt * 100) / 100, r.atv == null ? '' : Math.round(r.atv), r.rc, r.qty]));
+  data.push([]); data.push(['تارجت الفرع', tgt.branchTarget, '', '', '', '', '', 'إجمالي المحقق', Math.round(C.totAmt)]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), 'Target');
   XLSX.writeFile(wb, branchFname('Target') + '.xlsx');
 }
-function tgtAddSeller(name, days){
+function tgtAddSeller(name, days, startDay){
   name = String(name || '').trim();
   if(!name){ showToast('اكتب اسم البائع.'); return false; }
   if(tgt.sellers.some(s=> tgtNorm(s.name) === tgtNorm(name))){ showToast('البائع ده موجود بالفعل.'); return false; }
-  tgt.sellers.push({ id:tgtId(), name, days: days > 0 ? Math.round(days) : null, status:'active', leftDay:0 });
+  tgt.sellers.push({ id:tgtId(), name, days: days > 0 ? Math.round(days) : null, status:'active', leftDay:0, startDay: startDay >= 1 && startDay <= 31 ? Math.round(startDay) : 0 });
   tgtPersist(); tgtRender();
   return true;
 }
@@ -7243,9 +7246,9 @@ $('tgtBranchTarget') && $('tgtBranchTarget').addEventListener('keydown', e=>{ if
 $('tgtWorkDays') && $('tgtWorkDays').addEventListener('change', ()=>{ const n = Math.round(tgtNum($('tgtWorkDays').value)); tgt.workDays = n > 0 ? n : 26; tgtPersist(); tgtRender(); });
 $('tgtOffDays') && $('tgtOffDays').addEventListener('change', ()=>{ const n = Math.round(tgtNum($('tgtOffDays').value)); tgt.offDays = n >= 0 ? n : 2; tgtPersist(); tgtRender(); });
 $('tgtTodayDay') && $('tgtTodayDay').addEventListener('change', ()=>{ const n = Math.round(tgtNum($('tgtTodayDay').value)); tgt.todayDay = (n >= 1 && n <= 31) ? n : 0; tgtPersist(); tgtRender(); });
-['tgtWorkDays','tgtOffDays','tgtTodayDay','tgtNewName','tgtNewDays'].forEach(id=> $(id) && $(id).addEventListener('keydown', e=>{ if(e.key === 'Enter'){ e.preventDefault(); if(id === 'tgtNewName' || id === 'tgtNewDays'){ $('tgtAddBtn').click(); } else e.currentTarget.blur(); } }));
+['tgtWorkDays','tgtOffDays','tgtTodayDay','tgtNewName','tgtNewDays','tgtNewStart'].forEach(id=> $(id) && $(id).addEventListener('keydown', e=>{ if(e.key === 'Enter'){ e.preventDefault(); if(id === 'tgtNewName' || id === 'tgtNewDays' || id === 'tgtNewStart'){ $('tgtAddBtn').click(); } else e.currentTarget.blur(); } }));
 $('tgtAddBtn') && $('tgtAddBtn').addEventListener('click', ()=>{
-  if(tgtAddSeller($('tgtNewName').value, tgtNum($('tgtNewDays').value))){ $('tgtNewName').value = ''; $('tgtNewDays').value = ''; $('tgtNewName').focus(); }
+  if(tgtAddSeller($('tgtNewName').value, tgtNum($('tgtNewDays').value), tgtNum($('tgtNewStart').value))){ $('tgtNewName').value = ''; $('tgtNewDays').value = ''; $('tgtNewStart').value = ''; $('tgtNewName').focus(); }
 });
 $('tgtTable') && $('tgtTable').addEventListener('click', (event)=>{
   const btn = event.target.closest('button[data-act]');
@@ -7263,6 +7266,7 @@ $('tgtTable') && $('tgtTable').addEventListener('change', (event)=>{
   const tr = inp.closest('tr'); const s = tr && tgt.sellers.find(x=> x.id === tr.getAttribute('data-id')); if(!s) return;
   const n = Math.round(tgtNum(inp.value));
   if(inp.getAttribute('data-role') === 'days') s.days = n > 0 ? n : null;
+  if(inp.getAttribute('data-role') === 'startDay') s.startDay = (n >= 1 && n <= 31) ? n : 0;
   if(inp.getAttribute('data-role') === 'leftDay') s.leftDay = (n >= 1 && n <= 31) ? n : (s.leftDay || tgtToday());
   tgtPersist(); tgtRender();
 });
