@@ -578,6 +578,13 @@ service cloud.firestore {
         <button class="upload-btn" id="openOrdersBtn">فتح ORDERS</button>
         <div class="upload-status" id="uploadStatusOrdersCard"></div>
       </div>
+      <div class="upload-card" id="uploadCardTarget">
+        <div class="step-tag">12 - Target</div>
+        <h3>Target</h3>
+        <p>ارفع شيت المبيعات (التاب الأول: المبيعات، التاني: أسماء السيلز) — النظام يوزّع تارجت الفرع على البائعين حسب أيام العمل ويحسب المحقق والنسب وUPT وATV، وداش بورد رسومات تحت</p>
+        <button class="upload-btn" id="openTargetBtn">فتح Target</button>
+        <div class="upload-status" id="uploadStatusTargetCard"></div>
+      </div>
     </div>
 
     <div class="panel" id="drivePanel" style="padding:16px;margin-bottom:22px;">
@@ -1289,6 +1296,139 @@ service cloud.firestore {
   </div>
 </div>
 
+<div class="screen" id="screen-target" style="padding:16px 12px 40px;max-width:1280px;margin:0 auto;">
+  <style>
+    #uploadCardTarget{ position:relative; overflow:hidden; border-radius:18px; transition:transform .18s ease, box-shadow .18s ease; background:linear-gradient(180deg,#ecfdf5,#fff 58%); border:1px solid #a7f3d0; box-shadow:0 10px 26px rgba(5,150,105,.13); }
+    #uploadCardTarget::before{ content:""; position:absolute; top:0; inset-inline:0; height:6px; background:linear-gradient(90deg,#059669,#0ea5e9); }
+    #uploadCardTarget .step-tag{ background:#059669; color:#fff; }
+    #uploadCardTarget h3{ color:#064e3b; }
+    #uploadCardTarget .upload-btn{ background:#059669; color:#fff; }
+    #uploadCardTarget:hover{ transform:translateY(-4px); }
+    #tgtUploadCard input[type=file]{display:none;}
+    #tgtTopBox{position:sticky;top:0;z-index:30;background:linear-gradient(135deg,#064e3b,#0f766e 55%,#0369a1);color:#fff;border-radius:16px;padding:14px 16px;margin:10px 0 14px;box-shadow:0 10px 26px rgba(6,78,59,.28);}
+    .tgt-top{display:flex;gap:16px;flex-wrap:wrap;align-items:stretch;}
+    .tgt-target-field{flex:0 0 auto;min-width:230px;}
+    .tgt-target-field label{display:block;font-size:12px;font-weight:800;opacity:.85;margin-bottom:4px;}
+    #tgtBranchTarget{width:100%;box-sizing:border-box;font-size:26px;font-weight:900;font-family:inherit;direction:ltr;text-align:center;padding:6px 10px;border-radius:12px;border:2px solid rgba(255,255,255,.55);background:rgba(255,255,255,.14);color:#fff;font-variant-numeric:tabular-nums;}
+    #tgtBranchTarget:focus{outline:none;background:rgba(255,255,255,.24);border-color:#fff;}
+    .tgt-kpis{display:flex;gap:10px;flex-wrap:wrap;flex:1 1 360px;}
+    .tgt-kpi{flex:1 1 120px;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.22);border-radius:12px;padding:8px 10px;text-align:center;}
+    .tgt-kpi span{display:block;font-size:11px;font-weight:700;opacity:.82;}
+    .tgt-kpi b{display:block;font-size:17px;font-weight:900;margin-top:2px;font-variant-numeric:tabular-nums;direction:ltr;}
+    .tgt-settings{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-top:10px;font-size:12.5px;font-weight:700;}
+    .tgt-settings label{display:flex;align-items:center;gap:6px;}
+    .tgt-settings input{width:64px;padding:5px 6px;border-radius:8px;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.16);color:#fff;font-family:inherit;font-weight:800;font-size:14px;text-align:center;}
+    .tgt-settings input::placeholder{color:rgba(255,255,255,.7);}
+    .tgt-wrap{background:#fff;border:1px solid #cdd3db;border-radius:12px;overflow:auto;box-shadow:0 8px 24px rgba(16,24,40,.06);}
+    .tgt-table{border-collapse:separate;border-spacing:0;width:100%;min-width:1100px;font-variant-numeric:tabular-nums;}
+    .tgt-table th,.tgt-table td{padding:9px 8px;border-bottom:1px solid #d5dae1;border-left:1px solid #e3e7ec;text-align:center;vertical-align:middle;background:#fff;font-size:13px;font-weight:600;color:#1b2231;}
+    .tgt-table thead th{position:sticky;top:0;z-index:5;background:#e8f5f0;color:#064e3b;font-weight:800;white-space:nowrap;border-bottom:2px solid #6ee7b7;}
+    .tgt-table td.nm{font-weight:800;text-align:right;white-space:nowrap;}
+    .tgt-table tr.left td{background:#fff5f5;color:#7f1d1d;}
+    .tgt-table tfoot td{background:#ecfdf5;font-weight:900;border-top:2px solid #6ee7b7;}
+    .tgt-table .num{direction:ltr;}
+    .tgt-in{width:62px;padding:5px 4px;border:1px solid #cdd3db;border-radius:8px;font-family:inherit;font-size:16px;font-weight:800;text-align:center;box-sizing:border-box;}
+    .tgt-in:focus{outline:none;border-color:#059669;box-shadow:0 0 0 3px rgba(5,150,105,.15);}
+    .tgt-seg{display:inline-flex;border:1px solid #cdd3db;border-radius:999px;overflow:hidden;}
+    .tgt-seg button{border:0;background:#fff;padding:5px 11px;font-family:inherit;font-size:12px;font-weight:800;color:#6b7280;cursor:pointer;}
+    .tgt-seg button.on{background:#059669;color:#fff;}
+    .tgt-seg button.on.off{background:#dc2626;}
+    .tgt-leftday{font-size:11px;margin-top:4px;color:#7f1d1d;font-weight:700;}
+    .tgt-leftday input{width:44px;padding:2px;border:1px solid #fca5a5;border-radius:6px;text-align:center;font-family:inherit;font-weight:800;font-size:14px;}
+    .tgt-del{border:0;background:#fee2e2;color:#b91c1c;border-radius:8px;width:28px;height:28px;cursor:pointer;font-weight:900;}
+    .tgt-pill{display:inline-block;min-width:52px;padding:3px 9px;border-radius:999px;font-weight:900;font-size:12.5px;}
+    .tgt-pill.g{background:#dcfce7;color:#166534;} .tgt-pill.y{background:#fef9c3;color:#854d0e;} .tgt-pill.r{background:#fee2e2;color:#991b1b;} .tgt-pill.n{background:#f1f5f9;color:#64748b;}
+    .tgt-add{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:12px 0 4px;padding:12px;background:#f0fdf4;border:1px dashed #6ee7b7;border-radius:12px;}
+    .tgt-add input{padding:8px 10px;border:1px solid #cdd3db;border-radius:9px;font-family:inherit;font-size:16px;font-weight:700;}
+    #tgtNewName{flex:1 1 200px;min-width:150px;} #tgtNewDays{width:90px;text-align:center;}
+    .tgt-note{font-size:12px;color:#6C7480;line-height:1.7;margin:6px 2px;}
+    .tgt-warn{background:#fffbeb;border:1px solid #fcd34d;color:#92400e;border-radius:10px;padding:8px 12px;font-size:12.5px;font-weight:700;margin:8px 0;line-height:1.9;}
+    .tgt-warn button{border:1px solid #f59e0b;background:#fff;border-radius:999px;padding:2px 10px;margin:0 3px;font-family:inherit;font-weight:800;font-size:12px;cursor:pointer;}
+    #tgtMapBox{margin:8px 0;background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:8px 12px;font-size:12.5px;}
+    #tgtMapBox summary{cursor:pointer;font-weight:800;color:#334155;}
+    #tgtMapBox .row{display:flex;gap:10px;flex-wrap:wrap;margin-top:8px;align-items:center;}
+    #tgtMapBox select{padding:5px 6px;border:1px solid #cbd5e1;border-radius:8px;font-family:inherit;font-size:13px;max-width:200px;}
+    .tgt-dash-title{font-size:18px;font-weight:900;color:#064e3b;margin:22px 2px 10px;display:flex;align-items:center;gap:8px;}
+    .tgt-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(310px,1fr));gap:14px;}
+    .tgt-card{background:#fff;border:1px solid #d9dee5;border-radius:16px;padding:14px;box-shadow:0 8px 22px rgba(16,24,40,.06);overflow:hidden;}
+    .tgt-card h4{margin:0 0 8px;font-size:14px;font-weight:900;color:#0f172a;}
+    .tgt-card.wide{grid-column:1/-1;}
+    .tgt-bar-row{display:grid;grid-template-columns:110px 1fr 120px;gap:8px;align-items:center;margin:7px 0;font-size:12.5px;font-weight:700;}
+    .tgt-bar-row .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .tgt-bar-row .val{direction:ltr;text-align:left;font-variant-numeric:tabular-nums;color:#334155;font-size:12px;}
+    .tgt-track{position:relative;height:18px;background:#eef2f6;border-radius:9px;direction:ltr;}
+    .tgt-fill{position:absolute;left:0;top:0;bottom:0;border-radius:9px;background:linear-gradient(90deg,#10b981,#0ea5e9);}
+    .tgt-fill.r{background:linear-gradient(90deg,#f97316,#ef4444);} .tgt-fill.y{background:linear-gradient(90deg,#fbbf24,#f59e0b);}
+    .tgt-tick{position:absolute;top:-3px;bottom:-3px;width:3px;border-radius:2px;background:#0f172a;}
+    .tgt-tick.ex{background:#7c3aed;width:2px;top:-6px;bottom:-6px;}
+    .tgt-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;font-weight:700;color:#475569;margin-top:8px;}
+    .tgt-legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-inline-end:5px;vertical-align:-1px;}
+    .tgt-podium{display:flex;align-items:flex-end;justify-content:center;gap:10px;height:220px;direction:ltr;padding-top:8px;}
+    .tgt-pod{flex:1 1 0;max-width:130px;text-align:center;font-weight:800;font-size:12.5px;}
+    .tgt-pod .blk{border-radius:12px 12px 0 0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:8px;color:#fff;font-weight:900;font-size:22px;}
+    .tgt-pod .amt{font-size:11.5px;font-weight:800;direction:ltr;color:#334155;}
+    .tgt-pod .nmx{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .tgt-svg{width:100%;height:auto;display:block;}
+    .tgt-svg text{font-family:inherit;}
+    .tgt-dn-leg{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:12px;font-weight:700;margin-top:6px;}
+    .tgt-dn-leg span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .tgt-dn-leg i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-inline-end:5px;}
+    @media (max-width:640px){
+      .tgt-bar-row{grid-template-columns:80px 1fr 96px;}
+      #tgtBranchTarget{font-size:22px;}
+    }
+  </style>
+  <div class="panel-head">
+    <h2 style="font-family:'Cairo',sans-serif;">Target</h2>
+    <div style="display:flex;gap:10px;align-items:center;">
+      <button class="export-btn" id="tgtExportBtn" type="button">تنزيل الاكسيل</button>
+      <button class="export-btn" id="tgtClearBtn" type="button" style="background:#dc2626;color:#fff;border-color:#dc2626;">🗑 مسح البيانات</button>
+      <button class="link-btn" id="tgtBackBtn" type="button">رجوع</button>
+    </div>
+  </div>
+  <p class="tgt-note">
+    ارفع شيت المبيعات: التاب الأول فيه (Order Lines/Tax Incl. ، Order Lines/Quantity ، Receipt Number ، عمود اسم البائع، وعمود التاريخ لو موجود)، والتاب التاني فيه أسماء السيلز في الفرع. التارجت بيتوزع على البائعين المستمرين بنسبة أيام عمل كل واحد، ولما بائع يترك العمل بيتثبّت له اللي حققه لحد يوم خروجه ويتخصم من تارجت الفرع والباقي يتوزع على الباقيين.
+  </p>
+  <div class="upload-card" id="tgtUploadCard" style="margin-bottom:8px;">
+    <div class="step-tag">شيت المبيعات + أسماء السيلز</div>
+    <h3>اختيار ملف</h3>
+    <label class="upload-btn" for="fileInputTarget">اختيار ملف</label>
+    <input type="file" id="fileInputTarget" accept=".xlsx,.xls,.csv">
+    <div class="upload-status" id="uploadStatusTarget"></div>
+  </div>
+  <details id="tgtMapBox" style="display:none;"></details>
+
+  <div id="tgtTopBox">
+    <div class="tgt-top">
+      <div class="tgt-target-field">
+        <label for="tgtBranchTarget">🎯 تارجت الفرع الشهري</label>
+        <input id="tgtBranchTarget" inputmode="decimal" autocomplete="off">
+      </div>
+      <div class="tgt-kpis" id="tgtKpis"></div>
+    </div>
+    <div class="tgt-settings">
+      <label>أيام العمل <input id="tgtWorkDays" inputmode="numeric" autocomplete="off"></label>
+      <label>أيام الإجازة المحسوبة <input id="tgtOffDays" inputmode="numeric" autocomplete="off"></label>
+      <label>اليوم من الشهر <input id="tgtTodayDay" inputmode="numeric" autocomplete="off"></label>
+      <span style="opacity:.8;font-weight:600;">(اليوم بيتحسب تلقائي من تاريخ النهارده، اتركه فاضي للتلقائي)</span>
+    </div>
+  </div>
+
+  <div id="tgtWarn"></div>
+  <div class="tgt-wrap"><div id="tgtTable"></div></div>
+
+  <div class="tgt-add">
+    <b style="font-size:13px;">➕ إضافة بائع جديد</b>
+    <input id="tgtNewName" placeholder="اسم البائع" autocomplete="off">
+    <input id="tgtNewDays" placeholder="أيام العمل" inputmode="numeric" autocomplete="off">
+    <button class="btn-primary" id="tgtAddBtn" type="button">إضافة وإعادة التوزيع</button>
+  </div>
+  <p class="tgt-note">المفروض لحد النهارده = التارجت اليومي × (اليوم من الشهر − أيام الإجازة)، بحد أقصى أيام عمل البائع. النسبة الشهرية = المحقق ÷ التارجت الشهري، والنسبة اليومية = المحقق ÷ المفروض لحد النهارده. UPT = الكمية ÷ عدد الفواتير، ATV = إجمالي Tax Incl. ÷ عدد الفواتير.</p>
+
+  <div class="tgt-dash-title">📊 داش بورد الفرع</div>
+  <div id="tgtDash"></div>
+</div>
+
 <script>
 var qrcode=function(){function i(t,r){function a(t,r){g=function(t){for(var r=new Array(t),e=0;e<t;e+=1){r[e]=new Array(t);for(var n=0;n<t;n+=1)r[e][n]=null}return r}(l=4*u+17),e(0,0),e(l-7,0),e(0,l-7),i(),o(),v(t,r),7<=u&&h(t),null==n&&(n=w(u,f,c)),d(n,r)}var u=t,f=y[r],g=null,l=0,n=null,c=[],s={},e=function(t,r){for(var e=-1;e<=7;e+=1)if(!(t+e<=-1||l<=t+e))for(var n=-1;n<=7;n+=1)r+n<=-1||l<=r+n||(g[t+e][r+n]=0<=e&&e<=6&&(0==n||6==n)||0<=n&&n<=6&&(0==e||6==e)||2<=e&&e<=4&&2<=n&&n<=4)},o=function(){for(var t=8;t<l-8;t+=1)null==g[t][6]&&(g[t][6]=t%2==0);for(var r=8;r<l-8;r+=1)null==g[6][r]&&(g[6][r]=r%2==0)},i=function(){for(var t=B.getPatternPosition(u),r=0;r<t.length;r+=1)for(var e=0;e<t.length;e+=1){var n=t[r],o=t[e];if(null==g[n][o])for(var i=-2;i<=2;i+=1)for(var a=-2;a<=2;a+=1)g[n+i][o+a]=-2==i||2==i||-2==a||2==a||0==i&&0==a}},h=function(t){for(var r=B.getBCHTypeNumber(u),e=0;e<18;e+=1){var n=!t&&1==(r>>e&1);g[Math.floor(e/3)][e%3+l-8-3]=n}for(e=0;e<18;e+=1){n=!t&&1==(r>>e&1);g[e%3+l-8-3][Math.floor(e/3)]=n}},v=function(t,r){for(var e=f<<3|r,n=B.getBCHTypeInfo(e),o=0;o<15;o+=1){var i=!t&&1==(n>>o&1);o<6?g[o][8]=i:o<8?g[o+1][8]=i:g[l-15+o][8]=i}for(o=0;o<15;o+=1){i=!t&&1==(n>>o&1);o<8?g[8][l-o-1]=i:o<9?g[8][15-o-1+1]=i:g[8][15-o-1]=i}g[l-8][8]=!t},d=function(t,r){for(var e=-1,n=l-1,o=7,i=0,a=B.getMaskFunction(r),u=l-1;0<u;u-=2)for(6==u&&(u-=1);;){for(var f=0;f<2;f+=1)if(null==g[n][u-f]){var c=!1;i<t.length&&(c=1==(t[i]>>>o&1)),a(n,u-f)&&(c=!c),g[n][u-f]=c,-1==(o-=1)&&(i+=1,o=7)}if((n+=e)<0||l<=n){n-=e,e=-e;break}}},w=function(t,r,e){for(var n=b.getRSBlocks(t,r),o=M(),i=0;i<e.length;i+=1){var a=e[i];o.put(a.getMode(),4),o.put(a.getLength(),B.getLengthInBits(a.getMode(),t)),a.write(o)}var u=0;for(i=0;i<n.length;i+=1)u+=n[i].dataCount;if(o.getLengthInBits()>8*u)throw"code length overflow. ("+o.getLengthInBits()+">"+8*u+")";for(o.getLengthInBits()+4<=8*u&&o.put(0,4);o.getLengthInBits()%8!=0;)o.putBit(!1);for(;!(o.getLengthInBits()>=8*u||(o.put(236,8),o.getLengthInBits()>=8*u));)o.put(17,8);return function(t,r){for(var e=0,n=0,o=0,i=new Array(r.length),a=new Array(r.length),u=0;u<r.length;u+=1){var f=r[u].dataCount,c=r[u].totalCount-f;n=Math.max(n,f),o=Math.max(o,c),i[u]=new Array(f);for(var g=0;g<i[u].length;g+=1)i[u][g]=255&t.getBuffer()[g+e];e+=f;var l=B.getErrorCorrectPolynomial(c),h=C(i[u],l.getLength()-1).mod(l);a[u]=new Array(l.getLength()-1);for(g=0;g<a[u].length;g+=1){var s=g+h.getLength()-a[u].length;a[u][g]=0<=s?h.getAt(s):0}}var v=0;for(g=0;g<r.length;g+=1)v+=r[g].totalCount;var d=new Array(v),w=0;for(g=0;g<n;g+=1)for(u=0;u<r.length;u+=1)g<i[u].length&&(d[w]=i[u][g],w+=1);for(g=0;g<o;g+=1)for(u=0;u<r.length;u+=1)g<a[u].length&&(d[w]=a[u][g],w+=1);return d}(o,n)};s.addData=function(t,r){var e=null;switch(r=r||"Byte"){case"Numeric":e=x(t);break;case"Alphanumeric":e=m(t);break;case"Byte":e=L(t);break;case"Kanji":e=D(t);break;default:throw"mode:"+r}c.push(e),n=null},s.isDark=function(t,r){if(t<0||l<=t||r<0||l<=r)throw t+","+r;return g[t][r]},s.getModuleCount=function(){return l},s.make=function(){if(u<1){for(var t=1;t<40;t++){for(var r=b.getRSBlocks(t,f),e=M(),n=0;n<c.length;n++){var o=c[n];e.put(o.getMode(),4),e.put(o.getLength(),B.getLengthInBits(o.getMode(),t)),o.write(e)}var i=0;for(n=0;n<r.length;n++)i+=r[n].dataCount;if(e.getLengthInBits()<=8*i)break}u=t}a(!1,function(){for(var t=0,r=0,e=0;e<8;e+=1){a(!0,e);var n=B.getLostPoint(s);(0==e||n<t)&&(t=n,r=e)}return r}())},s.createTableTag=function(t,r){t=t||2;var e="";e+='<table style="',e+=" border-width: 0px; border-style: none;",e+=" border-collapse: collapse;",e+=" padding: 0px; margin: "+(r=void 0===r?4*t:r)+"px;",e+='">',e+="<tbody>";for(var n=0;n<s.getModuleCount();n+=1){e+="<tr>";for(var o=0;o<s.getModuleCount();o+=1)e+='<td style="',e+=" border-width: 0px; border-style: none;",e+=" border-collapse: collapse;",e+=" padding: 0px; margin: 0px;",e+=" width: "+t+"px;",e+=" height: "+t+"px;",e+=" background-color: ",e+=s.isDark(n,o)?"#000000":"#ffffff",e+=";",e+='"/>';e+="</tr>"}return e+="</tbody>",e+="</table>"},s.createSvgTag=function(t,r,e,n){var o={};"object"==typeof t&&(t=(o=t).cellSize,r=o.margin,e=o.alt,n=o.title),t=t||2,r=void 0===r?4*t:r,(e="string"==typeof e?{text:e}:e||{}).text=e.text||null,e.id=e.text?e.id||"qrcode-description":null,(n="string"==typeof n?{text:n}:n||{}).text=n.text||null,n.id=n.text?n.id||"qrcode-title":null;var i,a,u,f,c=s.getModuleCount()*t+2*r,g="";for(f="l"+t+",0 0,"+t+" -"+t+",0 0,-"+t+"z ",g+='<svg version="1.1" xmlns="http://www.w3.org/2000/svg"',g+=o.scalable?"":' width="'+c+'px" height="'+c+'px"',g+=' viewBox="0 0 '+c+" "+c+'" ',g+=' preserveAspectRatio="xMinYMin meet"',g+=n.text||e.text?' role="img" aria-labelledby="'+p([n.id,e.id].join(" ").trim())+'"':"",g+=">",g+=n.text?'<title id="'+p(n.id)+'">'+p(n.text)+"</title>":"",g+=e.text?'<description id="'+p(e.id)+'">'+p(e.text)+"</description>":"",g+='<rect width="100%" height="100%" fill="white" cx="0" cy="0"/>',g+='<path d="',a=0;a<s.getModuleCount();a+=1)for(u=a*t+r,i=0;i<s.getModuleCount();i+=1)s.isDark(a,i)&&(g+="M"+(i*t+r)+","+u+f);return g+='" stroke="transparent" fill="black"/>',g+="</svg>"},s.createDataURL=function(o,t){o=o||2,t=void 0===t?4*o:t;var r=s.getModuleCount()*o+2*t,i=t,a=r-t;return I(r,r,function(t,r){if(i<=t&&t<a&&i<=r&&r<a){var e=Math.floor((t-i)/o),n=Math.floor((r-i)/o);return s.isDark(n,e)?0:1}return 1})},s.createImgTag=function(t,r,e){t=t||2,r=void 0===r?4*t:r;var n=s.getModuleCount()*t+2*r,o="";return o+="<img",o+=' src="',o+=s.createDataURL(t,r),o+='"',o+=' width="',o+=n,o+='"',o+=' height="',o+=n,o+='"',e&&(o+=' alt="',o+=p(e),o+='"'),o+="/>"};var p=function(t){for(var r="",e=0;e<t.length;e+=1){var n=t.charAt(e);switch(n){case"<":r+="&lt;";break;case">":r+="&gt;";break;case"&":r+="&amp;";break;case'"':r+="&quot;";break;default:r+=n}}return r};return s.createASCII=function(t,r){if((t=t||1)<2)return function(t){t=void 0===t?2:t;var r,e,n,o,i,a=1*s.getModuleCount()+2*t,u=t,f=a-t,c={"██":"█","█ ":"▀"," █":"▄","  ":" "},g={"██":"▀","█ ":"▀"," █":" ","  ":" "},l="";for(r=0;r<a;r+=2){for(n=Math.floor((r-u)/1),o=Math.floor((r+1-u)/1),e=0;e<a;e+=1)i="█",u<=e&&e<f&&u<=r&&r<f&&s.isDark(n,Math.floor((e-u)/1))&&(i=" "),u<=e&&e<f&&u<=r+1&&r+1<f&&s.isDark(o,Math.floor((e-u)/1))?i+=" ":i+="█",l+=t<1&&f<=r+1?g[i]:c[i];l+="\n"}return a%2&&0<t?l.substring(0,l.length-a-1)+Array(1+a).join("▀"):l.substring(0,l.length-1)}(r);t-=1,r=void 0===r?2*t:r;var e,n,o,i,a=s.getModuleCount()*t+2*r,u=r,f=a-r,c=Array(t+1).join("██"),g=Array(t+1).join("  "),l="",h="";for(e=0;e<a;e+=1){for(o=Math.floor((e-u)/t),h="",n=0;n<a;n+=1)i=1,u<=n&&n<f&&u<=e&&e<f&&s.isDark(o,Math.floor((n-u)/t))&&(i=0),h+=i?c:g;for(o=0;o<t;o+=1)l+=h+"\n"}return l.substring(0,l.length-1)},s.renderTo2dContext=function(t,r){r=r||2;for(var e=s.getModuleCount(),n=0;n<e;n++)for(var o=0;o<e;o++)t.fillStyle=s.isDark(n,o)?"black":"white",t.fillRect(n*r,o*r,r,r)},s}i.stringToBytes=(i.stringToBytesFuncs={default:function(t){for(var r=[],e=0;e<t.length;e+=1){var n=t.charCodeAt(e);r.push(255&n)}return r}}).default,i.createStringToBytes=function(u,f){var i=function(){function t(){var t=r.read();if(-1==t)throw"eof";return t}for(var r=S(u),e=0,n={};;){var o=r.read();if(-1==o)break;var i=t(),a=t()<<8|t();n[String.fromCharCode(o<<8|i)]=a,e+=1}if(e!=f)throw e+" != "+f;return n}(),a="?".charCodeAt(0);return function(t){for(var r=[],e=0;e<t.length;e+=1){var n=t.charCodeAt(e);if(n<128)r.push(n);else{var o=i[t.charAt(e)];"number"==typeof o?(255&o)==o?r.push(o):(r.push(o>>>8),r.push(255&o)):r.push(a)}}return r}};var r,t,a=1,u=2,o=4,f=8,y={L:1,M:0,Q:3,H:2},e=0,n=1,c=2,g=3,l=4,h=5,s=6,v=7,B=(r=[[],[6,18],[6,22],[6,26],[6,30],[6,34],[6,22,38],[6,24,42],[6,26,46],[6,28,50],[6,30,54],[6,32,58],[6,34,62],[6,26,46,66],[6,26,48,70],[6,26,50,74],[6,30,54,78],[6,30,56,82],[6,30,58,86],[6,34,62,90],[6,28,50,72,94],[6,26,50,74,98],[6,30,54,78,102],[6,28,54,80,106],[6,32,58,84,110],[6,30,58,86,114],[6,34,62,90,118],[6,26,50,74,98,122],[6,30,54,78,102,126],[6,26,52,78,104,130],[6,30,56,82,108,134],[6,34,60,86,112,138],[6,30,58,86,114,142],[6,34,62,90,118,146],[6,30,54,78,102,126,150],[6,24,50,76,102,128,154],[6,28,54,80,106,132,158],[6,32,58,84,110,136,162],[6,26,54,82,110,138,166],[6,30,58,86,114,142,170]],(t={}).getBCHTypeInfo=function(t){for(var r=t<<10;0<=d(r)-d(1335);)r^=1335<<d(r)-d(1335);return 21522^(t<<10|r)},t.getBCHTypeNumber=function(t){for(var r=t<<12;0<=d(r)-d(7973);)r^=7973<<d(r)-d(7973);return t<<12|r},t.getPatternPosition=function(t){return r[t-1]},t.getMaskFunction=function(t){switch(t){case e:return function(t,r){return(t+r)%2==0};case n:return function(t,r){return t%2==0};case c:return function(t,r){return r%3==0};case g:return function(t,r){return(t+r)%3==0};case l:return function(t,r){return(Math.floor(t/2)+Math.floor(r/3))%2==0};case h:return function(t,r){return t*r%2+t*r%3==0};case s:return function(t,r){return(t*r%2+t*r%3)%2==0};case v:return function(t,r){return(t*r%3+(t+r)%2)%2==0};default:throw"bad maskPattern:"+t}},t.getErrorCorrectPolynomial=function(t){for(var r=C([1],0),e=0;e<t;e+=1)r=r.multiply(C([1,w.gexp(e)],0));return r},t.getLengthInBits=function(t,r){if(1<=r&&r<10)switch(t){case a:return 10;case u:return 9;case o:case f:return 8;default:throw"mode:"+t}else if(r<27)switch(t){case a:return 12;case u:return 11;case o:return 16;case f:return 10;default:throw"mode:"+t}else{if(!(r<41))throw"type:"+r;switch(t){case a:return 14;case u:return 13;case o:return 16;case f:return 12;default:throw"mode:"+t}}},t.getLostPoint=function(t){for(var r=t.getModuleCount(),e=0,n=0;n<r;n+=1)for(var o=0;o<r;o+=1){for(var i=0,a=t.isDark(n,o),u=-1;u<=1;u+=1)if(!(n+u<0||r<=n+u))for(var f=-1;f<=1;f+=1)o+f<0||r<=o+f||0==u&&0==f||a==t.isDark(n+u,o+f)&&(i+=1);5<i&&(e+=3+i-5)}for(n=0;n<r-1;n+=1)for(o=0;o<r-1;o+=1){var c=0;t.isDark(n,o)&&(c+=1),t.isDark(n+1,o)&&(c+=1),t.isDark(n,o+1)&&(c+=1),t.isDark(n+1,o+1)&&(c+=1),0!=c&&4!=c||(e+=3)}for(n=0;n<r;n+=1)for(o=0;o<r-6;o+=1)t.isDark(n,o)&&!t.isDark(n,o+1)&&t.isDark(n,o+2)&&t.isDark(n,o+3)&&t.isDark(n,o+4)&&!t.isDark(n,o+5)&&t.isDark(n,o+6)&&(e+=40);for(o=0;o<r;o+=1)for(n=0;n<r-6;n+=1)t.isDark(n,o)&&!t.isDark(n+1,o)&&t.isDark(n+2,o)&&t.isDark(n+3,o)&&t.isDark(n+4,o)&&!t.isDark(n+5,o)&&t.isDark(n+6,o)&&(e+=40);var g=0;for(o=0;o<r;o+=1)for(n=0;n<r;n+=1)t.isDark(n,o)&&(g+=1);return e+=Math.abs(100*g/r/r-50)/5*10},t);function d(t){for(var r=0;0!=t;)r+=1,t>>>=1;return r}var w=function(){for(var r=new Array(256),e=new Array(256),t=0;t<8;t+=1)r[t]=1<<t;for(t=8;t<256;t+=1)r[t]=r[t-4]^r[t-5]^r[t-6]^r[t-8];for(t=0;t<255;t+=1)e[r[t]]=t;var n={glog:function(t){if(t<1)throw"glog("+t+")";return e[t]},gexp:function(t){for(;t<0;)t+=255;for(;256<=t;)t-=255;return r[t]}};return n}();function C(n,o){if(void 0===n.length)throw n.length+"/"+o;var r=function(){for(var t=0;t<n.length&&0==n[t];)t+=1;for(var r=new Array(n.length-t+o),e=0;e<n.length-t;e+=1)r[e]=n[e+t];return r}(),i={getAt:function(t){return r[t]},getLength:function(){return r.length},multiply:function(t){for(var r=new Array(i.getLength()+t.getLength()-1),e=0;e<i.getLength();e+=1)for(var n=0;n<t.getLength();n+=1)r[e+n]^=w.gexp(w.glog(i.getAt(e))+w.glog(t.getAt(n)));return C(r,0)},mod:function(t){if(i.getLength()-t.getLength()<0)return i;for(var r=w.glog(i.getAt(0))-w.glog(t.getAt(0)),e=new Array(i.getLength()),n=0;n<i.getLength();n+=1)e[n]=i.getAt(n);for(n=0;n<t.getLength();n+=1)e[n]^=w.gexp(w.glog(t.getAt(n))+r);return C(e,0).mod(t)}};return i}function p(){var e=[],o={writeByte:function(t){e.push(255&t)},writeShort:function(t){o.writeByte(t),o.writeByte(t>>>8)},writeBytes:function(t,r,e){r=r||0,e=e||t.length;for(var n=0;n<e;n+=1)o.writeByte(t[n+r])},writeString:function(t){for(var r=0;r<t.length;r+=1)o.writeByte(t.charCodeAt(r))},toByteArray:function(){return e},toString:function(){var t="";t+="[";for(var r=0;r<e.length;r+=1)0<r&&(t+=","),t+=e[r];return t+="]"}};return o}var k,A,b=(k=[[1,26,19],[1,26,16],[1,26,13],[1,26,9],[1,44,34],[1,44,28],[1,44,22],[1,44,16],[1,70,55],[1,70,44],[2,35,17],[2,35,13],[1,100,80],[2,50,32],[2,50,24],[4,25,9],[1,134,108],[2,67,43],[2,33,15,2,34,16],[2,33,11,2,34,12],[2,86,68],[4,43,27],[4,43,19],[4,43,15],[2,98,78],[4,49,31],[2,32,14,4,33,15],[4,39,13,1,40,14],[2,121,97],[2,60,38,2,61,39],[4,40,18,2,41,19],[4,40,14,2,41,15],[2,146,116],[3,58,36,2,59,37],[4,36,16,4,37,17],[4,36,12,4,37,13],[2,86,68,2,87,69],[4,69,43,1,70,44],[6,43,19,2,44,20],[6,43,15,2,44,16],[4,101,81],[1,80,50,4,81,51],[4,50,22,4,51,23],[3,36,12,8,37,13],[2,116,92,2,117,93],[6,58,36,2,59,37],[4,46,20,6,47,21],[7,42,14,4,43,15],[4,133,107],[8,59,37,1,60,38],[8,44,20,4,45,21],[12,33,11,4,34,12],[3,145,115,1,146,116],[4,64,40,5,65,41],[11,36,16,5,37,17],[11,36,12,5,37,13],[5,109,87,1,110,88],[5,65,41,5,66,42],[5,54,24,7,55,25],[11,36,12,7,37,13],[5,122,98,1,123,99],[7,73,45,3,74,46],[15,43,19,2,44,20],[3,45,15,13,46,16],[1,135,107,5,136,108],[10,74,46,1,75,47],[1,50,22,15,51,23],[2,42,14,17,43,15],[5,150,120,1,151,121],[9,69,43,4,70,44],[17,50,22,1,51,23],[2,42,14,19,43,15],[3,141,113,4,142,114],[3,70,44,11,71,45],[17,47,21,4,48,22],[9,39,13,16,40,14],[3,135,107,5,136,108],[3,67,41,13,68,42],[15,54,24,5,55,25],[15,43,15,10,44,16],[4,144,116,4,145,117],[17,68,42],[17,50,22,6,51,23],[19,46,16,6,47,17],[2,139,111,7,140,112],[17,74,46],[7,54,24,16,55,25],[34,37,13],[4,151,121,5,152,122],[4,75,47,14,76,48],[11,54,24,14,55,25],[16,45,15,14,46,16],[6,147,117,4,148,118],[6,73,45,14,74,46],[11,54,24,16,55,25],[30,46,16,2,47,17],[8,132,106,4,133,107],[8,75,47,13,76,48],[7,54,24,22,55,25],[22,45,15,13,46,16],[10,142,114,2,143,115],[19,74,46,4,75,47],[28,50,22,6,51,23],[33,46,16,4,47,17],[8,152,122,4,153,123],[22,73,45,3,74,46],[8,53,23,26,54,24],[12,45,15,28,46,16],[3,147,117,10,148,118],[3,73,45,23,74,46],[4,54,24,31,55,25],[11,45,15,31,46,16],[7,146,116,7,147,117],[21,73,45,7,74,46],[1,53,23,37,54,24],[19,45,15,26,46,16],[5,145,115,10,146,116],[19,75,47,10,76,48],[15,54,24,25,55,25],[23,45,15,25,46,16],[13,145,115,3,146,116],[2,74,46,29,75,47],[42,54,24,1,55,25],[23,45,15,28,46,16],[17,145,115],[10,74,46,23,75,47],[10,54,24,35,55,25],[19,45,15,35,46,16],[17,145,115,1,146,116],[14,74,46,21,75,47],[29,54,24,19,55,25],[11,45,15,46,46,16],[13,145,115,6,146,116],[14,74,46,23,75,47],[44,54,24,7,55,25],[59,46,16,1,47,17],[12,151,121,7,152,122],[12,75,47,26,76,48],[39,54,24,14,55,25],[22,45,15,41,46,16],[6,151,121,14,152,122],[6,75,47,34,76,48],[46,54,24,10,55,25],[2,45,15,64,46,16],[17,152,122,4,153,123],[29,74,46,14,75,47],[49,54,24,10,55,25],[24,45,15,46,46,16],[4,152,122,18,153,123],[13,74,46,32,75,47],[48,54,24,14,55,25],[42,45,15,32,46,16],[20,147,117,4,148,118],[40,75,47,7,76,48],[43,54,24,22,55,25],[10,45,15,67,46,16],[19,148,118,6,149,119],[18,75,47,31,76,48],[34,54,24,34,55,25],[20,45,15,61,46,16]],(A={}).getRSBlocks=function(t,r){var e=function(t,r){switch(r){case y.L:return k[4*(t-1)+0];case y.M:return k[4*(t-1)+1];case y.Q:return k[4*(t-1)+2];case y.H:return k[4*(t-1)+3];default:return}}(t,r);if(void 0===e)throw"bad rs block @ typeNumber:"+t+"/errorCorrectionLevel:"+r;for(var n,o,i=e.length/3,a=[],u=0;u<i;u+=1)for(var f=e[3*u+0],c=e[3*u+1],g=e[3*u+2],l=0;l<f;l+=1)a.push((n=g,o=void 0,(o={}).totalCount=c,o.dataCount=n,o));return a},A),M=function(){var e=[],n=0,o={getBuffer:function(){return e},getAt:function(t){var r=Math.floor(t/8);return 1==(e[r]>>>7-t%8&1)},put:function(t,r){for(var e=0;e<r;e+=1)o.putBit(1==(t>>>r-e-1&1))},getLengthInBits:function(){return n},putBit:function(t){var r=Math.floor(n/8);e.length<=r&&e.push(0),t&&(e[r]|=128>>>n%8),n+=1}};return o},x=function(t){var r=a,n=t,e={getMode:function(){return r},getLength:function(t){return n.length},write:function(t){for(var r=n,e=0;e+2<r.length;)t.put(o(r.substring(e,e+3)),10),e+=3;e<r.length&&(r.length-e==1?t.put(o(r.substring(e,e+1)),4):r.length-e==2&&t.put(o(r.substring(e,e+2)),7))}},o=function(t){for(var r=0,e=0;e<t.length;e+=1)r=10*r+i(t.charAt(e));return r},i=function(t){if("0"<=t&&t<="9")return t.charCodeAt(0)-"0".charCodeAt(0);throw"illegal char :"+t};return e},m=function(t){var r=u,n=t,e={getMode:function(){return r},getLength:function(t){return n.length},write:function(t){for(var r=n,e=0;e+1<r.length;)t.put(45*o(r.charAt(e))+o(r.charAt(e+1)),11),e+=2;e<r.length&&t.put(o(r.charAt(e)),6)}},o=function(t){if("0"<=t&&t<="9")return t.charCodeAt(0)-"0".charCodeAt(0);if("A"<=t&&t<="Z")return t.charCodeAt(0)-"A".charCodeAt(0)+10;switch(t){case" ":return 36;case"$":return 37;case"%":return 38;case"*":return 39;case"+":return 40;case"-":return 41;case".":return 42;case"/":return 43;case":":return 44;default:throw"illegal char :"+t}};return e},L=function(t){var r=o,e=i.stringToBytes(t),n={getMode:function(){return r},getLength:function(t){return e.length},write:function(t){for(var r=0;r<e.length;r+=1)t.put(e[r],8)}};return n},D=function(t){var r=f,e=i.stringToBytesFuncs.SJIS;if(!e)throw"sjis not supported.";!function(){var t=e("友");if(2!=t.length||38726!=(t[0]<<8|t[1]))throw"sjis not supported."}();var o=e(t),n={getMode:function(){return r},getLength:function(t){return~~(o.length/2)},write:function(t){for(var r=o,e=0;e+1<r.length;){var n=(255&r[e])<<8|255&r[e+1];if(33088<=n&&n<=40956)n-=33088;else{if(!(57408<=n&&n<=60351))throw"illegal char at "+(e+1)+"/"+n;n-=49472}n=192*(n>>>8&255)+(255&n),t.put(n,13),e+=2}if(e<r.length)throw"illegal char at "+(e+1)}};return n},S=function(t){var e=t,n=0,o=0,i=0,r={read:function(){for(;i<8;){if(n>=e.length){if(0==i)return-1;throw"unexpected end of file./"+i}var t=e.charAt(n);if(n+=1,"="==t)return i=0,-1;t.match(/^\s$/)||(o=o<<6|a(t.charCodeAt(0)),i+=6)}var r=o>>>i-8&255;return i-=8,r}},a=function(t){if(65<=t&&t<=90)return t-65;if(97<=t&&t<=122)return t-97+26;if(48<=t&&t<=57)return t-48+52;if(43==t)return 62;if(47==t)return 63;throw"c:"+t};return r},I=function(t,r,e){for(var n=function(t,r){var n=t,o=r,l=new Array(t*r),e={setPixel:function(t,r,e){l[r*n+t]=e},write:function(t){t.writeString("GIF87a"),t.writeShort(n),t.writeShort(o),t.writeByte(128),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(0),t.writeByte(255),t.writeByte(255),t.writeByte(255),t.writeString(","),t.writeShort(0),t.writeShort(0),t.writeShort(n),t.writeShort(o),t.writeByte(0);var r=i(2);t.writeByte(2);for(var e=0;255<r.length-e;)t.writeByte(255),t.writeBytes(r,e,255),e+=255;t.writeByte(r.length-e),t.writeBytes(r,e,r.length-e),t.writeByte(0),t.writeString(";")}},i=function(t){for(var r=1<<t,e=1+(1<<t),n=t+1,o=h(),i=0;i<r;i+=1)o.add(String.fromCharCode(i));o.add(String.fromCharCode(r)),o.add(String.fromCharCode(e));var a=p(),u=function(t){var e=t,n=0,o=0,r={write:function(t,r){if(t>>>r!=0)throw"length over";for(;8<=n+r;)e.writeByte(255&(t<<n|o)),r-=8-n,t>>>=8-n,n=o=0;o|=t<<n,n+=r},flush:function(){0<n&&e.writeByte(o)}};return r}(a);u.write(r,n);var f=0,c=String.fromCharCode(l[f]);for(f+=1;f<l.length;){var g=String.fromCharCode(l[f]);f+=1,o.contains(c+g)?c+=g:(u.write(o.indexOf(c),n),o.size()<4095&&(o.size()==1<<n&&(n+=1),o.add(c+g)),c=g)}return u.write(o.indexOf(c),n),u.write(e,n),u.flush(),a.toByteArray()},h=function(){var r={},e=0,n={add:function(t){if(n.contains(t))throw"dup key:"+t;r[t]=e,e+=1},size:function(){return e},indexOf:function(t){return r[t]},contains:function(t){return void 0!==r[t]}};return n};return e}(t,r),o=0;o<r;o+=1)for(var i=0;i<t;i+=1)n.setPixel(i,o,e(i,o));var a=p();n.write(a);for(var u=function(){function e(t){a+=String.fromCharCode(r(63&t))}var n=0,o=0,i=0,a="",t={},r=function(t){if(t<0);else{if(t<26)return 65+t;if(t<52)return t-26+97;if(t<62)return t-52+48;if(62==t)return 43;if(63==t)return 47}throw"n:"+t};return t.writeByte=function(t){for(n=n<<8|255&t,o+=8,i+=1;6<=o;)e(n>>>o-6),o-=6},t.flush=function(){if(0<o&&(e(n<<6-o),o=n=0),i%3!=0)for(var t=3-i%3,r=0;r<t;r+=1)a+="="},t.toString=function(){return a},t}(),f=a.toByteArray(),c=0;c<f.length;c+=1)u.writeByte(f[c]);return u.flush(),"data:image/gif;base64,"+u};return i}();qrcode.stringToBytesFuncs["UTF-8"]=function(t){return function(t){for(var r=[],e=0;e<t.length;e++){var n=t.charCodeAt(e);n<128?r.push(n):n<2048?r.push(192|n>>6,128|63&n):n<55296||57344<=n?r.push(224|n>>12,128|n>>6&63,128|63&n):(e++,n=65536+((1023&n)<<10|1023&t.charCodeAt(e)),r.push(240|n>>18,128|n>>12&63,128|n>>6&63,128|63&n))}return r}(t)},function(t){"function"==typeof define&&define.amd?define([],t):"object"==typeof exports&&(module.exports=t())}(function(){return qrcode});
 </script>
@@ -1445,7 +1585,7 @@ async function saveOneBranch(branchId, name, password){
 }
 // الداتا اتقسمت: كل شيت في مستند (أو مستندات) لوحده داخل subcollection اسمه sections
 // عشان نعدي حد الـ 1MB بتاع Firestore للمستند الواحد (ده كان سبب "اتعالج لكن لم يُحفظ").
-const SECTION_KEYS = ['stock','sales','locations','transfers','sticker','lastPrice','turnover'];
+const SECTION_KEYS = ['stock','sales','locations','transfers','sticker','lastPrice','turnover','target'];
 const SECTION_CHUNK = 180000; // حروف لكل جزء (آمن تحت حد 1MB حتى مع العربي)
 
 function sectionsCol(branchId){ return db.collection('branchData').doc(branchId).collection('sections'); }
@@ -1670,6 +1810,7 @@ $('logoutBtn').addEventListener('click', ()=>{
   stopLiveSync();
   currentBranch = null; stockSummary = []; salesRows = []; stockTotalsMap = new Map(); locationMap = new Map(); codeOutMem = null;
   turnoverRows = []; turnoverShowAll = false; turnoverUploadedAt = ''; turnoverUpdatedAt = ''; clearTimeout(turnoverSaveTimer);
+  try{ tgt = tgtNew(); tgtRaw = null; clearTimeout(tgtSaveTimer); }catch(e){}
   switchScreen('screen-login');
 });
 
@@ -1693,6 +1834,7 @@ function applyCloudSections(out){
   }
   if(out.sticker && Array.isArray(out.sticker.sheet)) labelRows = out.sticker.sheet;
   if(out.lastPrice && Array.isArray(out.lastPrice.rows)) lpRows = out.lastPrice.rows;
+  if(out.target){ try{ tgtApplyRemote(out.target); }catch(e){ console.error('live target:', e); } }
   if(out.turnover && Array.isArray(out.turnover.rows)){
     turnoverRows = turnoverNormalizeRows(out.turnover.rows);
     turnoverUploadedAt = typeof out.turnover.uploadedAt === 'string' ? out.turnover.uploadedAt : '';
@@ -1791,6 +1933,7 @@ $('resetDataBtn').addEventListener('click', async ()=>{
      turnoverRows = []; turnoverShowAll = false; turnoverUploadedAt = ''; turnoverUpdatedAt = ''; clearTimeout(turnoverSaveTimer);
      try{ localStorage.removeItem(turnoverDBKey()); }catch(err){}
      if($('turnoverLocationInput')) $('turnoverLocationInput').value = '';
+     try{ localStorage.removeItem(tgtKey()); tgt = tgtNew(); tgtRaw = null; clearTimeout(tgtSaveTimer); }catch(err){}
     if(branchPhotosLink) saveBranchPhotosLink(branchPhotosLink);
     $('lastUpdateLabel').textContent = '';
     $('resultsArea').style.display = 'none';
@@ -6569,6 +6712,571 @@ $('ordersExportBtn') && $('ordersExportBtn').addEventListener('click', ordExport
 $('fileInputOrders') && $('fileInputOrders').addEventListener('change', (event)=>{ const file = event.target.files && event.target.files[0]; if(file) ordHandleFile(file); });
 $('ordersSearchInput') && $('ordersSearchInput').addEventListener('input', ordRender);
 $('ordersSummary') && $('ordersSummary').addEventListener('click', (event)=>{ const b = event.target.closest('[data-f]'); if(b){ ordFilter = b.getAttribute('data-f'); ordRender(); } });
+
+/* ===================== TARGET (توزيع التارجت على السيلز) ===================== */
+let tgt = tgtNew();
+let tgtRaw = null;          // الصفوف الخام في الذاكرة فقط (لإعادة ربط الأعمدة)
+let tgtSaveTimer = null;
+const TGT_COLORS = ['#10b981','#0ea5e9','#8b5cf6','#f59e0b','#ef4444','#14b8a6','#ec4899','#6366f1','#84cc16','#f97316','#06b6d4','#a855f7'];
+const TGT_HDR_RE = /^(sales\s*(person|persons|man|men|rep|reps|employee|employees|name|names)?|employees?|employee\s*name|sellers?|seller\s*name|names?|staff|cashiers?|اسم|الاسم|اسم البائع|اسم الموظف|الأسماء|الاسماء|اسماء|أسماء|البائع|البائعين|السيلز|سيلز|الموظف|الموظفين|مبيعات|المبيعات)$/i;
+function tgtIsHeaderName(n){ return TGT_HDR_RE.test(String(n == null ? '' : n).trim()); }
+function tgtNew(){ return { branchTarget:1000000, workDays:26, offDays:2, todayDay:0, sellers:[], agg:{}, meta:null, updatedAt:'' }; }
+function tgtKey(){ return 'target_v1_' + (currentBranch ? currentBranch.id : 'anon'); }
+function tgtNorm(s){
+  return String(s == null ? '' : s).toLowerCase().replace(/[\u064B-\u065F\u0670\u0640]/g,'').replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/\s+/g,' ').trim();
+}
+function tgtNum(v){
+  if(typeof v === 'number') return isFinite(v) ? v : 0;
+  const s = String(v == null ? '' : v).replace(/[٠-٩]/g, d=> '٠١٢٣٤٥٦٧٨٩'.indexOf(d)).replace(/[,٬\s]/g,'');
+  const n = parseFloat(s);
+  return isFinite(n) ? n : 0;
+}
+function tgtF(n, dec){
+  if(n == null || !isFinite(n)) return '—';
+  return Number(n).toLocaleString('en-US', { minimumFractionDigits: dec || 0, maximumFractionDigits: dec || 0 });
+}
+function tgtToday(){ return tgt.todayDay > 0 ? tgt.todayDay : new Date().getDate(); }
+function tgtId(){ return 's' + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
+function tgtNormalizeState(p){
+  const o = tgtNew();
+  if(!p || typeof p !== 'object') return o;
+  if(isFinite(p.branchTarget)) o.branchTarget = Math.max(0, Number(p.branchTarget));
+  if(p.workDays > 0) o.workDays = Math.round(p.workDays);
+  if(isFinite(p.offDays) && p.offDays >= 0) o.offDays = Math.round(p.offDays);
+  if(p.todayDay > 0) o.todayDay = Math.min(31, Math.round(p.todayDay));
+  o.sellers = (Array.isArray(p.sellers) ? p.sellers : []).filter(s=> s && s.name && !tgtIsHeaderName(s.name)).map(s=>({
+    id: s.id || tgtId(), name: String(s.name), days: s.days > 0 ? Math.round(s.days) : null,
+    status: s.status === 'left' ? 'left' : 'active', leftDay: s.leftDay > 0 ? Math.round(s.leftDay) : 0
+  }));
+  o.agg = (p.agg && typeof p.agg === 'object') ? p.agg : {};
+  o.meta = p.meta || null;
+  o.updatedAt = typeof p.updatedAt === 'string' ? p.updatedAt : '';
+  return o;
+}
+function tgtTime(p){ const t = Date.parse(p && p.updatedAt || ''); return isFinite(t) ? t : 0; }
+function tgtSaveLocal(){ try{ localStorage.setItem(tgtKey(), JSON.stringify(tgt)); }catch(e){ console.error('target local save:', e); } }
+function tgtLoadLocal(){ try{ const r = localStorage.getItem(tgtKey()); return r ? JSON.parse(r) : null; }catch(e){ return null; } }
+function tgtCloudSave(payload, branchId){
+  if(!branchId || typeof db === 'undefined' || !db) return Promise.resolve(false);
+  return saveSection(branchId, 'target', payload).catch(e=>{ console.error('target cloud save:', e); return false; });
+}
+function tgtPersist(){
+  const branchId = currentBranch ? currentBranch.id : '';
+  tgt.updatedAt = new Date().toISOString();
+  tgtSaveLocal();
+  const payload = JSON.parse(JSON.stringify(tgt));
+  clearTimeout(tgtSaveTimer);
+  tgtSaveTimer = setTimeout(()=>{ tgtCloudSave(payload, branchId); }, 650);
+}
+async function tgtLoad(){
+  const local = tgtLoadLocal();
+  let best = local;
+  if(currentBranch){
+    try{
+      const bd = await loadBranchData(currentBranch.id);
+      if(bd && bd.target && (!local || tgtTime(bd.target) >= tgtTime(local))) best = bd.target;
+    }catch(e){ console.error('target load:', e); }
+  }
+  tgt = tgtNormalizeState(best);
+  tgtSaveLocal();
+}
+function tgtApplyRemote(remote){
+  if(!remote || typeof remote !== 'object') return;
+  if(tgtTime(remote) <= tgtTime(tgt)) return;
+  tgt = tgtNormalizeState(remote);
+  tgtSaveLocal();
+  const scr = $('screen-target');
+  if(scr && scr.classList.contains('active')){
+    const ae = document.activeElement;
+    if(ae && scr.contains(ae) && ae.tagName === 'INPUT') return;
+    tgtRender();
+  }
+}
+
+/* ---------- قراءة الشيت ---------- */
+function tgtDetect(rows){
+  let hi = -1;
+  for(let i = 0; i < Math.min(rows.length, 15); i++){
+    const hs = (rows[i] || []).map(x=> String(x == null ? '' : x).toLowerCase());
+    if(hs.some(h=> /receipt/.test(h) || /tax\s*incl/.test(h))){ hi = i; break; }
+  }
+  if(hi < 0) hi = 0;
+  const headers = (rows[hi] || []).map(h=> String(h == null ? '' : h).trim());
+  const find = (res)=>{ for(const re of res){ const i = headers.findIndex(h=> re.test(h.toLowerCase())); if(i >= 0) return i; } return -1; };
+  return { hi, headers, map:{
+    seller: find([/sales\s*-?\s*person/, /salesman|sales\s*man|seller|cashier|employee|responsible/, /بائع|البائع|موظف|كاشير|سيلز|مسؤول/, /sales/, /user/]),
+    amt:    find([/order lines\/tax incl/, /tax\s*incl/, /الاجمالي|الإجمالي/]),
+    qty:    find([/order lines\/quantity/, /quantity/, /qty/, /الكمية|كمية/]),
+    rc:     find([/receipt\s*number/, /receipt/, /رقم الفاتورة|فاتورة/]),
+    date:   find([/date/, /تاريخ/])
+  }};
+}
+function tgtParseDate(v){
+  if(v == null || v === '') return null;
+  if(typeof v === 'number'){
+    if(v > 20000 && v < 80000){ const d = new Date(Math.round((v - 25569) * 86400000)); return { y:d.getUTCFullYear(), m:d.getUTCMonth()+1, d:d.getUTCDate() }; }
+    return null;
+  }
+  if(v instanceof Date && isFinite(v)) return { y:v.getFullYear(), m:v.getMonth()+1, d:v.getDate() };
+  const s = String(v).trim();
+  let m = s.match(/(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/);
+  if(m) return { y:+m[1], m:+m[2], d:+m[3] };
+  m = s.match(/(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})/);
+  if(m) return { y:+m[3], m:+m[2], d:+m[1] };
+  return null;
+}
+function tgtAggregate(rows, det, map){
+  const start = det.hi + 1;
+  const items = [];
+  let maxYM = 0;
+  for(let i = start; i < rows.length; i++){
+    const r = rows[i] || [];
+    if(!r.length) continue;
+    const name = map.seller >= 0 ? String(r[map.seller] == null ? '' : r[map.seller]).trim() : '';
+    const amt = map.amt >= 0 ? tgtNum(r[map.amt]) : 0;
+    const qty = map.qty >= 0 ? tgtNum(r[map.qty]) : 0;
+    const rc = map.rc >= 0 ? String(r[map.rc] == null ? '' : r[map.rc]).trim() : '';
+    if(!name && !amt && !qty && !rc) continue;
+    const dt = map.date >= 0 ? tgtParseDate(r[map.date]) : null;
+    if(dt){ const ym = dt.y * 100 + dt.m; if(ym > maxYM) maxYM = ym; }
+    items.push({ name, amt, qty, rc, dt });
+  }
+  const agg = {};
+  const recSets = {};
+  let hasDates = false;
+  items.forEach(it=>{
+    let day = 0;
+    if(it.dt){
+      if(maxYM && (it.dt.y * 100 + it.dt.m) !== maxYM) return;   // نحسب آخر شهر في الشيت بس
+      day = it.dt.d; hasDates = true;
+    }
+    const nm = it.name || '(بدون اسم)';
+    const k = tgtNorm(nm);
+    const a = agg[k] || (agg[k] = { name:nm, d:{} });
+    const v = a.d[day] || (a.d[day] = [0,0,0]);
+    v[0] += it.amt; v[1] += it.qty;
+    if(it.rc){
+      const sk = k + '|' + day;
+      const set = recSets[sk] || (recSets[sk] = new Set());
+      if(!set.has(it.rc)){ set.add(it.rc); v[2] += 1; }
+    }
+  });
+  Object.keys(agg).forEach(k=> Object.keys(agg[k].d).forEach(d=>{ const v = agg[k].d[d]; v[0] = Math.round(v[0]*100)/100; v[1] = Math.round(v[1]*100)/100; }));
+  return { agg, hasDates, ym: maxYM };
+}
+function tgtReadNames(rows2){
+  if(!rows2 || !rows2.length) return [];
+  const hdrRe = TGT_HDR_RE;
+  let col = 0, startRow = 0;
+  for(let i = 0; i < Math.min(rows2.length, 6); i++){
+    const r = rows2[i] || [];
+    const j = r.findIndex(c=> hdrRe.test(String(c == null ? '' : c).trim()));
+    if(j >= 0){ col = j; startRow = i + 1; break; }
+  }
+  const out = [], seen = new Set();
+  for(let i = startRow; i < rows2.length; i++){
+    const v = (rows2[i] || [])[col];
+    const s = String(v == null ? '' : v).trim();
+    if(!s || /^[\d.,\s-]+$/.test(s)) continue;
+    if(hdrRe.test(s)) continue;
+    const k = tgtNorm(s);
+    if(seen.has(k)) continue;
+    seen.add(k); out.push(s);
+  }
+  return out;
+}
+function tgtBuildFromRaw(userMap){
+  const det = tgtDetect(tgtRaw.rows1);
+  const map = Object.assign({}, det.map, userMap || {});
+  const res = tgtAggregate(tgtRaw.rows1, det, map);
+  tgt.agg = res.agg;
+  tgt.meta = {
+    fileName: tgtRaw.fileName, uploadedAt: new Date().toISOString(), hasDates: res.hasDates, ym: res.ym,
+    cols: { seller: det.headers[map.seller] || '', amt: det.headers[map.amt] || '', qty: det.headers[map.qty] || '', rc: det.headers[map.rc] || '', date: det.headers[map.date] || '' }
+  };
+  tgtRaw.det = det; tgtRaw.map = map;
+  let names = tgtReadNames(tgtRaw.rows2);
+  if(!names.length) names = Object.keys(tgt.agg).map(k=> tgt.agg[k].name).filter(n=> n !== '(بدون اسم)');
+  tgt.sellers = tgt.sellers.filter(s=> !tgtIsHeaderName(s.name));
+  names = names.filter(n=> !tgtIsHeaderName(n));
+  const have = new Set(tgt.sellers.map(s=> tgtNorm(s.name)));
+  names.forEach(n=>{ const k = tgtNorm(n); if(!have.has(k)){ have.add(k); tgt.sellers.push({ id:tgtId(), name:n, days:null, status:'active', leftDay:0 }); } });
+  return { det, map, res, namesFromSheet2: tgtReadNames(tgtRaw.rows2).length };
+}
+async function tgtHandleFile(file){
+  if(!currentBranch){ showToast('اختار الفرع الأول.'); return; }
+  const st = $('uploadStatusTarget');
+  setStatus(st, 'جاري قراءة الملف...', '');
+  const reader = new FileReader();
+  reader.onload = (event)=>{
+    try{
+      const bytes = new Uint8Array(event.target.result);
+      const wb = parseSheetData(bytes, file.name);
+      const names = wb.SheetNames;
+      const rows1 = XLSX.utils.sheet_to_json(wb.Sheets[names[0]], { header:1, defval:'', raw:true });
+      const rows2 = names.length > 1 ? XLSX.utils.sheet_to_json(wb.Sheets[names[1]], { header:1, defval:'', raw:true }) : [];
+      tgtRaw = { rows1, rows2, fileName: file.name };
+      const info = tgtBuildFromRaw(null);
+      tgtPersist();
+      tgtRender();
+      const miss = [];
+      if(info.map.seller < 0) miss.push('اسم البائع');
+      if(info.map.amt < 0) miss.push('Order Lines/Tax Incl.');
+      if(info.map.rc < 0) miss.push('Receipt Number');
+      if(info.map.qty < 0) miss.push('Order Lines/Quantity');
+      if(miss.length) setStatus(st, 'اتقرا الملف لكن مش لاقي عمود: ' + miss.join(' ، ') + ' — اختاره من "ربط الأعمدة" تحت.', 'err');
+      else setStatus(st, 'تم ✓ (' + Object.keys(tgt.agg).length + ' بائع في الشيت' + (info.res.hasDates ? '' : ' — مفيش عمود تاريخ') + ')', 'ok');
+    }catch(error){
+      console.error(error);
+      setStatus(st, 'تعذر قراءة الملف (' + ((error && error.message) || '').slice(0, 90) + '). تأكد إنه xlsx/xls/csv وغير محمي بكلمة مرور.', 'err');
+    }finally{ $('fileInputTarget').value = ''; }
+  };
+  reader.onerror = ()=>{ setStatus(st, 'تعذر قراءة الملف.', 'err'); $('fileInputTarget').value = ''; };
+  reader.readAsArrayBuffer(file);
+}
+
+/* ---------- الحسابات ---------- */
+function tgtCompute(){
+  const today = tgtToday();
+  const wd = Math.max(1, tgt.workDays || 26);
+  const off = Math.max(0, tgt.offDays || 0);
+  const elapsed = Math.max(0, Math.min(wd, today - off));
+  const rows = tgt.sellers.map(s=>{
+    const a = tgt.agg[tgtNorm(s.name)];
+    const left = s.status === 'left';
+    const maxDay = left ? (s.leftDay || today) : 99;
+    let amt = 0, qty = 0, rc = 0;
+    if(a) Object.keys(a.d).forEach(k=>{ const d = +k; if(d === 0 || d <= maxDay){ const v = a.d[k]; amt += v[0]; qty += v[1]; rc += v[2]; } });
+    return { s, left, days: s.days > 0 ? s.days : wd, amt, qty, rc };
+  });
+  const leavers = rows.filter(r=> r.left), active = rows.filter(r=> !r.left);
+  const locked = leavers.reduce((t,r)=> t + r.amt, 0);
+  const pool = Math.max(0, (tgt.branchTarget || 0) - locked);
+  const sumDays = active.reduce((t,r)=> t + r.days, 0);
+  const daily = sumDays > 0 ? pool / sumDays : 0;
+  rows.forEach(r=>{
+    if(r.left){ r.target = r.amt; r.daily = 0; r.exp = r.amt; }
+    else { r.daily = daily; r.target = daily * r.days; r.exp = daily * Math.min(r.days, elapsed); }
+    r.mp = (!r.left && r.target > 0) ? r.amt / r.target * 100 : null;
+    r.dp = (!r.left && r.exp > 0) ? r.amt / r.exp * 100 : null;
+    r.upt = r.rc > 0 ? r.qty / r.rc : null;
+    r.atv = r.rc > 0 ? r.amt / r.rc : null;
+  });
+  const known = new Set(tgt.sellers.map(s=> tgtNorm(s.name)));
+  const unmatched = Object.keys(tgt.agg).filter(k=> !known.has(k)).map(k=>{
+    const a = tgt.agg[k]; let amt = 0; Object.keys(a.d).forEach(d=> amt += a.d[d][0]); return { name:a.name, amt };
+  });
+  let totAmt = 0, totQty = 0, totRc = 0;
+  Object.keys(tgt.agg).forEach(k=> Object.keys(tgt.agg[k].d).forEach(d=>{ const v = tgt.agg[k].d[d]; totAmt += v[0]; totQty += v[1]; totRc += v[2]; }));
+  const totExp = locked + active.reduce((t,r)=> t + r.exp, 0);
+  return { rows, active, leavers, locked, pool, daily, elapsed, today, wd, off, unmatched, totAmt, totQty, totRc, totExp };
+}
+function tgtPill(p, kind){
+  if(p == null) return '<span class="tgt-pill n">—</span>';
+  let c;
+  if(kind === 'd') c = p >= 100 ? 'g' : (p >= 80 ? 'y' : 'r');
+  else c = p >= 100 ? 'g' : (p >= 60 ? 'y' : 'r');
+  return '<span class="tgt-pill ' + c + '">' + tgtF(p, 1) + '%</span>';
+}
+
+/* ---------- العرض ---------- */
+function tgtSetInput(id, val){
+  const el = $(id);
+  if(el && document.activeElement !== el) el.value = val;
+}
+function tgtRender(){
+  if(!$('tgtTable')) return;
+  const C = tgtCompute();
+  tgtSetInput('tgtBranchTarget', tgtF(tgt.branchTarget, 0));
+  tgtSetInput('tgtWorkDays', String(tgt.workDays));
+  tgtSetInput('tgtOffDays', String(tgt.offDays));
+  tgtSetInput('tgtTodayDay', tgt.todayDay > 0 ? String(tgt.todayDay) : '');
+  $('tgtTodayDay').placeholder = String(new Date().getDate());
+
+  // KPIs
+  const remaining = (tgt.branchTarget || 0) - C.totAmt;
+  const pct = tgt.branchTarget > 0 ? C.totAmt / tgt.branchTarget * 100 : null;
+  const diff = C.totAmt - C.totExp;
+  $('tgtKpis').innerHTML =
+    '<div class="tgt-kpi"><span>المحقق</span><b>' + tgtF(C.totAmt) + '</b></div>' +
+    '<div class="tgt-kpi"><span>المتبقي</span><b>' + tgtF(Math.max(0, remaining)) + '</b></div>' +
+    '<div class="tgt-kpi"><span>نسبة التحقيق</span><b>' + (pct == null ? '—' : tgtF(pct, 1) + '%') + '</b></div>' +
+    '<div class="tgt-kpi"><span>المفروض لحد اليوم ' + C.today + '</span><b>' + tgtF(C.totExp) + '</b></div>' +
+    '<div class="tgt-kpi"><span>' + (diff >= 0 ? 'متقدم بـ' : 'متأخر بـ') + '</span><b>' + tgtF(Math.abs(diff)) + '</b></div>';
+
+  // تنبيهات
+  let warn = '';
+  if(!tgt.sellers.length) warn += '<div class="tgt-warn">لسه مفيش بائعين — ارفع الشيت أو ضيف بائع من تحت.</div>';
+  if(C.unmatched.length){
+    warn += '<div class="tgt-warn">أسماء موجودة في تاب المبيعات ومش في قائمة السيلز: ' +
+      C.unmatched.map(u=> escapeHtml(u.name) + ' (' + tgtF(u.amt) + ') <button type="button" data-add-name="' + escapeAttr(u.name) + '">إضافة</button>').join(' ') + '</div>';
+  }
+  if(C.active.length === 0 && tgt.sellers.length) warn += '<div class="tgt-warn">كل البائعين تاركين العمل — مفيش حد يتوزع عليه الباقي.</div>';
+  if(tgt.meta && !tgt.meta.hasDates && C.leavers.length) warn += '<div class="tgt-warn">الشيت مفيهوش عمود تاريخ — تارجت التارك بيتثبّت بإجمالي اللي حققه في الشيت كله مش لحد يوم خروجه.</div>';
+  $('tgtWarn').innerHTML = warn;
+
+  // ربط الأعمدة
+  const mb = $('tgtMapBox');
+  if(tgtRaw && tgtRaw.det){
+    const det = tgtRaw.det, m = tgtRaw.map;
+    const sel = (key, label)=> '<label>' + label + ' <select data-mapkey="' + key + '"><option value="-1">— بدون —</option>' +
+      det.headers.map((h,i)=> h ? '<option value="' + i + '"' + (m[key] === i ? ' selected' : '') + '>' + escapeHtml(h) + '</option>' : '').join('') + '</select></label>';
+    mb.style.display = '';
+    if(m.seller < 0) mb.setAttribute('open','');
+    mb.innerHTML = '<summary>ربط الأعمدة (لو الأرقام مش مظبوطة)</summary><div class="row">' +
+      sel('seller','البائع') + sel('amt','Tax Incl.') + sel('qty','Quantity') + sel('rc','Receipt Number') + sel('date','التاريخ') +
+      '<button class="btn-primary" type="button" id="tgtMapApply">تطبيق</button></div>';
+  } else if(tgt.meta && tgt.meta.cols){
+    mb.style.display = '';
+    mb.removeAttribute('open');
+    const c = tgt.meta.cols;
+    mb.innerHTML = '<summary>الأعمدة المستخدمة</summary><div class="row">البائع: <b>' + escapeHtml(c.seller || '—') + '</b> | المبلغ: <b>' + escapeHtml(c.amt || '—') + '</b> | الكمية: <b>' + escapeHtml(c.qty || '—') + '</b> | الفاتورة: <b>' + escapeHtml(c.rc || '—') + '</b> | التاريخ: <b>' + escapeHtml(c.date || '—') + '</b> — لتغيير الربط ارفع الشيت تاني.</div>';
+  } else mb.style.display = 'none';
+
+  // الجدول
+  const T = C.rows;
+  let html = '<table class="tgt-table"><thead><tr><th>#</th><th>اسم البائع</th><th>الحالة</th><th>أيام العمل</th><th>التارجت الشهري</th><th>التارجت اليومي</th><th>المفروض لحد ' + C.today + '</th><th>المحقق</th><th>النسبة الشهرية %</th><th>النسبة اليومية %</th><th>UPT</th><th>ATV</th><th>الفواتير</th><th>القطع</th><th></th></tr></thead><tbody>';
+  T.forEach((r,i)=>{
+    html += '<tr class="' + (r.left ? 'left' : '') + '" data-id="' + r.s.id + '">' +
+      '<td>' + (i+1) + '</td>' +
+      '<td class="nm">' + escapeHtml(r.s.name) + '</td>' +
+      '<td><div class="tgt-seg"><button type="button" data-act="active" class="' + (r.left ? '' : 'on') + '">مستمر</button><button type="button" data-act="left" class="' + (r.left ? 'on off' : '') + '">ترك العمل</button></div>' +
+        (r.left ? '<div class="tgt-leftday">حتى يوم <input data-role="leftDay" inputmode="numeric" value="' + (r.s.leftDay || '') + '"></div>' : '') + '</td>' +
+      '<td>' + (r.left ? '—' : '<input class="tgt-in" data-role="days" inputmode="numeric" value="' + r.days + '">') + '</td>' +
+      '<td class="num"><b>' + tgtF(r.target) + '</b>' + (r.left ? '<div style="font-size:10.5px;">(مثبّت)</div>' : '') + '</td>' +
+      '<td class="num">' + (r.left ? '—' : tgtF(r.daily)) + '</td>' +
+      '<td class="num">' + (r.left ? '—' : tgtF(r.exp)) + '</td>' +
+      '<td class="num"><b>' + tgtF(r.amt) + '</b></td>' +
+      '<td>' + tgtPill(r.mp, 'm') + '</td><td>' + tgtPill(r.dp, 'd') + '</td>' +
+      '<td class="num">' + tgtF(r.upt, 2) + '</td><td class="num">' + tgtF(r.atv, 0) + '</td>' +
+      '<td class="num">' + tgtF(r.rc) + '</td><td class="num">' + tgtF(r.qty) + '</td>' +
+      '<td><button class="tgt-del" type="button" data-act="del" title="حذف">✕</button></td></tr>';
+  });
+  if(!T.length) html += '<tr><td colspan="15" style="padding:22px;color:#6C7480;">مفيش بيانات لسه.</td></tr>';
+  const sumT = T.reduce((t,r)=> t + r.target, 0), sumA = T.reduce((t,r)=> t + r.amt, 0), sumE = T.reduce((t,r)=> t + r.exp, 0);
+  const sumQ = T.reduce((t,r)=> t + r.qty, 0), sumR = T.reduce((t,r)=> t + r.rc, 0);
+  if(T.length){
+    html += '</tbody><tfoot><tr><td></td><td class="nm">الإجمالي</td><td></td><td></td><td class="num">' + tgtF(sumT) + '</td><td></td><td class="num">' + tgtF(sumE) + '</td><td class="num">' + tgtF(sumA) + '</td>' +
+      '<td>' + tgtPill(sumT > 0 ? sumA / sumT * 100 : null, 'm') + '</td><td>' + tgtPill(sumE > 0 ? sumA / sumE * 100 : null, 'd') + '</td>' +
+      '<td class="num">' + tgtF(sumR > 0 ? sumQ / sumR : null, 2) + '</td><td class="num">' + tgtF(sumR > 0 ? sumA / sumR : null, 0) + '</td><td class="num">' + tgtF(sumR) + '</td><td class="num">' + tgtF(sumQ) + '</td><td></td></tr></tfoot></table>';
+  } else html += '</tbody></table>';
+  $('tgtTable').innerHTML = html;
+
+  tgtRenderDash(C);
+}
+
+/* ---------- الداش بورد ---------- */
+function tgtRenderDash(C){
+  const el = $('tgtDash');
+  const rows = C.rows;
+  if(!rows.length || !(C.totAmt || tgt.branchTarget)){ el.innerHTML = '<div class="tgt-note">ارفع الشيت عشان تظهر الرسومات.</div>'; return; }
+  const B = tgt.branchTarget || 0;
+  const pct = B > 0 ? C.totAmt / B : 0;
+  const expPct = B > 0 ? C.totExp / B : 0;
+  let out = '<div class="tgt-grid">';
+
+  // 1) عداد الفرع
+  const cx = 150, cy = 140, r = 108;
+  const pt = (p)=>{ const a = Math.PI * (1 - Math.max(0, Math.min(1, p))); return [cx + r * Math.cos(a), cy - r * Math.sin(a)]; };
+  const arc = (p)=>{ const s = pt(0), e = pt(p); return 'M' + s[0].toFixed(1) + ' ' + s[1].toFixed(1) + ' A' + r + ' ' + r + ' 0 0 1 ' + e[0].toFixed(1) + ' ' + e[1].toFixed(1); };
+  const gcol = pct >= 1 ? '#10b981' : (pct >= expPct * 0.9 ? '#0ea5e9' : '#f97316');
+  const ex1 = (()=>{ const a = Math.PI * (1 - Math.max(0, Math.min(1, expPct))); return [cx + (r-16) * Math.cos(a), cy - (r-16) * Math.sin(a), cx + (r+16) * Math.cos(a), cy - (r+16) * Math.sin(a)]; })();
+  out += '<div class="tgt-card"><h4>🎯 تقدّم الفرع</h4><svg class="tgt-svg" viewBox="0 0 300 175">' +
+    '<path d="' + arc(1) + '" fill="none" stroke="#e5e7eb" stroke-width="22" stroke-linecap="round"/>' +
+    (pct > 0 ? '<path d="' + arc(pct) + '" fill="none" stroke="' + gcol + '" stroke-width="22" stroke-linecap="round"/>' : '') +
+    '<line x1="' + ex1[0].toFixed(1) + '" y1="' + ex1[1].toFixed(1) + '" x2="' + ex1[2].toFixed(1) + '" y2="' + ex1[3].toFixed(1) + '" stroke="#7c3aed" stroke-width="3"/>' +
+    '<text x="150" y="118" text-anchor="middle" font-size="34" font-weight="900" fill="#0f172a">' + tgtF(pct * 100, 1) + '%</text>' +
+    '<text x="150" y="138" text-anchor="middle" font-size="11.5" font-weight="700" fill="#64748b">' + tgtF(C.totAmt) + ' من ' + tgtF(B) + '</text>' +
+    '<text x="150" y="160" text-anchor="middle" font-size="11" font-weight="700" fill="#7c3aed">| المفروض لحد اليوم ' + C.today + ': ' + tgtF(expPct * 100, 1) + '%</text></svg></div>';
+
+  // 2) ترتيب أفضل 3
+  const top = rows.slice().sort((a,b)=> b.amt - a.amt).slice(0, 3);
+  if(top.length){
+    const mx = Math.max(1, top[0].amt);
+    const order = top.length >= 3 ? [top[1], top[0], top[2]] : (top.length === 2 ? [top[1], top[0]] : [top[0]]);
+    const medal = (x)=> x === top[0] ? '🥇' : (x === top[1] ? '🥈' : '🥉');
+    const cols = (x)=> x === top[0] ? 'linear-gradient(180deg,#fbbf24,#d97706)' : (x === top[1] ? 'linear-gradient(180deg,#cbd5e1,#64748b)' : 'linear-gradient(180deg,#fdba74,#c2410c)');
+    out += '<div class="tgt-card"><h4>🏆 أعلى 3 مبيعات</h4><div class="tgt-podium">' +
+      order.map(x=> '<div class="tgt-pod"><div class="amt">' + tgtF(x.amt) + '</div><div class="blk" style="height:' + Math.max(40, Math.round(x.amt / mx * 140)) + 'px;background:' + cols(x) + ';">' + medal(x) + '</div><div class="nmx">' + escapeHtml(x.s.name) + '</div></div>').join('') + '</div></div>';
+  }
+
+  // 3) توزيع المبيعات (دونات)
+  const share = rows.filter(x=> x.amt > 0).sort((a,b)=> b.amt - a.amt);
+  const shTot = share.reduce((t,x)=> t + x.amt, 0);
+  if(shTot > 0){
+    const R = 56, CC = 2 * Math.PI * R;
+    let off = 0, segs = '';
+    share.forEach((x,i)=>{ const len = x.amt / shTot * CC; segs += '<circle r="' + R + '" cx="80" cy="80" fill="none" stroke="' + TGT_COLORS[i % TGT_COLORS.length] + '" stroke-width="26" stroke-dasharray="' + len.toFixed(2) + ' ' + (CC - len).toFixed(2) + '" stroke-dashoffset="' + (-off).toFixed(2) + '" transform="rotate(-90 80 80)"/>'; off += len; });
+    out += '<div class="tgt-card"><h4>🍩 حصة كل بائع من مبيعات الفرع</h4><svg class="tgt-svg" style="max-width:200px;margin:0 auto;" viewBox="0 0 160 160">' + segs +
+      '<text x="80" y="76" text-anchor="middle" font-size="11" font-weight="700" fill="#64748b">الإجمالي</text><text x="80" y="94" text-anchor="middle" font-size="15" font-weight="900" fill="#0f172a">' + tgtF(shTot) + '</text></svg>' +
+      '<div class="tgt-dn-leg">' + share.map((x,i)=> '<span><i style="background:' + TGT_COLORS[i % TGT_COLORS.length] + '"></i>' + escapeHtml(x.s.name) + ' ' + tgtF(x.amt / shTot * 100, 1) + '%</span>').join('') + '</div></div>';
+  }
+
+  // 4) أعمدة المحقق مقابل التارجت والمفروض
+  const sorted = rows.slice().sort((a,b)=> b.amt - a.amt);
+  const scale = Math.max(1, ...sorted.map(x=> Math.max(x.target, x.amt, x.exp))) * 1.04;
+  out += '<div class="tgt-card wide"><h4>📈 المحقق مقابل التارجت والمفروض لحد اليوم</h4>' +
+    sorted.map(x=>{
+      const w = Math.min(100, x.amt / scale * 100);
+      const cls = x.left ? 'y' : (x.dp == null ? '' : (x.dp >= 100 ? '' : (x.dp >= 80 ? 'y' : 'r')));
+      return '<div class="tgt-bar-row"><div class="nm" title="' + escapeAttr(x.s.name) + '">' + escapeHtml(x.s.name) + (x.left ? ' 🚪' : '') + '</div>' +
+        '<div class="tgt-track"><div class="tgt-fill ' + cls + '" style="width:' + w.toFixed(1) + '%"></div>' +
+        (x.left ? '' : '<div class="tgt-tick ex" style="left:' + Math.min(100, x.exp / scale * 100).toFixed(1) + '%"></div>') +
+        '<div class="tgt-tick" style="left:calc(' + Math.min(100, x.target / scale * 100).toFixed(1) + '% - 1px)"></div></div>' +
+        '<div class="val">' + tgtF(x.amt) + ' / ' + tgtF(x.target) + '</div></div>';
+    }).join('') +
+    '<div class="tgt-legend"><span><i style="background:linear-gradient(90deg,#10b981,#0ea5e9)"></i>المحقق</span><span><i style="background:#0f172a"></i>التارجت الشهري</span><span><i style="background:#7c3aed"></i>المفروض لحد اليوم</span><span><i style="background:#f97316"></i>متأخر عن المفروض</span></div></div>';
+
+  // 5) خط التقدّم اليومي
+  if(tgt.meta && tgt.meta.hasDates){
+    const perDay = {};
+    let maxD = C.today;
+    Object.keys(tgt.agg).forEach(k=> Object.keys(tgt.agg[k].d).forEach(d=>{ const n = +d; if(n > 0){ perDay[n] = (perDay[n] || 0) + tgt.agg[k].d[d][0]; if(n > maxD) maxD = n; } }));
+    const N = Math.max(28, maxD);
+    const W = 640, H = 260, pl = 54, pr = 14, pt2 = 16, pb = 30;
+    const wd = C.wd, off2 = C.off;
+    const ideal = (d)=> Math.min(B, B * Math.max(0, d - off2) / wd);
+    let cum = 0; const act = [];
+    for(let d = 1; d <= N; d++){ cum += perDay[d] || 0; act.push(cum); }
+    const lastData = Math.max(C.today, ...Object.keys(perDay).map(Number));
+    const ymax = Math.max(B, ...act, 1) * 1.05;
+    const X = (d)=> pl + (d - 1) / (N - 1) * (W - pl - pr);
+    const Y = (v)=> H - pb - v / ymax * (H - pb - pt2);
+    let grid = '';
+    for(let i = 0; i <= 4; i++){ const v = ymax * i / 4; grid += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + Y(v).toFixed(1) + '" y2="' + Y(v).toFixed(1) + '" stroke="#eef2f6"/><text x="' + (pl - 6) + '" y="' + (Y(v) + 4).toFixed(1) + '" text-anchor="end" font-size="10" fill="#64748b">' + (v >= 1000 ? tgtF(v / 1000, 0) + 'k' : tgtF(v)) + '</text>'; }
+    let xl = '';
+    for(let d = 1; d <= N; d += (N > 20 ? 3 : 1)) xl += '<text x="' + X(d).toFixed(1) + '" y="' + (H - 10) + '" text-anchor="middle" font-size="10" fill="#64748b">' + d + '</text>';
+    const idealPath = Array.from({length:N}, (_, i)=> (i ? 'L' : 'M') + X(i+1).toFixed(1) + ' ' + Y(ideal(i+1)).toFixed(1)).join(' ');
+    const upTo = Math.min(N, lastData);
+    const actPts = Array.from({length:upTo}, (_, i)=> X(i+1).toFixed(1) + ' ' + Y(act[i]).toFixed(1));
+    const actPath = actPts.map((p,i)=> (i ? 'L' : 'M') + p).join(' ');
+    const area = actPath + ' L' + X(upTo).toFixed(1) + ' ' + Y(0).toFixed(1) + ' L' + X(1).toFixed(1) + ' ' + Y(0).toFixed(1) + ' Z';
+    out += '<div class="tgt-card wide"><h4>📅 تراكم مبيعات الفرع يوم بيوم مقابل الخط المثالي</h4><svg class="tgt-svg" viewBox="0 0 ' + W + ' ' + H + '"><defs><linearGradient id="tgtAreaG" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#10b981" stop-opacity=".35"/><stop offset="1" stop-color="#10b981" stop-opacity="0"/></linearGradient></defs>' +
+      grid + xl + '<path d="' + area + '" fill="url(#tgtAreaG)"/><path d="' + idealPath + '" fill="none" stroke="#7c3aed" stroke-width="2" stroke-dasharray="6 5"/>' +
+      '<path d="' + actPath + '" fill="none" stroke="#059669" stroke-width="3" stroke-linejoin="round"/>' +
+      (upTo ? '<circle cx="' + X(upTo).toFixed(1) + '" cy="' + Y(act[upTo-1]).toFixed(1) + '" r="5" fill="#059669" stroke="#fff" stroke-width="2"/>' : '') + '</svg>' +
+      '<div class="tgt-legend"><span><i style="background:#059669"></i>الفعلي (تراكمي)</span><span><i style="background:#7c3aed"></i>الخط المثالي للتارجت</span></div></div>';
+  }
+
+  // 6) UPT مقابل ATV
+  const sc = rows.filter(x=> x.upt != null && x.atv != null && x.amt > 0);
+  if(sc.length){
+    const W = 640, H = 300, pl = 56, pr = 24, pt2 = 20, pb = 38;
+    const ux = sc.map(x=> x.upt), ay = sc.map(x=> x.atv);
+    let x0 = Math.min(...ux), x1 = Math.max(...ux), y0 = Math.min(...ay), y1 = Math.max(...ay);
+    const padx = (x1 - x0 || 1) * 0.25, pady = (y1 - y0 || 1) * 0.25;
+    x0 -= padx; x1 += padx; y0 = Math.max(0, y0 - pady); y1 += pady;
+    const X = (v)=> pl + (v - x0) / (x1 - x0) * (W - pl - pr), Y = (v)=> H - pb - (v - y0) / (y1 - y0) * (H - pb - pt2);
+    const mxA = Math.max(...sc.map(x=> x.amt));
+    let g = '';
+    for(let i = 0; i <= 4; i++){
+      const vy = y0 + (y1 - y0) * i / 4, vx = x0 + (x1 - x0) * i / 4;
+      g += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + Y(vy).toFixed(1) + '" y2="' + Y(vy).toFixed(1) + '" stroke="#eef2f6"/><text x="' + (pl - 6) + '" y="' + (Y(vy) + 4).toFixed(1) + '" text-anchor="end" font-size="10" fill="#64748b">' + tgtF(vy) + '</text>' +
+           '<text x="' + X(vx).toFixed(1) + '" y="' + (H - 20) + '" text-anchor="middle" font-size="10" fill="#64748b">' + tgtF(vx, 2) + '</text>';
+    }
+    const bubbles = sc.map((x,i)=>{
+      const rad = 9 + Math.sqrt(x.amt / mxA) * 19;
+      const col = TGT_COLORS[rows.indexOf(x) % TGT_COLORS.length];
+      return '<circle cx="' + X(x.upt).toFixed(1) + '" cy="' + Y(x.atv).toFixed(1) + '" r="' + rad.toFixed(1) + '" fill="' + col + '" fill-opacity=".55" stroke="' + col + '" stroke-width="2"/>' +
+        '<text x="' + X(x.upt).toFixed(1) + '" y="' + (Y(x.atv) - rad - 4).toFixed(1) + '" text-anchor="middle" font-size="10.5" font-weight="800" fill="#0f172a">' + escapeHtml(x.s.name.length > 14 ? x.s.name.slice(0, 13) + '…' : x.s.name) + '</text>';
+    }).join('');
+    out += '<div class="tgt-card wide"><h4>🫧 جودة البيع: UPT (أفقي) مقابل ATV (رأسي) — حجم الفقاعة = حجم المبيعات</h4><svg class="tgt-svg" viewBox="0 0 ' + W + ' ' + H + '">' + g + bubbles +
+      '<text x="' + (W / 2) + '" y="' + (H - 4) + '" text-anchor="middle" font-size="11" font-weight="800" fill="#475569">UPT (قطع / فاتورة)</text>' +
+      '<text x="12" y="' + (H / 2) + '" font-size="11" font-weight="800" fill="#475569" transform="rotate(-90 12 ' + (H / 2) + ')" text-anchor="middle">ATV (متوسط الفاتورة)</text></svg></div>';
+  }
+
+  // 7) مقارنة النسب
+  const pr2 = rows.filter(x=> !x.left && x.mp != null).sort((a,b)=> b.mp - a.mp);
+  if(pr2.length){
+    const mxp = Math.max(100, ...pr2.map(x=> Math.max(x.mp, x.dp || 0)));
+    out += '<div class="tgt-card wide"><h4>⚡ النسبة الشهرية % مقابل النسبة اليومية %</h4>' +
+      pr2.map(x=> '<div class="tgt-bar-row"><div class="nm">' + escapeHtml(x.s.name) + '</div><div><div class="tgt-track" style="height:11px;margin-bottom:3px;"><div class="tgt-fill" style="width:' + Math.min(100, x.mp / mxp * 100).toFixed(1) + '%;background:#0ea5e9"></div></div><div class="tgt-track" style="height:11px;"><div class="tgt-fill ' + (x.dp == null ? '' : (x.dp >= 100 ? '' : (x.dp >= 80 ? 'y' : 'r'))) + '" style="width:' + Math.min(100, (x.dp || 0) / mxp * 100).toFixed(1) + '%"></div></div></div><div class="val">' + tgtF(x.mp, 1) + '% | ' + tgtF(x.dp, 1) + '%</div></div>').join('') +
+      '<div class="tgt-legend"><span><i style="background:#0ea5e9"></i>شهري</span><span><i style="background:#10b981"></i>يومي</span></div></div>';
+  }
+  out += '</div>';
+  el.innerHTML = out;
+}
+
+/* ---------- الأحداث ---------- */
+async function tgtOpen(){
+  if(!currentBranch){ showToast('اختار الفرع الأول.'); return; }
+  switchScreen('screen-target');
+  tgtRaw = null;
+  setStatus($('uploadStatusTarget'), 'جاري تحميل البيانات...', '');
+  await tgtLoad();
+  setStatus($('uploadStatusTarget'), tgt.meta ? ('الشيت محفوظ ✓ ' + (tgt.meta.fileName ? '(' + tgt.meta.fileName + ')' : '')) : 'ارفع شيت المبيعات (التاب الأول مبيعات، التاني أسماء السيلز).', tgt.meta ? 'ok' : '');
+  tgtRender();
+}
+function tgtExport(){
+  const C = tgtCompute();
+  const data = [['اسم البائع','الحالة','أيام العمل','التارجت الشهري','التارجت اليومي','المفروض لحد اليوم ' + C.today,'المحقق','النسبة الشهرية %','النسبة اليومية %','UPT','ATV','الفواتير','القطع']];
+  C.rows.forEach(r=> data.push([r.s.name, r.left ? 'ترك العمل (حتى يوم ' + (r.s.leftDay || C.today) + ')' : 'مستمر', r.left ? '' : r.days, Math.round(r.target), r.left ? '' : Math.round(r.daily), r.left ? '' : Math.round(r.exp), Math.round(r.amt), r.mp == null ? '' : Math.round(r.mp * 10) / 10, r.dp == null ? '' : Math.round(r.dp * 10) / 10, r.upt == null ? '' : Math.round(r.upt * 100) / 100, r.atv == null ? '' : Math.round(r.atv), r.rc, r.qty]));
+  data.push([]); data.push(['تارجت الفرع', tgt.branchTarget, '', '', '', '', 'إجمالي المحقق', Math.round(C.totAmt)]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), 'Target');
+  XLSX.writeFile(wb, branchFname('Target') + '.xlsx');
+}
+function tgtAddSeller(name, days){
+  name = String(name || '').trim();
+  if(!name){ showToast('اكتب اسم البائع.'); return false; }
+  if(tgt.sellers.some(s=> tgtNorm(s.name) === tgtNorm(name))){ showToast('البائع ده موجود بالفعل.'); return false; }
+  tgt.sellers.push({ id:tgtId(), name, days: days > 0 ? Math.round(days) : null, status:'active', leftDay:0 });
+  tgtPersist(); tgtRender();
+  return true;
+}
+$('openTargetBtn') && $('openTargetBtn').addEventListener('click', tgtOpen);
+$('tgtBackBtn') && $('tgtBackBtn').addEventListener('click', ()=> switchScreen('screen-dashboard'));
+$('tgtExportBtn') && $('tgtExportBtn').addEventListener('click', tgtExport);
+$('tgtClearBtn') && $('tgtClearBtn').addEventListener('click', ()=>{
+  if(!currentBranch){ showToast('اختار الفرع الأول.'); return; }
+  if(!confirm('هتمسح الشيت المرفوع وكل البائعين (والمستمر/ترك العمل) من Target فرع ' + currentBranch.name + ' على كل الأجهزة. تارجت الفرع وأيام العمل هيفضلوا. تكمل؟')) return;
+  tgt.sellers = []; tgt.agg = {}; tgt.meta = null; tgtRaw = null;
+  tgtPersist(); tgtRender();
+  setStatus($('uploadStatusTarget'), 'اتمسحت البيانات ✓ — ارفع شيت جديد.', 'ok');
+  showToast('تم مسح بيانات Target ✓');
+});
+$('fileInputTarget') && $('fileInputTarget').addEventListener('change', (event)=>{ const f = event.target.files && event.target.files[0]; if(f) tgtHandleFile(f); });
+$('tgtUploadCard') && ['dragover','dragenter'].forEach(n=> $('tgtUploadCard').addEventListener(n, e=>{ e.preventDefault(); }));
+$('tgtUploadCard') && $('tgtUploadCard').addEventListener('drop', e=>{ e.preventDefault(); const f = e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files[0]; if(f) tgtHandleFile(f); });
+$('tgtBranchTarget') && $('tgtBranchTarget').addEventListener('change', ()=>{ tgt.branchTarget = Math.max(0, tgtNum($('tgtBranchTarget').value)); tgtPersist(); tgtRender(); });
+$('tgtBranchTarget') && $('tgtBranchTarget').addEventListener('keydown', e=>{ if(e.key === 'Enter'){ e.preventDefault(); e.currentTarget.blur(); } });
+$('tgtWorkDays') && $('tgtWorkDays').addEventListener('change', ()=>{ const n = Math.round(tgtNum($('tgtWorkDays').value)); tgt.workDays = n > 0 ? n : 26; tgtPersist(); tgtRender(); });
+$('tgtOffDays') && $('tgtOffDays').addEventListener('change', ()=>{ const n = Math.round(tgtNum($('tgtOffDays').value)); tgt.offDays = n >= 0 ? n : 2; tgtPersist(); tgtRender(); });
+$('tgtTodayDay') && $('tgtTodayDay').addEventListener('change', ()=>{ const n = Math.round(tgtNum($('tgtTodayDay').value)); tgt.todayDay = (n >= 1 && n <= 31) ? n : 0; tgtPersist(); tgtRender(); });
+['tgtWorkDays','tgtOffDays','tgtTodayDay','tgtNewName','tgtNewDays'].forEach(id=> $(id) && $(id).addEventListener('keydown', e=>{ if(e.key === 'Enter'){ e.preventDefault(); if(id === 'tgtNewName' || id === 'tgtNewDays'){ $('tgtAddBtn').click(); } else e.currentTarget.blur(); } }));
+$('tgtAddBtn') && $('tgtAddBtn').addEventListener('click', ()=>{
+  if(tgtAddSeller($('tgtNewName').value, tgtNum($('tgtNewDays').value))){ $('tgtNewName').value = ''; $('tgtNewDays').value = ''; $('tgtNewName').focus(); }
+});
+$('tgtTable') && $('tgtTable').addEventListener('click', (event)=>{
+  const btn = event.target.closest('button[data-act]');
+  if(!btn) return;
+  const tr = btn.closest('tr'); if(!tr) return;
+  const s = tgt.sellers.find(x=> x.id === tr.getAttribute('data-id')); if(!s) return;
+  const act = btn.getAttribute('data-act');
+  if(act === 'active'){ s.status = 'active'; }
+  else if(act === 'left'){ if(s.status === 'left') return; s.status = 'left'; s.leftDay = s.leftDay || tgtToday(); }
+  else if(act === 'del'){ if(!confirm('حذف ' + s.name + ' من القائمة؟')) return; tgt.sellers = tgt.sellers.filter(x=> x.id !== s.id); }
+  tgtPersist(); tgtRender();
+});
+$('tgtTable') && $('tgtTable').addEventListener('change', (event)=>{
+  const inp = event.target.closest('input[data-role]'); if(!inp) return;
+  const tr = inp.closest('tr'); const s = tr && tgt.sellers.find(x=> x.id === tr.getAttribute('data-id')); if(!s) return;
+  const n = Math.round(tgtNum(inp.value));
+  if(inp.getAttribute('data-role') === 'days') s.days = n > 0 ? n : null;
+  if(inp.getAttribute('data-role') === 'leftDay') s.leftDay = (n >= 1 && n <= 31) ? n : (s.leftDay || tgtToday());
+  tgtPersist(); tgtRender();
+});
+$('tgtWarn') && $('tgtWarn').addEventListener('click', (event)=>{
+  const b = event.target.closest('button[data-add-name]'); if(!b) return;
+  tgtAddSeller(b.getAttribute('data-add-name'), 0);
+});
+$('tgtMapBox') && $('tgtMapBox').addEventListener('click', (event)=>{
+  if(!event.target.closest('#tgtMapApply') || !tgtRaw) return;
+  const um = {};
+  document.querySelectorAll('#tgtMapBox select[data-mapkey]').forEach(s=>{ um[s.getAttribute('data-mapkey')] = parseInt(s.value, 10); });
+  tgtBuildFromRaw(um); tgtPersist(); tgtRender();
+  showToast('اتعاد الحساب بالأعمدة المختارة ✓');
+});
 
 $('openTurnoverBtn') && $('openTurnoverBtn').addEventListener('click', turnoverOpen);
 $('turnoverBackBtn') && $('turnoverBackBtn').addEventListener('click', ()=> switchScreen('screen-dashboard'));
