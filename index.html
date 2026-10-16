@@ -6988,6 +6988,11 @@ function tgtCompute(){
   const totExp = bExp;
   return { rows, active, leavers, locked, pool, daily, elapsed, today, wd, off, unmatched, totAmt, totQty, totRc, totExp, br };
 }
+function tgtShort(name){
+  const t = String(name || '').trim().split(/\s+/);
+  if(t.length > 1 && /^\d+$/.test(t[0])) return t[0] + '-' + t[1];
+  return t[0] || '';
+}
 function tgtPill(p, kind){
   if(p == null) return '<span class="tgt-pill n">—</span>';
   let c;
@@ -7191,13 +7196,18 @@ function tgtRenderDash(C){
       g += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + Y(vy).toFixed(1) + '" y2="' + Y(vy).toFixed(1) + '" stroke="#eef2f6"/><text x="' + (pl - 6) + '" y="' + (Y(vy) + 4).toFixed(1) + '" text-anchor="end" font-size="10" fill="#64748b">' + tgtF(vy) + '</text>' +
            '<text x="' + X(vx).toFixed(1) + '" y="' + (H - 20) + '" text-anchor="middle" font-size="10" fill="#64748b">' + tgtF(vx, 2) + '</text>';
     }
-    const bubbles = sc.map((x,i)=>{
-      const rad = 9 + Math.sqrt(x.amt / mxA) * 19;
+    const bub = sc.map((x)=>{
+      const rad = 26 + Math.sqrt(x.amt / mxA) * 14;
       const col = TGT_COLORS[rows.indexOf(x) % TGT_COLORS.length];
-      return '<circle cx="' + X(x.upt).toFixed(1) + '" cy="' + Y(x.atv).toFixed(1) + '" r="' + rad.toFixed(1) + '" fill="' + col + '" fill-opacity=".55" stroke="' + col + '" stroke-width="2"/>' +
-        '<text x="' + X(x.upt).toFixed(1) + '" y="' + (Y(x.atv) - rad - 4).toFixed(1) + '" text-anchor="middle" font-size="10.5" font-weight="800" fill="#0f172a">' + escapeHtml(x.s.name.length > 14 ? x.s.name.slice(0, 13) + '…' : x.s.name) + '</text>';
-    }).join('');
-    out += '<div class="tgt-card wide"><h4>🫧 جودة البيع: UPT (أفقي) مقابل ATV (رأسي) — حجم الفقاعة = حجم المبيعات</h4><svg class="tgt-svg" viewBox="0 0 ' + W + ' ' + H + '">' + g + bubbles +
+      const lbl = tgtShort(x.s.name);
+      const fs = Math.max(8, Math.min(12, (rad * 2 * 0.86) / Math.max(1, lbl.length * 0.62)));
+      return {
+        c: '<circle cx="' + X(x.upt).toFixed(1) + '" cy="' + Y(x.atv).toFixed(1) + '" r="' + rad.toFixed(1) + '" fill="' + col + '" fill-opacity=".5" stroke="' + col + '" stroke-width="2"><title>' + escapeHtml(x.s.name) + ' — UPT ' + tgtF(x.upt, 2) + ' | ATV ' + tgtF(x.atv) + ' | ' + tgtF(x.amt) + '</title></circle>',
+        t: '<text x="' + X(x.upt).toFixed(1) + '" y="' + (Y(x.atv) + fs * 0.35).toFixed(1) + '" text-anchor="middle" direction="ltr" font-size="' + fs.toFixed(1) + '" font-weight="900" fill="#0f172a" paint-order="stroke" stroke="#fff" stroke-width="2.5" stroke-linejoin="round" style="pointer-events:none;unicode-bidi:isolate">\u202A' + escapeHtml(lbl) + '\u202C</text>'
+      };
+    });
+    const bubbles = bub.map(o=> o.c).join('') + bub.map(o=> o.t).join('');
+    out += '<div class="tgt-card wide"><h4>🫧 جودة البيع: UPT (أفقي) مقابل ATV (رأسي) — حجم الفقاعة = حجم المبيعات (الاسم الكامل عند الوقوف على الفقاعة)</h4><svg class="tgt-svg" viewBox="0 0 ' + W + ' ' + H + '">' + g + bubbles +
       '<text x="' + (W / 2) + '" y="' + (H - 4) + '" text-anchor="middle" font-size="11" font-weight="800" fill="#475569">UPT (قطع / فاتورة)</text>' +
       '<text x="12" y="' + (H / 2) + '" font-size="11" font-weight="800" fill="#475569" transform="rotate(-90 12 ' + (H / 2) + ')" text-anchor="middle">ATV (متوسط الفاتورة)</text></svg></div>';
   }
