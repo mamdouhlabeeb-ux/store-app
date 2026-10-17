@@ -7082,7 +7082,8 @@ function tgtRender(){
   $('tgtKpis').innerHTML =
     '<div class="tgt-kpi"><span>المحقق</span><b>' + tgtF(C.totAmt) + '</b></div>' +
     '<div class="tgt-kpi"><span>المتبقي</span><b>' + tgtF(Math.max(0, remaining)) + '</b></div>' +
-    '<div class="tgt-kpi"><span>نسبة التحقيق</span><b>' + (pct == null ? '—' : tgtF(pct, 1) + '%') + '</b></div>' +
+    '<div class="tgt-kpi"><span>نسبة التحقيق الشهرية</span><b>' + (pct == null ? '—' : tgtF(pct, 1) + '%') + '</b></div>' +
+    '<div class="tgt-kpi"><span>نسبة التحقيق اليومية</span><b>' + (C.br.dp == null ? '—' : tgtF(C.br.dp, 1) + '%') + '</b></div>' +
     '<div class="tgt-kpi"><span>المفروض لحد اليوم ' + C.today + '</span><b>' + tgtF(C.totExp) + '</b></div>' +
     '<div class="tgt-kpi"><span>' + (diff >= 0 ? 'متقدم بـ' : 'متأخر بـ') + '</span><b>' + tgtF(Math.abs(diff)) + '</b></div>';
 
