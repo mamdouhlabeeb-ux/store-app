@@ -1341,6 +1341,13 @@ service cloud.firestore {
     .tgt-add{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:12px 0 4px;padding:12px;background:#f0fdf4;border:1px dashed #6ee7b7;border-radius:12px;}
     .tgt-add input{padding:8px 10px;border:1px solid #cdd3db;border-radius:9px;font-family:inherit;font-size:16px;font-weight:700;}
     #tgtNewName{flex:1 1 200px;min-width:150px;} #tgtNewDays,#tgtNewStart{width:90px;text-align:center;} .tgt-add input{font-size:16px;}
+    .tgt-off th{white-space:normal !important;min-width:92px;line-height:1.35;}
+    .tgt-off td.c{padding:6px 6px;line-height:1.25;}
+    .oc-n{font-weight:900;font-size:15px;color:#064e3b;}
+    .oc-a{font-size:11px;font-weight:700;color:#334155;direction:ltr;}
+    .oc-p{font-size:11px;font-weight:900;color:#047857;direction:ltr;}
+    .tgt-off td.z{color:#b6bcc6;font-weight:600;}
+    .tgt-off tfoot td,.tgt-off td.tt{background:#ecfdf5;font-weight:900;}
     .tgt-note{font-size:12px;color:#6C7480;line-height:1.7;margin:6px 2px;}
     .tgt-warn{background:#fffbeb;border:1px solid #fcd34d;color:#92400e;border-radius:10px;padding:8px 12px;font-size:12.5px;font-weight:700;margin:8px 0;line-height:1.9;}
     .tgt-warn button{border:1px solid #f59e0b;background:#fff;border-radius:999px;padding:2px 10px;margin:0 3px;font-family:inherit;font-weight:800;font-size:12px;cursor:pointer;}
@@ -1426,6 +1433,9 @@ service cloud.firestore {
     <button class="btn-primary" id="tgtAddBtn" type="button">إضافة وإعادة التوزيع</button>
   </div>
   <p class="tgt-note">المفروض لحد النهارده = التارجت اليومي × (اليوم من الشهر − أيام الإجازة)، بحد أقصى أيام عمل البائع. صف "الفرع" تحت بيحسب على إجمالي الشيت كله (مش مجموع السيلز): التارجت اليومي = تارجت الفرع ÷ أيام الشهر الفعلية (28/29/30/31)، والمفروض = اليومي × اليوم من الشهر. ولو البائع ليه "يبدأ من يوم" (معيّن جديد) فبيتحسب له التارجت اليومي × (اليوم من الشهر − يوم البداية)، يعني بدأ 13 والنهارده 16 = 3 أيام. النسبة الشهرية = المحقق ÷ التارجت الشهري، والنسبة اليومية = المحقق ÷ المفروض لحد النهارده. UPT = الكمية ÷ عدد الفواتير، ATV = إجمالي Tax Incl. ÷ عدد الفواتير.</p>
+
+  <div class="tgt-dash-title">🎁 تقرير الأوفرات</div>
+  <div id="tgtOffers"></div>
 
   <div class="tgt-dash-title">📊 داش بورد الفرع</div>
   <div id="tgtDash"></div>
@@ -6725,7 +6735,7 @@ let tgtSaveTimer = null;
 const TGT_COLORS = ['#10b981','#0ea5e9','#8b5cf6','#f59e0b','#ef4444','#14b8a6','#ec4899','#6366f1','#84cc16','#f97316','#06b6d4','#a855f7'];
 const TGT_HDR_RE = /^(sales\s*(person|persons|man|men|rep|reps|employee|employees|name|names)?|employees?|employee\s*name|sellers?|seller\s*name|names?|staff|cashiers?|اسم|الاسم|اسم البائع|اسم الموظف|الأسماء|الاسماء|اسماء|أسماء|البائع|البائعين|السيلز|سيلز|الموظف|الموظفين|مبيعات|المبيعات)$/i;
 function tgtIsHeaderName(n){ return TGT_HDR_RE.test(String(n == null ? '' : n).trim()); }
-function tgtNew(){ return { branchTarget:1000000, workDays:26, offDays:2, todayDay:0, sellers:[], agg:{}, meta:null, updatedAt:'' }; }
+function tgtNew(){ return { branchTarget:1000000, workDays:26, offDays:2, todayDay:0, sellers:[], agg:{}, offers:null, meta:null, updatedAt:'' }; }
 function tgtKey(){ return 'target_v1_' + (currentBranch ? currentBranch.id : 'anon'); }
 function tgtNorm(s){
   return String(s == null ? '' : s).toLowerCase().replace(/[\u064B-\u065F\u0670\u0640]/g,'').replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/\s+/g,' ').trim();
@@ -6755,6 +6765,7 @@ function tgtNormalizeState(p){
     startDay: s.startDay > 0 ? Math.round(s.startDay) : 0
   }));
   o.agg = (p.agg && typeof p.agg === 'object') ? p.agg : {};
+  o.offers = (p.offers && typeof p.offers === 'object') ? p.offers : null;
   o.meta = p.meta || null;
   o.updatedAt = typeof p.updatedAt === 'string' ? p.updatedAt : '';
   return o;
@@ -6814,7 +6825,9 @@ function tgtDetect(rows){
     amt:    find([/order lines\/tax incl/, /tax\s*incl/, /الاجمالي|الإجمالي/]),
     qty:    find([/order lines\/quantity/, /quantity/, /qty/, /الكمية|كمية/]),
     rc:     find([/receipt\s*number/, /receipt/, /رقم الفاتورة|فاتورة/]),
-    date:   find([/date/, /تاريخ/])
+    date:   find([/date/, /تاريخ/]),
+    offer:  find([/order lines\/offer name/, /offer\s*name/, /offer/, /عرض|اوفر|أوفر/]),
+    disc:   find([/order lines\/discount/, /discount/, /خصم/])
   }};
 }
 function tgtParseDate(v){
@@ -6831,6 +6844,12 @@ function tgtParseDate(v){
   if(m) return { y:+m[3], m:+m[2], d:+m[1] };
   return null;
 }
+function tgtOfferName(v){
+  const t = String(v == null ? '' : v).replace(/\s+/g, ' ').trim();
+  if(!t || /^(0|0\.0+|false|nan|null|undefined|-)$/i.test(t)) return '';
+  return t;
+}
+function tgtDiscLabel(v){ return (Math.round(v * 100) / 100) + '%'; }
 function tgtAggregate(rows, det, map){
   const start = det.hi + 1;
   const items = [];
@@ -6845,11 +6864,14 @@ function tgtAggregate(rows, det, map){
     if(!name && !amt && !qty && !rc) continue;
     const dt = map.date >= 0 ? tgtParseDate(r[map.date]) : null;
     if(dt){ const ym = dt.y * 100 + dt.m; if(ym > maxYM) maxYM = ym; }
-    items.push({ name, amt, qty, rc, dt });
+    const offer = map.offer >= 0 ? tgtOfferName(r[map.offer]) : '';
+    const disc = map.disc >= 0 ? tgtNum(r[map.disc]) : 0;
+    items.push({ name, amt, qty, rc, dt, offer, disc, idx: i });
   }
   const agg = {};
   const recSets = {};
   const allRc = new Set();
+  const recOff = {};
   const tot = { amt:0, qty:0, rc:0 };
   let hasDates = false;
   items.forEach(it=>{
@@ -6862,6 +6884,11 @@ function tgtAggregate(rows, det, map){
     if(it.rc && !allRc.has(it.rc)){ allRc.add(it.rc); tot.rc += 1; }
     const nm = it.name || '(بدون اسم)';
     const k = tgtNorm(nm);
+    const rkey = it.rc || ('#' + it.idx);
+    const ro = recOff[rkey] || (recOff[rkey] = { names:{}, offers:new Set(), discs:new Set(), amt:0 });
+    if(it.name) ro.names[k] = (ro.names[k] || 0) + 1;
+    ro.amt += it.amt;
+    if(it.offer) ro.offers.add(it.offer); else if(it.disc > 0) ro.discs.add(tgtDiscLabel(it.disc));
     const a = agg[k] || (agg[k] = { name:nm, d:{} });
     const v = a.d[day] || (a.d[day] = [0,0,0]);
     v[0] += it.amt; v[1] += it.qty;
@@ -6873,7 +6900,25 @@ function tgtAggregate(rows, det, map){
   });
   Object.keys(agg).forEach(k=> Object.keys(agg[k].d).forEach(d=>{ const v = agg[k].d[d]; v[0] = Math.round(v[0]*100)/100; v[1] = Math.round(v[1]*100)/100; }));
   tot.amt = Math.round(tot.amt * 100) / 100; tot.qty = Math.round(tot.qty * 100) / 100;
-  return { agg, hasDates, ym: maxYM, tot };
+  // الأوفرات على مستوى الفاتورة كلها: لو أي سطر فيها له اسم أوفر (حتى لو أول السطور بلانك) كل الفاتورة تتحسب على الأوفر ده
+  // وإلا بتتحسب على نسبة الخصم. البائع = أكتر اسم ظاهر في سطور الفاتورة.
+  const offers = {};
+  const blankKey = tgtNorm('(بدون اسم)');
+  Object.keys(recOff).forEach(rk=>{
+    const ro = recOff[rk];
+    let sk = blankKey, best = 0;
+    Object.keys(ro.names).forEach(n=>{ if(ro.names[n] > best){ best = ro.names[n]; sk = n; } });
+    const labels = Array.from(ro.offers.size ? ro.offers : ro.discs);
+    if(!labels.length) return;
+    const share = ro.amt / labels.length;
+    labels.forEach(l=>{
+      const m = offers[sk] || (offers[sk] = {});
+      const v = m[l] || (m[l] = [0, 0]);
+      v[0] += 1; v[1] += share;
+    });
+  });
+  Object.keys(offers).forEach(k=> Object.keys(offers[k]).forEach(l=>{ offers[k][l][1] = Math.round(offers[k][l][1] * 100) / 100; }));
+  return { agg, hasDates, ym: maxYM, tot, offers: (map.offer >= 0 || map.disc >= 0) ? offers : null };
 }
 function tgtReadNames(rows2){
   if(!rows2 || !rows2.length) return [];
@@ -6901,9 +6946,10 @@ function tgtBuildFromRaw(userMap){
   const map = Object.assign({}, det.map, userMap || {});
   const res = tgtAggregate(tgtRaw.rows1, det, map);
   tgt.agg = res.agg;
+  tgt.offers = res.offers;
   tgt.meta = {
     fileName: tgtRaw.fileName, uploadedAt: new Date().toISOString(), hasDates: res.hasDates, ym: res.ym, tot: res.tot,
-    cols: { seller: det.headers[map.seller] || '', amt: det.headers[map.amt] || '', qty: det.headers[map.qty] || '', rc: det.headers[map.rc] || '', date: det.headers[map.date] || '' }
+    cols: { seller: det.headers[map.seller] || '', amt: det.headers[map.amt] || '', qty: det.headers[map.qty] || '', rc: det.headers[map.rc] || '', date: det.headers[map.date] || '', offer: det.headers[map.offer] || '', disc: det.headers[map.disc] || '' }
   };
   tgtRaw.det = det; tgtRaw.map = map;
   let names = tgtReadNames(tgtRaw.rows2);
@@ -7050,7 +7096,7 @@ function tgtRender(){
     mb.style.display = '';
     if(m.seller < 0) mb.setAttribute('open','');
     mb.innerHTML = '<summary>ربط الأعمدة (لو الأرقام مش مظبوطة)</summary><div class="row">' +
-      sel('seller','البائع') + sel('amt','Tax Incl.') + sel('qty','Quantity') + sel('rc','Receipt Number') + sel('date','التاريخ') +
+      sel('seller','البائع') + sel('amt','Tax Incl.') + sel('qty','Quantity') + sel('rc','Receipt Number') + sel('date','التاريخ') + sel('offer','Offer Name') + sel('disc','Discount (%)') +
       '<button class="btn-primary" type="button" id="tgtMapApply">تطبيق</button></div>';
   } else if(tgt.meta && tgt.meta.cols){
     mb.style.display = '';
@@ -7088,7 +7134,62 @@ function tgtRender(){
   } else html += '</tbody></table>';
   $('tgtTable').innerHTML = html;
 
+  tgtRenderOffers(C);
   tgtRenderDash(C);
+}
+
+/* ---------- تقرير الأوفرات ---------- */
+function tgtOfferGet(m, c){
+  const v = m ? m[c] : null;
+  if(Array.isArray(v)) return { n: v[0] || 0, a: v[1] || 0 };
+  return { n: Number(v) || 0, a: 0 };
+}
+function tgtSellerSales(k){
+  const a = tgt.agg[k]; let t = 0;
+  if(a) Object.keys(a.d).forEach(d=> t += a.d[d][0]);
+  return t;
+}
+function tgtOfferMatrix(){
+  if(!tgt.offers) return null;
+  // الصفوف = أسماء البائعين من التاب التاني (قائمة السيلز) بس
+  const rowsDef = tgt.sellers.map(s=>{ const k = tgtNorm(s.name); return { name:s.name, k, left:s.status === 'left', sales: tgtSellerSales(k) }; });
+  const colTot = {};
+  rowsDef.forEach(r=>{
+    const m = tgt.offers[r.k] || {};
+    Object.keys(m).forEach(l=>{ const g = tgtOfferGet(m, l); const t = colTot[l] || (colTot[l] = { n:0, a:0 }); t.n += g.n; t.a += g.a; });
+  });
+  const cols = Object.keys(colTot).sort((a,b)=> colTot[b].n - colTot[a].n || a.localeCompare(b));
+  return { rowsDef, cols, colTot, grandSales: rowsDef.reduce((t, r)=> t + r.sales, 0) };
+}
+function tgtOfferCell(n, a, sales, bg){
+  return '<td class="c"' + (bg ? ' style="background:' + bg + ';"' : '') + '><div class="oc-n">' + tgtF(n) + '</div><div class="oc-a">' + tgtF(a) + '</div><div class="oc-p">' + (sales > 0 ? tgtF(a / sales * 100, 1) + '%' : '—') + '</div></td>';
+}
+function tgtRenderOffers(C){
+  const el = $('tgtOffers'); if(!el) return;
+  if(!tgt.offers){
+    el.innerHTML = '<div class="tgt-note">' + (tgt.meta ? 'مفيش بيانات أوفرات: لازم الشيت يكون فيه عمود Order Lines/Offer Name أو Order Lines/Discount (%) — ولو الشيت اترفع قبل إضافة التقرير ده ارفعه تاني. تقدر تختار الأعمدة من "ربط الأعمدة".' : 'ارفع الشيت عشان يظهر تقرير الأوفرات.') + '</div>';
+    return;
+  }
+  const M = tgtOfferMatrix();
+  if(!M.rowsDef.length){ el.innerHTML = '<div class="tgt-note">مفيش بائعين في قائمة السيلز (التاب التاني).</div>'; return; }
+  if(!M.cols.length){ el.innerHTML = '<div class="tgt-note">مفيش أوفرات أو خصومات للبائعين دول في الشيت.</div>'; return; }
+  const colMax = {};
+  M.cols.forEach(c=>{ colMax[c] = Math.max(1, ...M.rowsDef.map(r=> tgtOfferGet(tgt.offers[r.k], c).n)); });
+  let h = '<div class="tgt-wrap"><table class="tgt-table tgt-off"><thead><tr><th>#</th><th>اسم البائع</th>' + M.cols.map(c=> '<th>' + escapeHtml(c) + '</th>').join('') + '<th>الإجمالي</th><th>مبيعات البائع</th></tr></thead><tbody>';
+  M.rowsDef.forEach((r, i)=>{
+    const m = tgt.offers[r.k] || {};
+    let tn = 0, ta = 0;
+    h += '<tr class="' + (r.left ? 'left' : '') + '"><td>' + (i + 1) + '</td><td class="nm">' + escapeHtml(r.name) + (r.left ? ' 🚪' : '') + '</td>';
+    M.cols.forEach(c=>{
+      const g = tgtOfferGet(m, c); tn += g.n; ta += g.a;
+      h += g.n ? tgtOfferCell(g.n, g.a, r.sales, 'rgba(16,185,129,' + (0.12 + 0.5 * g.n / colMax[c]).toFixed(2) + ')') : '<td class="z">—</td>';
+    });
+    h += tgtOfferCell(tn, ta, r.sales, '#ecfdf5') + '<td class="num"><b>' + tgtF(r.sales) + '</b></td></tr>';
+  });
+  let gn = 0, ga = 0;
+  h += '</tbody><tfoot><tr><td></td><td class="nm">الإجمالي</td>' + M.cols.map(c=>{ const t = M.colTot[c]; gn += t.n; ga += t.a; return tgtOfferCell(t.n, t.a, M.grandSales, ''); }).join('') + tgtOfferCell(gn, ga, M.grandSales, '') + '<td class="num"><b>' + tgtF(M.grandSales) + '</b></td></tr></tfoot></table></div>';
+  h += '<p class="tgt-note">في كل خانة: (1) عدد الفواتير اللي فيها الأوفر، (2) إجمالي Order Lines/Tax Incl. للفواتير دي، (3) نسبتها % من إجمالي مبيعات البائع. الفاتورة كلها بتتحسب على الأوفر لو أي سطر فيها له اسم أوفر (حتى لو باقي السطور بلانك)، ولو مفيش اسم أوفر بتتحسب على نسبة الخصم (Discount %). الصفوف هي أسماء السيلز في التاب التاني من الشيت.</p>';
+  el.innerHTML = h;
 }
 
 /* ---------- الداش بورد ---------- */
@@ -7255,6 +7356,24 @@ function tgtExport(){
   const BR = C.br; data.push([]); data.push(['الفرع (إجمالي الشيت)', '', BR.dim, '', Math.round(BR.target), Math.round(BR.daily), Math.round(BR.exp), Math.round(BR.amt), BR.mp == null ? '' : Math.round(BR.mp * 10) / 10, BR.dp == null ? '' : Math.round(BR.dp * 10) / 10, BR.upt == null ? '' : Math.round(BR.upt * 100) / 100, BR.atv == null ? '' : Math.round(BR.atv), BR.rc, BR.qty]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), 'Target');
+  const OM = tgtOfferMatrix();
+  if(OM && OM.cols.length){
+    const hd = ['اسم البائع'];
+    OM.cols.forEach(c=>{ hd.push(c + ' (عدد)', c + ' (قيمة)', c + ' (% من المبيعات)'); });
+    hd.push('الإجمالي (عدد)', 'الإجمالي (قيمة)', 'الإجمالي (% من المبيعات)', 'مبيعات البائع');
+    const od = [hd];
+    OM.rowsDef.forEach(r=>{
+      const m = tgt.offers[r.k] || {}; let tn = 0, ta = 0; const line = [r.name];
+      OM.cols.forEach(c=>{ const g = tgtOfferGet(m, c); tn += g.n; ta += g.a; line.push(g.n || '', g.n ? Math.round(g.a) : '', g.n && r.sales > 0 ? Math.round(g.a / r.sales * 1000) / 10 : ''); });
+      line.push(tn, Math.round(ta), r.sales > 0 ? Math.round(ta / r.sales * 1000) / 10 : '', Math.round(r.sales));
+      od.push(line);
+    });
+    let gn = 0, ga = 0; const tl = ['الإجمالي'];
+    OM.cols.forEach(c=>{ const t = OM.colTot[c]; gn += t.n; ga += t.a; tl.push(t.n, Math.round(t.a), OM.grandSales > 0 ? Math.round(t.a / OM.grandSales * 1000) / 10 : ''); });
+    tl.push(gn, Math.round(ga), OM.grandSales > 0 ? Math.round(ga / OM.grandSales * 1000) / 10 : '', Math.round(OM.grandSales));
+    od.push(tl);
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(od), 'Offers');
+  }
   XLSX.writeFile(wb, branchFname('Target') + '.xlsx');
 }
 let tgtFontCssCache = null;
@@ -7315,8 +7434,8 @@ async function tgtNativeCanvas(holder, W, H, bg, scale){
 }
 async function tgtBuildHolder(){
   const src = $('screen-target');
-  const tbl = src.querySelector('#tgtTable table');
-  const W = Math.max(1200, Math.ceil((tbl ? tbl.scrollWidth : 0) + 60), src.clientWidth);
+  const tw = Array.from(src.querySelectorAll('.tgt-table')).map(t=> t.scrollWidth);
+  const W = Math.max(1200, Math.ceil(Math.max(0, ...tw) + 60), src.clientWidth);
   const clone = src.cloneNode(true);
   clone.removeAttribute('id');
   clone.classList.add('active');
@@ -7417,7 +7536,7 @@ $('tgtPdfBtn') && $('tgtPdfBtn').addEventListener('click', tgtExportPdf);
 $('tgtClearBtn') && $('tgtClearBtn').addEventListener('click', ()=>{
   if(!currentBranch){ showToast('اختار الفرع الأول.'); return; }
   if(!confirm('هتمسح الشيت المرفوع وكل البائعين (والمستمر/ترك العمل) من Target فرع ' + currentBranch.name + ' على كل الأجهزة. تارجت الفرع وأيام العمل هيفضلوا. تكمل؟')) return;
-  tgt.sellers = []; tgt.agg = {}; tgt.meta = null; tgtRaw = null;
+  tgt.sellers = []; tgt.agg = {}; tgt.offers = null; tgt.meta = null; tgtRaw = null;
   tgtPersist(); tgtRender();
   setStatus($('uploadStatusTarget'), 'اتمسحت البيانات ✓ — ارفع شيت جديد.', 'ok');
   showToast('تم مسح بيانات Target ✓');
