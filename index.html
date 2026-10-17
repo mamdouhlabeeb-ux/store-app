@@ -7355,7 +7355,7 @@ async function tgtExportPdf(){
     tgtRender();
     hb = await tgtBuildHolder();
     const { holder, W, H, bg } = hb;
-    const scale = Math.max(1, Math.min(2, 14000 / Math.max(W, H)));
+    const scale = Math.max(1, Math.min(1.5, 14000 / Math.max(W, H)));   // 1.5x كفاية للوضوح وبيقلل الحجم كتير
     let canvas = null;
     try{ canvas = await tgtNativeCanvas(holder, W, H, bg, scale); }
     catch(e){
@@ -7369,18 +7369,30 @@ async function tgtExportPdf(){
     const maxPage = 4000;                    // أقصى ارتفاع صفحة (مم) — الأطول بيتقسم
     const pageH = Math.min(hMm, maxPage);
     const orient = wMm > pageH ? 'landscape' : 'portrait';
-    const pdf = new jsPDF({ unit:'mm', format:[wMm, pageH], orientation: orient });
     const slicePx = Math.floor(canvas.height * (pageH / hMm));
-    for(let sy = 0, p = 0; sy < canvas.height; sy += slicePx, p++){
+    const parts = [];
+    for(let sy = 0; sy < canvas.height; sy += slicePx){
       const sh = Math.min(slicePx, canvas.height - sy);
       const part = document.createElement('canvas');
       part.width = canvas.width; part.height = sh;
       const ctx = part.getContext('2d');
       ctx.fillStyle = bg; ctx.fillRect(0, 0, part.width, part.height);
       ctx.drawImage(canvas, 0, sy, canvas.width, sh, 0, 0, canvas.width, sh);
-      if(p > 0) pdf.addPage([wMm, pageH], orient);
-      pdf.addImage(part.toDataURL('image/png'), 'PNG', 0, 0, wMm, sh / canvas.height * hMm);
+      parts.push(part);
     }
+    // JPEG مضغوط: نجرّب جودة 0.82 وننزل لو الحجم كبير (هدف: أقل من ~2MB عشان يتبعت على الميل)
+    const LIMIT = 2 * 1024 * 1024;
+    let imgs = [], q = 0.82;
+    for(; q >= 0.45; q -= 0.12){
+      imgs = parts.map(p=> p.toDataURL('image/jpeg', q));
+      const bytes = imgs.reduce((t, d)=> t + Math.floor(d.length * 0.75), 0);
+      if(bytes <= LIMIT) break;
+    }
+    const pdf = new jsPDF({ unit:'mm', format:[wMm, pageH], orientation: orient, compress:true });
+    imgs.forEach((d, p)=>{
+      if(p > 0) pdf.addPage([wMm, pageH], orient);
+      pdf.addImage(d, 'JPEG', 0, 0, wMm, parts[p].height / canvas.height * hMm, undefined, 'FAST');
+    });
     pdf.save(branchFname('Target') + '.pdf');
   }catch(err){
     console.error('target pdf:', err);
