@@ -1323,14 +1323,14 @@ service cloud.firestore {
     .tgt-table{border-collapse:separate;border-spacing:0;width:100%;min-width:1100px;font-variant-numeric:tabular-nums;}
     .tgt-table th,.tgt-table td{padding:9px 8px;border-bottom:1px solid #d5dae1;border-left:1px solid #e3e7ec;text-align:center;vertical-align:middle;background:#fff;font-size:13px;font-weight:600;color:#1b2231;}
     .tgt-table thead th{position:sticky;top:0;z-index:5;background:#e8f5f0;color:#064e3b;font-weight:800;white-space:nowrap;border-bottom:2px solid #6ee7b7;}
-    .tgt-table td.nm{font-weight:800;text-align:right;white-space:nowrap;}
+    .tgt-table td.nm{font-weight:800;text-align:right;white-space:normal;min-width:190px;unicode-bidi:plaintext;}
     .tgt-table tr.left td{background:#fff5f5;color:#7f1d1d;}
     .tgt-table tfoot td{background:#ecfdf5;font-weight:900;border-top:2px solid #6ee7b7;}
     .tgt-table .num{direction:ltr;}
     .tgt-in{width:62px;padding:5px 4px;border:1px solid #cdd3db;border-radius:8px;font-family:inherit;font-size:16px;font-weight:800;text-align:center;box-sizing:border-box;}
     .tgt-in:focus{outline:none;border-color:#059669;box-shadow:0 0 0 3px rgba(5,150,105,.15);}
     .tgt-seg{display:inline-flex;border:1px solid #cdd3db;border-radius:999px;overflow:hidden;}
-    .tgt-seg button{border:0;background:#fff;padding:5px 11px;font-family:inherit;font-size:12px;font-weight:800;color:#6b7280;cursor:pointer;}
+    .tgt-seg button{white-space:nowrap;border:0;background:#fff;padding:5px 11px;font-family:inherit;font-size:12px;font-weight:800;color:#6b7280;cursor:pointer;}
     .tgt-seg button.on{background:#059669;color:#fff;}
     .tgt-seg button.on.off{background:#dc2626;}
     .tgt-leftday{font-size:11px;margin-top:4px;color:#7f1d1d;font-weight:700;}
@@ -1353,8 +1353,8 @@ service cloud.firestore {
     .tgt-card{background:#fff;border:1px solid #d9dee5;border-radius:16px;padding:14px;box-shadow:0 8px 22px rgba(16,24,40,.06);overflow:hidden;}
     .tgt-card h4{margin:0 0 8px;font-size:14px;font-weight:900;color:#0f172a;}
     .tgt-card.wide{grid-column:1/-1;}
-    .tgt-bar-row{display:grid;grid-template-columns:110px 1fr 120px;gap:8px;align-items:center;margin:7px 0;font-size:12.5px;font-weight:700;}
-    .tgt-bar-row .nm{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+    .tgt-bar-row{display:grid;grid-template-columns:minmax(170px,250px) 1fr 150px;gap:10px;align-items:center;margin:9px 0;font-size:12.5px;font-weight:700;}
+    .tgt-bar-row .nm{white-space:normal;overflow:visible;word-break:break-word;line-height:1.35;font-size:12px;unicode-bidi:plaintext;text-align:start;}
     .tgt-bar-row .val{direction:ltr;text-align:left;font-variant-numeric:tabular-nums;color:#334155;font-size:12px;}
     .tgt-track{position:relative;height:18px;background:#eef2f6;border-radius:9px;direction:ltr;}
     .tgt-fill{position:absolute;left:0;top:0;bottom:0;border-radius:9px;background:linear-gradient(90deg,#10b981,#0ea5e9);}
@@ -1364,17 +1364,17 @@ service cloud.firestore {
     .tgt-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:11.5px;font-weight:700;color:#475569;margin-top:8px;}
     .tgt-legend i{display:inline-block;width:11px;height:11px;border-radius:3px;margin-inline-end:5px;vertical-align:-1px;}
     .tgt-podium{display:flex;align-items:flex-end;justify-content:center;gap:10px;height:220px;direction:ltr;padding-top:8px;}
-    .tgt-pod{flex:1 1 0;max-width:130px;text-align:center;font-weight:800;font-size:12.5px;}
+    .tgt-pod{flex:1 1 0;max-width:170px;text-align:center;font-weight:800;font-size:12.5px;}
     .tgt-pod .blk{border-radius:12px 12px 0 0;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:8px;color:#fff;font-weight:900;font-size:22px;}
     .tgt-pod .amt{font-size:11.5px;font-weight:800;direction:ltr;color:#334155;}
-    .tgt-pod .nmx{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .tgt-pod .nmx{white-space:normal;word-break:break-word;line-height:1.3;font-size:11px;margin-top:4px;unicode-bidi:plaintext;}
     .tgt-svg{width:100%;height:auto;display:block;}
     .tgt-svg text{font-family:inherit;}
-    .tgt-dn-leg{display:grid;grid-template-columns:1fr 1fr;gap:4px 12px;font-size:12px;font-weight:700;margin-top:6px;}
-    .tgt-dn-leg span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+    .tgt-dn-leg{display:grid;grid-template-columns:1fr;gap:5px 12px;font-size:12px;font-weight:700;margin-top:6px;}
+    .tgt-dn-leg span{white-space:normal;word-break:break-word;line-height:1.35;unicode-bidi:plaintext;text-align:start;}
     .tgt-dn-leg i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-inline-end:5px;}
     @media (max-width:640px){
-      .tgt-bar-row{grid-template-columns:80px 1fr 96px;}
+      .tgt-bar-row{grid-template-columns:96px 1fr 104px;}
       #tgtBranchTarget{font-size:22px;}
     }
   </style>
@@ -1382,6 +1382,7 @@ service cloud.firestore {
     <h2 style="font-family:'Cairo',sans-serif;">Target</h2>
     <div style="display:flex;gap:10px;align-items:center;">
       <button class="export-btn" id="tgtExportBtn" type="button">تنزيل الاكسيل</button>
+      <button class="export-btn" id="tgtPdfBtn" type="button">تنزيل PDF</button>
       <button class="export-btn" id="tgtClearBtn" type="button" style="background:#dc2626;color:#fff;border-color:#dc2626;">🗑 مسح البيانات</button>
       <button class="link-btn" id="tgtBackBtn" type="button">رجوع</button>
     </div>
@@ -1684,7 +1685,11 @@ async function deleteAllSections(branchId){
     const snap = await sectionsCol(branchId).get();
     const batch = db.batch();
     let any = false;
-    snap.forEach(d=>{ batch.delete(d.ref); any = true; });
+    snap.forEach(d=>{
+      const nm = (d.data() || {}).name || String(d.id).split('__')[0];
+      if(nm === 'target') return;   // بيانات Target بتتمسح من جوه الأيقونة بس
+      batch.delete(d.ref); any = true;
+    });
     if(any) await batch.commit();
   }catch(e){ console.error('deleteAllSections:', e); }
 }
@@ -1917,7 +1922,7 @@ function stopLiveSync(){
 $('resetDataBtn').addEventListener('click', async ()=>{
   if(!currentBranch) return;
   const branchName = currentBranch.name;
-  const sure = confirm('هتمسح كل بيانات فرع ' + branchName + ' (المبيعات + المخزون + اللوكيشنات + التحويلات + التأشيرات) نهائيًا من السيرفر.\n\nبعد المسح تقدر ترفع شيتات جديدة. رابط صور اللوكيشنات هيستنى محفوظ.');
+  const sure = confirm('هتمسح كل بيانات فرع ' + branchName + ' (المبيعات + المخزون + اللوكيشنات + التحويلات + التأشيرات) نهائيًا من السيرفر.\n\nبعد المسح تقدر ترفع شيتات جديدة. رابط صور اللوكيشنات هيستنى محفوظ.\n\nبيانات أيقونة Target مش هتتمسح (بتتمسح من جوا الأيقونة بس).');
   if(!sure) return;
   showLoading('جاري مسح البيانات...');
   try{
@@ -1934,7 +1939,6 @@ $('resetDataBtn').addEventListener('click', async ()=>{
      turnoverRows = []; turnoverShowAll = false; turnoverUploadedAt = ''; turnoverUpdatedAt = ''; clearTimeout(turnoverSaveTimer);
      try{ localStorage.removeItem(turnoverDBKey()); }catch(err){}
      if($('turnoverLocationInput')) $('turnoverLocationInput').value = '';
-     try{ localStorage.removeItem(tgtKey()); tgt = tgtNew(); tgtRaw = null; clearTimeout(tgtSaveTimer); }catch(err){}
     if(branchPhotosLink) saveBranchPhotosLink(branchPhotosLink);
     $('lastUpdateLabel').textContent = '';
     $('resultsArea').style.display = 'none';
@@ -7197,19 +7201,29 @@ function tgtRenderDash(C){
            '<text x="' + X(vx).toFixed(1) + '" y="' + (H - 20) + '" text-anchor="middle" font-size="10" fill="#64748b">' + tgtF(vx, 2) + '</text>';
     }
     const bub = sc.map((x)=>{
-      const rad = 26 + Math.sqrt(x.amt / mxA) * 14;
+      const rad = 20 + Math.sqrt(x.amt / mxA) * 12;
       const col = TGT_COLORS[rows.indexOf(x) % TGT_COLORS.length];
       const lbl = tgtShort(x.s.name);
-      const fs = Math.max(8, Math.min(12, (rad * 2 * 0.86) / Math.max(1, lbl.length * 0.62)));
-      return {
-        c: '<circle cx="' + X(x.upt).toFixed(1) + '" cy="' + Y(x.atv).toFixed(1) + '" r="' + rad.toFixed(1) + '" fill="' + col + '" fill-opacity=".5" stroke="' + col + '" stroke-width="2"><title>' + escapeHtml(x.s.name) + ' — UPT ' + tgtF(x.upt, 2) + ' | ATV ' + tgtF(x.atv) + ' | ' + tgtF(x.amt) + '</title></circle>',
-        t: '<text x="' + X(x.upt).toFixed(1) + '" y="' + (Y(x.atv) + fs * 0.35).toFixed(1) + '" text-anchor="middle" direction="ltr" font-size="' + fs.toFixed(1) + '" font-weight="900" fill="#0f172a" paint-order="stroke" stroke="#fff" stroke-width="2.5" stroke-linejoin="round" style="pointer-events:none;unicode-bidi:isolate">\u202A' + escapeHtml(lbl) + '\u202C</text>'
-      };
+      const fs = Math.max(6, Math.min(8.5, (rad * 2 * 0.9) / Math.max(1, lbl.length * 0.62)));
+      return { x, rad, col, lbl, fs, px: X(x.upt), py: Y(x.atv), ly: Y(x.atv), w: lbl.length * fs * 0.62 };
+    });
+    // إزاحة الأسماء المتداخلة عشان كل الأسماء تبان
+    const byY = bub.slice().sort((a2, b2)=> a2.py - b2.py);
+    byY.forEach((o, i)=>{
+      for(let k = 0; k < i; k++){
+        const p2 = byY[k];
+        if(Math.abs(o.px - p2.px) < (o.w + p2.w) / 2 + 2 && Math.abs(o.ly - p2.ly) < o.fs + 2) o.ly = p2.ly + o.fs + 3;
+      }
+    });
+    bub.forEach(o=>{
+      o.c = '<circle cx="' + o.px.toFixed(1) + '" cy="' + o.py.toFixed(1) + '" r="' + o.rad.toFixed(1) + '" fill="' + o.col + '" fill-opacity=".5" stroke="' + o.col + '" stroke-width="1.5"><title>' + escapeHtml(o.x.s.name) + ' — UPT ' + tgtF(o.x.upt, 2) + ' | ATV ' + tgtF(o.x.atv) + ' | ' + tgtF(o.x.amt) + '</title></circle>';
+      o.t = '<text x="' + o.px.toFixed(1) + '" y="' + (o.ly + o.fs * 0.35).toFixed(1) + '" text-anchor="middle" direction="ltr" font-size="' + o.fs.toFixed(1) + '" font-weight="800" fill="#0f172a" paint-order="stroke" stroke="#fff" stroke-width="2" stroke-linejoin="round" style="pointer-events:none;unicode-bidi:isolate">\u202A' + escapeHtml(o.lbl) + '\u202C</text>';
     });
     const bubbles = bub.map(o=> o.c).join('') + bub.map(o=> o.t).join('');
-    out += '<div class="tgt-card wide"><h4>🫧 جودة البيع: UPT (أفقي) مقابل ATV (رأسي) — حجم الفقاعة = حجم المبيعات (الاسم الكامل عند الوقوف على الفقاعة)</h4><svg class="tgt-svg" viewBox="0 0 ' + W + ' ' + H + '">' + g + bubbles +
+    const missingNames = rows.filter(x=> !sc.includes(x)).map(x=> tgtShort(x.s.name));
+    out += '<div class="tgt-card wide"><h4>🫧 جودة البيع: UPT (أفقي) مقابل ATV (رأسي) — حجم الفقاعة = حجم المبيعات (الاسم الكامل عند الوقوف على الفقاعة)</h4><svg class="tgt-svg" style="max-width:760px;margin:0 auto;" viewBox="0 0 ' + W + ' ' + H + '">' + g + bubbles +
       '<text x="' + (W / 2) + '" y="' + (H - 4) + '" text-anchor="middle" font-size="11" font-weight="800" fill="#475569">UPT (قطع / فاتورة)</text>' +
-      '<text x="12" y="' + (H / 2) + '" font-size="11" font-weight="800" fill="#475569" transform="rotate(-90 12 ' + (H / 2) + ')" text-anchor="middle">ATV (متوسط الفاتورة)</text></svg></div>';
+      '<text x="12" y="' + (H / 2) + '" font-size="11" font-weight="800" fill="#475569" transform="rotate(-90 12 ' + (H / 2) + ')" text-anchor="middle">ATV (متوسط الفاتورة)</text></svg>' + (missingNames.length ? '<div class="tgt-note">مش ظاهرين في الرسم (مفيش مبيعات أو فواتير): ' + missingNames.map(escapeHtml).join(' ، ') + '</div>' : '') + '</div>';
   }
 
   // 7) مقارنة النسب
@@ -7243,6 +7257,135 @@ function tgtExport(){
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), 'Target');
   XLSX.writeFile(wb, branchFname('Target') + '.xlsx');
 }
+let tgtFontCssCache = null;
+async function tgtFontCss(){
+  if(tgtFontCssCache !== null) return tgtFontCssCache;
+  let out = '';
+  try{
+    const link = document.querySelector('link[href*="fonts.googleapis.com"]');
+    if(link){
+      let css = await (await fetch(link.href)).text();
+      const urls = Array.from(new Set(Array.from(css.matchAll(/url\((https:[^)]+)\)/g), m=> m[1])));
+      for(const u of urls){
+        try{
+          const blob = await (await fetch(u)).blob();
+          const d = await new Promise(res=>{ const fr = new FileReader(); fr.onload = ()=> res(fr.result); fr.onerror = ()=> res(''); fr.readAsDataURL(blob); });
+          if(d) css = css.split(u).join(d);
+        }catch(e){}
+      }
+      out = css;
+    }
+  }catch(e){ out = ''; }
+  tgtFontCssCache = out;
+  return out;
+}
+function tgtPageCss(){
+  let css = '';
+  Array.from(document.styleSheets).forEach(sh=>{
+    try{ Array.from(sh.cssRules).forEach(r=>{ css += r.cssText + '\n'; }); }catch(e){}
+  });
+  return css;
+}
+// تصوير الشاشة بمحرك المتصفح نفسه (SVG foreignObject) — نفس الشكل بالظبط بدون مكتبات
+async function tgtNativeCanvas(holder, W, H, bg, scale){
+  const fontCss = await tgtFontCss();
+  const wrap = document.createElement('div');
+  const cs = getComputedStyle(document.body);
+  wrap.setAttribute('style', 'direction:rtl;width:' + W + 'px;box-sizing:border-box;background:' + bg + ';font-family:' + cs.fontFamily + ';font-size:' + cs.fontSize + ';color:' + cs.color + ';line-height:' + cs.lineHeight + ';');
+  const st = document.createElement('style');
+  st.textContent = fontCss + '\n' + tgtPageCss();
+  wrap.appendChild(st);
+  wrap.appendChild(holder.firstElementChild.cloneNode(true));
+  const xhtml = new XMLSerializer().serializeToString(wrap);
+  const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '"><foreignObject x="0" y="0" width="' + W + '" height="' + H + '">' + xhtml + '</foreignObject></svg>';
+  const url = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+  try{
+    const img = new Image();
+    await new Promise((res, rej)=>{ img.onload = res; img.onerror = ()=> rej(new Error('svg render')); img.src = url; });
+    if(img.decode){ try{ await img.decode(); }catch(e){} }
+    const cv = document.createElement('canvas');
+    cv.width = Math.round(W * scale); cv.height = Math.round(H * scale);
+    const ctx = cv.getContext('2d');
+    ctx.fillStyle = bg; ctx.fillRect(0, 0, cv.width, cv.height);
+    ctx.scale(scale, scale);
+    ctx.drawImage(img, 0, 0, W, H);
+    cv.toDataURL('image/png', 0.1);   // لو الكانفاس "tainted" هيرمي خطأ ونرجع للطريقة البديلة
+    return cv;
+  }finally{ /* data URL — لا يحتاج تحرير */ }
+}
+async function tgtBuildHolder(){
+  const src = $('screen-target');
+  const tbl = src.querySelector('#tgtTable table');
+  const W = Math.max(1200, Math.ceil((tbl ? tbl.scrollWidth : 0) + 60), src.clientWidth);
+  const clone = src.cloneNode(true);
+  clone.removeAttribute('id');
+  clone.classList.add('active');
+  clone.style.cssText += ';display:block;max-width:none;width:' + W + 'px;margin:0;box-sizing:border-box;';
+  const a = src.querySelectorAll('input,select,textarea'), b2 = clone.querySelectorAll('input,select,textarea');
+  a.forEach((el, i)=>{
+    const d = b2[i]; if(!d || el.type === 'file') return;
+    if(el.tagName === 'SELECT'){ Array.from(d.options).forEach((o, k)=>{ if(k === el.selectedIndex) o.setAttribute('selected', ''); else o.removeAttribute('selected'); }); }
+    else if(el.tagName === 'TEXTAREA'){ d.textContent = el.value; }
+    else { d.value = el.value; d.setAttribute('value', el.value); }
+  });
+  const tb = clone.querySelector('#tgtTopBox'); if(tb){ tb.style.position = 'static'; }
+  clone.querySelectorAll('.tgt-wrap').forEach(w=>{ w.style.overflow = 'visible'; });
+  clone.querySelectorAll('.tgt-table').forEach(t=>{ t.style.minWidth = '0'; t.style.width = '100%'; });
+  clone.querySelectorAll('.tgt-table thead th').forEach(th=>{ th.style.position = 'static'; });
+  clone.querySelectorAll('.tgt-card').forEach(c=>{ c.style.overflow = 'visible'; });
+  let bg = getComputedStyle(document.body).backgroundColor;
+  if(!bg || bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent') bg = '#f3f5f8';
+  const holder = document.createElement('div');
+  holder.style.cssText = 'position:absolute;left:-30000px;top:0;direction:rtl;box-sizing:border-box;width:' + W + 'px;background:' + bg + ';';
+  holder.appendChild(clone);
+  document.body.appendChild(holder);
+  await waitForImages(holder);
+  return { holder, W, H: holder.offsetHeight, bg };
+}
+async function tgtExportPdf(){
+  if(!tgt.sellers.length && !tgt.meta){ showToast('مفيش بيانات تتحول PDF.'); return; }
+  if(!window.jspdf || !window.jspdf.jsPDF){ alert('مكتبة PDF مش متاحة — تحقق من الإنترنت وأعد فتح الصفحة.'); return; }
+  showLoading('جاري تجهيز PDF...');
+  let hb = null;
+  try{
+    tgtRender();
+    hb = await tgtBuildHolder();
+    const { holder, W, H, bg } = hb;
+    const scale = Math.max(1, Math.min(2, 14000 / Math.max(W, H)));
+    let canvas = null;
+    try{ canvas = await tgtNativeCanvas(holder, W, H, bg, scale); }
+    catch(e){
+      console.warn('native capture failed, fallback to html2canvas:', e);
+      if(typeof html2canvas === 'undefined') throw e;
+      canvas = await html2canvas(holder, { scale, useCORS:true, allowTaint:false, backgroundColor:bg, windowWidth: W, windowHeight: H, logging:false });
+    }
+    const { jsPDF } = window.jspdf;
+    const mmPerPx = 25.4 / 96;
+    const wMm = W * mmPerPx, hMm = (canvas.height / scale) * mmPerPx;
+    const maxPage = 4000;                    // أقصى ارتفاع صفحة (مم) — الأطول بيتقسم
+    const pageH = Math.min(hMm, maxPage);
+    const orient = wMm > pageH ? 'landscape' : 'portrait';
+    const pdf = new jsPDF({ unit:'mm', format:[wMm, pageH], orientation: orient });
+    const slicePx = Math.floor(canvas.height * (pageH / hMm));
+    for(let sy = 0, p = 0; sy < canvas.height; sy += slicePx, p++){
+      const sh = Math.min(slicePx, canvas.height - sy);
+      const part = document.createElement('canvas');
+      part.width = canvas.width; part.height = sh;
+      const ctx = part.getContext('2d');
+      ctx.fillStyle = bg; ctx.fillRect(0, 0, part.width, part.height);
+      ctx.drawImage(canvas, 0, sy, canvas.width, sh, 0, 0, canvas.width, sh);
+      if(p > 0) pdf.addPage([wMm, pageH], orient);
+      pdf.addImage(part.toDataURL('image/png'), 'PNG', 0, 0, wMm, sh / canvas.height * hMm);
+    }
+    pdf.save(branchFname('Target') + '.pdf');
+  }catch(err){
+    console.error('target pdf:', err);
+    alert('تعذر إنشاء PDF: ' + ((err && err.message) || ''));
+  }finally{
+    if(hb && hb.holder && document.body.contains(hb.holder)) document.body.removeChild(hb.holder);
+    hideLoading();
+  }
+}
 function tgtAddSeller(name, days, startDay){
   name = String(name || '').trim();
   if(!name){ showToast('اكتب اسم البائع.'); return false; }
@@ -7254,6 +7397,7 @@ function tgtAddSeller(name, days, startDay){
 $('openTargetBtn') && $('openTargetBtn').addEventListener('click', tgtOpen);
 $('tgtBackBtn') && $('tgtBackBtn').addEventListener('click', ()=> switchScreen('screen-dashboard'));
 $('tgtExportBtn') && $('tgtExportBtn').addEventListener('click', tgtExport);
+$('tgtPdfBtn') && $('tgtPdfBtn').addEventListener('click', tgtExportPdf);
 $('tgtClearBtn') && $('tgtClearBtn').addEventListener('click', ()=>{
   if(!currentBranch){ showToast('اختار الفرع الأول.'); return; }
   if(!confirm('هتمسح الشيت المرفوع وكل البائعين (والمستمر/ترك العمل) من Target فرع ' + currentBranch.name + ' على كل الأجهزة. تارجت الفرع وأيام العمل هيفضلوا. تكمل؟')) return;
