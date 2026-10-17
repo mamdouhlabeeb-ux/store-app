@@ -1356,6 +1356,21 @@ service cloud.firestore {
     .tgt-offkpi span{display:block;font-size:11px;font-weight:800;color:#64748b;letter-spacing:.2px;}
     .tgt-offkpi b{display:block;font-size:21px;font-weight:900;color:#0f172a;margin-top:4px;font-variant-numeric:tabular-nums;direction:ltr;}
     .tgt-offkpi em{font-style:normal;font-size:11px;font-weight:800;color:#64748b;unicode-bidi:plaintext;}
+    .tgt-tier td.ok{background:#e9f7ef !important;}
+    .tgt-tier td.ok .oc-a{color:#047857;}
+    .tgt-tier td.near{box-shadow:inset 0 0 0 2px #4f46e5;background:#eef2ff !important;}
+    .tgt-tier td.near .oc-n{color:#312e81;}
+    .tgt-tier tr.brrow td{background:#e0e7ff !important;border-top:2px solid #4f46e5;font-weight:900;}
+    .tgt-tier .oc-a b{font-weight:900;}
+    .tgt-tag{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:900;background:#eef2ff;color:#312e81;white-space:nowrap;}
+    .tgt-tag.g{background:#dcfce7;color:#166534;} .tgt-tag.y{background:#fef9c3;color:#854d0e;} .tgt-tag.r{background:#fee2e2;color:#991b1b;}
+    .tgt-lad-row{display:grid;grid-template-columns:minmax(150px,240px) 1fr 70px;gap:10px;align-items:center;margin:8px 0;font-size:12.5px;font-weight:700;}
+    .tgt-lad-row .nm{unicode-bidi:plaintext;line-height:1.3;word-break:break-word;}
+    .tgt-lad{position:relative;height:16px;border-radius:8px;background:#eef2f6;direction:ltr;}
+    .tgt-lad .f{position:absolute;left:0;top:0;bottom:0;border-radius:8px;}
+    .tgt-lad .t{position:absolute;top:-4px;bottom:-4px;width:2px;background:#1e293b;opacity:.75;}
+    .tgt-lad-axis{position:relative;height:16px;direction:ltr;margin-bottom:2px;}
+    .tgt-lad-axis span{position:absolute;transform:translateX(-50%);font-size:10.5px;font-weight:800;color:#475569;}
     .tgt-note{font-size:12px;color:#6C7480;line-height:1.7;margin:6px 2px;}
     .tgt-warn{background:#fffbeb;border:1px solid #fcd34d;color:#92400e;border-radius:10px;padding:8px 12px;font-size:12.5px;font-weight:700;margin:8px 0;line-height:1.9;}
     .tgt-warn button{border:1px solid #f59e0b;background:#fff;border-radius:999px;padding:2px 10px;margin:0 3px;font-family:inherit;font-weight:800;font-size:12px;cursor:pointer;}
@@ -1441,6 +1456,9 @@ service cloud.firestore {
     <button class="btn-primary" id="tgtAddBtn" type="button">إضافة وإعادة التوزيع</button>
   </div>
   <p class="tgt-note">المفروض لحد النهارده = التارجت اليومي × (اليوم من الشهر − أيام الإجازة)، بحد أقصى أيام عمل البائع. صف "الفرع" تحت بيحسب على إجمالي الشيت كله (مش مجموع السيلز): التارجت اليومي = تارجت الفرع ÷ أيام الشهر الفعلية (28/29/30/31)، والمفروض = اليومي × اليوم من الشهر. ولو البائع ليه "يبدأ من يوم" (معيّن جديد) فبيتحسب له التارجت اليومي × (اليوم من الشهر − يوم البداية)، يعني بدأ 13 والنهارده 16 = 3 أيام. النسبة الشهرية = المحقق ÷ التارجت الشهري، والنسبة اليومية = المحقق ÷ المفروض لحد النهارده. UPT = الكمية ÷ عدد الفواتير، ATV = إجمالي Tax Incl. ÷ عدد الفواتير.</p>
+
+  <div class="tgt-dash-title">🎯 تقرير شرائح التحقيق — أقرب نسبة (90% / 95% / 100% / 110% / 120%)</div>
+  <div id="tgtTiers"></div>
 
   <div class="tgt-dash-title">🎁 تقرير الأوفرات</div>
   <div id="tgtOffers"></div>
@@ -7145,9 +7163,76 @@ function tgtRender(){
   } else html += '</tbody></table>';
   $('tgtTable').innerHTML = html;
 
+  tgtRenderTiers(C);
   tgtRenderOffers(C);
   tgtRenderDash(C);
   tgtRenderOffersDash(C);
+}
+
+/* ---------- تقرير شرائح التحقيق ---------- */
+const TGT_TIERS = [90, 95, 100, 110, 120];
+function tgtTierCalc(target, amt, remDays){
+  const pct = target > 0 ? amt / target * 100 : null;
+  let near = null, reached = null;
+  if(pct != null){
+    near = TGT_TIERS.reduce((b, t)=> Math.abs(pct - t) < Math.abs(pct - b) ? t : b, TGT_TIERS[0]);
+    TGT_TIERS.forEach(t=>{ if(pct >= t) reached = t; });
+  }
+  const cells = TGT_TIERS.map(t=>{
+    const need = target * t / 100, rem = need - amt;
+    return { t, need, rem, ok: rem <= 0, daily: (rem > 0 && remDays > 0) ? rem / remDays : null };
+  });
+  const next = cells.find(c=> !c.ok) || null;
+  return { pct, near, reached, cells, next, remDays };
+}
+function tgtTierRows(C){
+  const rows = [];
+  C.rows.filter(r=> !r.left).forEach(r=>{
+    const remDays = Math.max(0, r.days - (r.el || 0));
+    rows.push(Object.assign({ name: r.s.name, target: r.target, amt: r.amt, branch: false }, tgtTierCalc(r.target, r.amt, remDays)));
+  });
+  const br = C.br;
+  rows.push(Object.assign({ name: 'الفرع (إجمالي الشيت)', target: br.target, amt: br.amt, branch: true }, tgtTierCalc(br.target, br.amt, Math.max(0, br.dim - br.today))));
+  return rows;
+}
+function tgtRenderTiers(C){
+  const el = $('tgtTiers'); if(!el) return;
+  const rows = tgtTierRows(C);
+  if(!C.active.length && !(C.br && C.br.amt)){ el.innerHTML = '<div class="tgt-note">ارفع الشيت وضيف البائعين عشان يظهر التقرير.</div>'; return; }
+  const tagCls = (p)=> p == null ? '' : (p >= 100 ? 'g' : (p >= 90 ? 'y' : 'r'));
+  let h = '<div class="tgt-wrap"><table class="tgt-table tgt-off tgt-tier"><thead><tr><th>#</th><th>اسم البائع</th><th>التارجت الشهري</th><th>المحقق</th><th>النسبة الحالية</th><th>أقرب نسبة</th><th>الشريحة الحالية</th>' +
+    TGT_TIERS.map(t=> '<th>' + t + '%</th>').join('') + '</tr></thead><tbody>';
+  let i = 0;
+  rows.forEach(x=>{
+    if(!x.branch) i++;
+    const nearDelta = x.pct == null ? null : x.pct - x.near;
+    h += '<tr class="' + (x.branch ? 'brrow' : '') + '"><td>' + (x.branch ? '🏢' : i) + '</td><td class="nm">' + escapeHtml(x.name) + '</td>' +
+      '<td class="num"><b>' + tgtF(x.target) + '</b></td><td class="num"><b>' + tgtF(x.amt) + '</b></td>' +
+      '<td><span class="tgt-tag ' + tagCls(x.pct) + '">' + (x.pct == null ? '—' : tgtF(x.pct, 1) + '%') + '</span></td>' +
+      '<td>' + (x.near == null ? '—' : '<b>' + x.near + '%</b><div class="oc-a">' + (nearDelta >= 0 ? '+' : '−') + tgtF(Math.abs(nearDelta), 1) + ' نقطة</div>') + '</td>' +
+      '<td>' + (x.reached == null ? '<span class="tgt-tag r">أقل من 90%</span>' : '<span class="tgt-tag g">' + x.reached + '% ✓</span>') + '</td>';
+    x.cells.forEach(c=>{
+      const isNear = x.near === c.t;
+      const cls = (c.ok ? 'ok' : '') + (isNear ? ' near' : '');
+      h += '<td class="c ' + cls + '"><div class="oc-n">' + tgtF(c.need) + '</div>' +
+        (c.ok ? '<div class="oc-a">✓ تحقق</div>' : '<div class="oc-a">متبقي <b>' + tgtF(c.rem) + '</b></div><div class="oc-p">' + (c.daily == null ? 'انتهت الأيام' : 'يوميًا <b>' + tgtF(c.daily) + '</b>') + '</div>') + '</td>';
+    });
+    h += '</tr>';
+  });
+  h += '</tbody></table></div>';
+  h += '<p class="tgt-note">كل خانة: (1) المبيعات المطلوبة للوصول للنسبة = التارجت × النسبة، (2) المتبقي عن المحقق الحالي، (3) المطلوب يوميًا في الأيام المتبقية. الخانة المؤطّرة بالأزرق = أقرب شريحة للنسبة الحالية. الأيام المتبقية للبائع = أيام عمله − الأيام اللي عدّت، وللفرع = أيام الشهر − اليوم الحالي. البائعين التاركين مش داخلين (تارجتهم مثبّت).</p>';
+
+  // مقياس التحقيق
+  const MAXP = 130;
+  const axis = '<div class="tgt-lad-row"><div></div><div class="tgt-lad-axis">' + TGT_TIERS.map(t=> '<span style="left:' + (t / MAXP * 100).toFixed(2) + '%;">' + t + '%</span>').join('') + '</div><div></div></div>';
+  h += '<div class="tgt-card wide" style="margin-top:10px;"><h4>📏 مقياس التحقيق مقابل الشرائح</h4>' + axis + rows.map(x=>{
+    const p = x.pct == null ? 0 : x.pct;
+    const col = p >= 110 ? '#0f766e' : (p >= 100 ? '#16a34a' : (p >= 90 ? '#d97706' : '#dc2626'));
+    return '<div class="tgt-lad-row"><div class="nm">' + (x.branch ? '🏢 ' : '') + escapeHtml(x.name) + '</div><div class="tgt-lad"><div class="f" style="width:' + Math.min(100, p / MAXP * 100).toFixed(1) + '%;background:' + col + ';"></div>' +
+      TGT_TIERS.map(t=> '<div class="t" style="left:' + (t / MAXP * 100).toFixed(2) + '%;"></div>').join('') + '</div><div style="direction:ltr;text-align:left;">' + (x.pct == null ? '—' : tgtF(x.pct, 1) + '%') + '</div></div>';
+  }).join('') +
+    '<div class="tgt-legend"><span><i style="background:#dc2626"></i>أقل من 90%</span><span><i style="background:#d97706"></i>90% – 100%</span><span><i style="background:#16a34a"></i>100% – 110%</span><span><i style="background:#0f766e"></i>110% فأكتر</span></div></div>';
+  el.innerHTML = h;
 }
 
 /* ---------- تقرير الأوفرات ---------- */
@@ -7421,6 +7506,17 @@ function tgtExport(){
   const BR = C.br; data.push([]); data.push(['الفرع (إجمالي الشيت)', '', BR.dim, '', Math.round(BR.target), Math.round(BR.daily), Math.round(BR.exp), Math.round(BR.amt), BR.mp == null ? '' : Math.round(BR.mp * 10) / 10, BR.dp == null ? '' : Math.round(BR.dp * 10) / 10, BR.upt == null ? '' : Math.round(BR.upt * 100) / 100, BR.atv == null ? '' : Math.round(BR.atv), BR.rc, BR.qty]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), 'Target');
+  {
+    const th = ['اسم البائع', 'التارجت الشهري', 'المحقق', 'النسبة الحالية %', 'أقرب نسبة %', 'الشريحة الحالية'];
+    TGT_TIERS.forEach(t=> th.push(t + '% (المطلوب)', t + '% (المتبقي)', t + '% (يومي مطلوب)'));
+    const td = [th];
+    tgtTierRows(C).forEach(x=>{
+      const line = [x.name, Math.round(x.target), Math.round(x.amt), x.pct == null ? '' : Math.round(x.pct * 10) / 10, x.near == null ? '' : x.near, x.reached == null ? 'أقل من 90%' : x.reached + '%'];
+      x.cells.forEach(c=> line.push(Math.round(c.need), c.ok ? 'تحقق' : Math.round(c.rem), c.ok ? '' : (c.daily == null ? '' : Math.round(c.daily))));
+      td.push(line);
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(td), 'Tiers');
+  }
   const OM = tgtOfferMatrix();
   if(OM && OM.cols.length){
     const hd = ['اسم البائع'];
