@@ -1358,8 +1358,6 @@ service cloud.firestore {
     .tgt-offkpi em{font-style:normal;font-size:11px;font-weight:800;color:#64748b;unicode-bidi:plaintext;}
     .tgt-tier td.ok{background:#e9f7ef !important;}
     .tgt-tier td.ok .oc-a{color:#047857;}
-    .tgt-tier td.near{box-shadow:inset 0 0 0 2px #4f46e5;background:#eef2ff !important;}
-    .tgt-tier td.near .oc-n{color:#312e81;}
     .tgt-tier tr.brrow td{background:#e0e7ff !important;border-top:2px solid #4f46e5;font-weight:900;}
     .tgt-tier .oc-a b{font-weight:900;}
     .tgt-tag{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11.5px;font-weight:900;background:#eef2ff;color:#312e81;white-space:nowrap;}
@@ -7220,7 +7218,7 @@ function tgtRenderTiers(C){
     h += '</tr>';
   });
   h += '</tbody></table></div>';
-  h += '<p class="tgt-note">كل خانة: (1) المبيعات المطلوبة للوصول للنسبة = التارجت × النسبة، (2) المتبقي عن المحقق الحالي، (3) المطلوب يوميًا في الأيام المتبقية. الخانة المؤطّرة بالأزرق = أقرب شريحة للنسبة الحالية. الأيام المتبقية للبائع = أيام عمله − الأيام اللي عدّت، وللفرع = أيام الشهر − اليوم الحالي. البائعين التاركين مش داخلين (تارجتهم مثبّت).</p>';
+  h += '<p class="tgt-note">كل خانة: (1) المبيعات المطلوبة للوصول للنسبة = التارجت × النسبة، (2) المتبقي عن المحقق الحالي، (3) المطلوب يوميًا في الأيام المتبقية. الأيام المتبقية للبائع = أيام عمله − الأيام اللي عدّت، وللفرع = أيام الشهر − اليوم الحالي. البائعين التاركين مش داخلين (تارجتهم مثبّت).</p>';
 
   // مقياس التحقيق
   const MAXP = 130;
