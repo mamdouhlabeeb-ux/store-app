@@ -7291,7 +7291,7 @@ async function tgtNativeCanvas(holder, W, H, bg, scale){
   const fontCss = await tgtFontCss();
   const wrap = document.createElement('div');
   const cs = getComputedStyle(document.body);
-  wrap.setAttribute('style', 'direction:rtl;width:' + W + 'px;box-sizing:border-box;background:' + bg + ';font-family:' + cs.fontFamily + ';font-size:' + cs.fontSize + ';color:' + cs.color + ';line-height:' + cs.lineHeight + ';');
+  wrap.setAttribute('style', 'direction:ltr;width:' + W + 'px;box-sizing:border-box;background:' + bg + ';font-family:' + cs.fontFamily + ';font-size:' + cs.fontSize + ';color:' + cs.color + ';line-height:' + cs.lineHeight + ';');
   const st = document.createElement('style');
   st.textContent = fontCss + '\n' + tgtPageCss();
   wrap.appendChild(st);
@@ -7320,7 +7320,11 @@ async function tgtBuildHolder(){
   const clone = src.cloneNode(true);
   clone.removeAttribute('id');
   clone.classList.add('active');
-  clone.style.cssText += ';display:block;max-width:none;width:' + W + 'px;margin:0;box-sizing:border-box;';
+  clone.style.cssText += ';display:block;max-width:none;width:' + W + 'px;margin:0;box-sizing:border-box;direction:ltr;text-align:left;';
+  clone.setAttribute('dir', 'ltr');
+  const ltrCss = document.createElement('style');
+  ltrCss.textContent = '.tgt-table td.nm{text-align:left !important;} .tgt-table th,.tgt-kpi span{unicode-bidi:plaintext;} .tgt-note,.tgt-warn{text-align:left;unicode-bidi:plaintext;} .tgt-bar-row .val{text-align:right;} .tgt-bar-row .nm,.tgt-dn-leg span{text-align:left;} .tgt-card h4,.tgt-dash-title{text-align:left;}';
+  clone.appendChild(ltrCss);
   const a = src.querySelectorAll('input,select,textarea'), b2 = clone.querySelectorAll('input,select,textarea');
   a.forEach((el, i)=>{
     const d = b2[i]; if(!d || el.type === 'file') return;
@@ -7336,7 +7340,7 @@ async function tgtBuildHolder(){
   let bg = getComputedStyle(document.body).backgroundColor;
   if(!bg || bg === 'rgba(0, 0, 0, 0)' || bg === 'transparent') bg = '#f3f5f8';
   const holder = document.createElement('div');
-  holder.style.cssText = 'position:absolute;left:-30000px;top:0;direction:rtl;box-sizing:border-box;width:' + W + 'px;background:' + bg + ';';
+  holder.style.cssText = 'position:absolute;left:-30000px;top:0;direction:ltr;box-sizing:border-box;width:' + W + 'px;background:' + bg + ';';
   holder.appendChild(clone);
   document.body.appendChild(holder);
   await waitForImages(holder);
