@@ -849,7 +849,38 @@ service cloud.firestore {
     .mc-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;}
     @media(max-width:700px){.mc-stats{grid-template-columns:1fr 1fr;}}
     .mc-input-bar{display:flex;gap:10px;align-items:center;background:#ffffff;border:1px solid #e5e7eb;border-radius:16px;padding:10px 12px;margin:0 0 12px;}
-    .mc-input-bar .search-input{flex:1 1 auto;min-width:0;}
+        .mc-input-bar .search-input{flex:1 1 auto;min-width:0;}
+    .mcd-top{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:6px;}
+    .mcd-kpi{background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:14px 16px;box-shadow:0 4px 14px rgba(15,23,42,.05);position:relative;overflow:hidden;}
+    .mcd-kpi::before{content:"";position:absolute;inset-inline-start:0;top:0;bottom:0;width:5px;background:var(--c,#94a3b8);}
+    .mcd-kpi .n{font-family:'Cairo',sans-serif;font-size:28px;font-weight:900;line-height:1.1;color:#0f172a;}
+    .mcd-kpi .l{font-size:12.5px;font-weight:700;color:#64748b;margin-top:4px;}
+    .mcd-card{background:#fff;border:1px solid #e5e7eb;border-radius:18px;margin-top:20px;box-shadow:0 10px 28px rgba(15,23,42,.07);overflow:hidden;}
+    .mcd-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;padding:16px 20px;color:#fff;background:linear-gradient(135deg,#92400e,#f59e0b);}
+    .mcd-head h3{margin:0;font-family:'Cairo',sans-serif;font-size:24px;font-weight:900;color:#fff;}
+    .mcd-badge{background:rgba(255,255,255,.22);border:1px solid rgba(255,255,255,.45);padding:5px 14px;border-radius:999px;font-weight:800;font-size:13.5px;}
+    .mcd-body{display:grid;grid-template-columns:230px 1fr;gap:22px;padding:20px;align-items:center;}
+    @media(max-width:700px){.mcd-body{grid-template-columns:1fr;justify-items:center;}.mcd-body>div:last-child{width:100%;}}
+    .mcd-donut{position:relative;width:200px;height:200px;direction:ltr;}
+    .mcd-donut .mid{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;}
+    .mcd-donut .mid b{font-family:'Cairo',sans-serif;font-size:36px;font-weight:900;color:#0f172a;line-height:1;}
+    .mcd-donut .mid span{font-size:12px;font-weight:700;color:#64748b;margin-top:4px;}
+    .mcd-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;}
+    @media(max-width:520px){.mcd-grid{grid-template-columns:1fr 1fr;}}
+    .mcd-mini{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:10px 12px;border-top:4px solid var(--c,#94a3b8);}
+    .mcd-mini .n{font-family:'Cairo',sans-serif;font-size:22px;font-weight:900;color:#0f172a;}
+    .mcd-mini .l{font-size:12px;font-weight:700;color:#64748b;}
+    .mcd-bars{margin-top:14px;display:flex;flex-direction:column;gap:9px;}
+    .mcd-bar-row{display:grid;grid-template-columns:120px 1fr 56px;gap:10px;align-items:center;font-size:12.5px;font-weight:800;}
+    .mcd-track{background:#e2e8f0;border-radius:999px;height:12px;overflow:hidden;direction:ltr;}
+    .mcd-fill{height:100%;border-radius:999px;}
+    .mcd-chips{display:flex;flex-wrap:wrap;gap:8px;padding:0 20px 14px;align-items:center;}
+    .mcd-chip{background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;border-radius:999px;padding:3px 12px;font-size:12.5px;font-weight:800;}
+    .mcd-det{border-top:1px solid #e5e7eb;padding:4px 20px;}
+    .mcd-det summary{cursor:pointer;font-weight:800;font-size:14px;padding:11px 0;color:#334155;}
+    .mcd-det .tbl-wrap{overflow-x:auto;padding-bottom:12px;}
+    .mcd-cmp{margin-top:20px;background:#fff;border:1px solid #e5e7eb;border-radius:18px;padding:16px 20px;box-shadow:0 6px 18px rgba(15,23,42,.05);}
+    .mcd-cmp h3{margin:0 0 10px;font-size:16px;}
   </style>
   <div class="panel-head" style="margin-bottom:6px;">
     <h2 style="font-family:'Cairo',sans-serif;">Map Check (فحص اللوكيشن)</h2>
@@ -1885,7 +1916,6 @@ function applyCloudSections(out){
     if($('screen-turnover') && $('screen-turnover').classList.contains('active')) renderTurnover();
   }
 
-  if(out.mapcheck){ try{ mapCheckApplyRemote(out.mapcheck); }catch(e){ console.error('live mapcheck:', e); } }
   if(out.count){ try{ cntApplyRemote(out.count); }catch(e){ console.error('live count:', e); } }
 
   const latestUpdate = [out.stock && out.stock.uploadedAt, out.sales && out.sales.uploadedAt, out.locations && out.locations.uploadedAt, out.transfers && out.transfers.uploadedAt, out.turnover && (out.turnover.updatedAt || out.turnover.uploadedAt)].filter(Boolean).sort().pop();
@@ -4303,8 +4333,8 @@ function loadMapCheckDB(){
     const j = JSON.parse(localStorage.getItem(mapCheckDBKey()) || 'null');
     if(j && j.rows && Array.isArray(j.rows)) mapCheckMap = new Map(j.rows.map(p=>[p[0], typeof p[1] === 'string' ? { loc: p[1], raw: '' } : { loc: (p[1] && p[1].loc) || '', raw: (p[1] && p[1].raw) || '' }]));
     else mapCheckMap = new Map();
-    mapCheckEntries = (j && Array.isArray(j.entries)) ? j.entries.map(en=>({ code: en.code, norm: en.norm, loc: en.loc, sheetCode: en.sheetCode })) : [];
     mapCheckSelectedLoc = (j && j.sel) || '';
+    mapCheckEntries = (j && Array.isArray(j.entries)) ? j.entries.map(en=>({ code: en.code, norm: en.norm, loc: en.loc, sheetCode: en.sheetCode, chk: (en.chk || mapCheckSelectedLoc || '') })) : [];
     mapCheckTs = (j && Number(j.at)) || 0;
   }catch(e){ mapCheckMap = new Map(); mapCheckEntries = []; mapCheckSelectedLoc = ''; mapCheckTs = 0; }
 }
@@ -4318,54 +4348,13 @@ function setMapCheckLocStatus(msg, type){
 function mapCheckStoredTs(){
   try{ const j = JSON.parse(localStorage.getItem(mapCheckDBKey()) || 'null'); return (j && Number(j.at)) || 0; }catch(e){ return 0; }
 }
-function mapCheckPack(){
-  return { rows: Array.from(mapCheckMap.entries()), entries: mapCheckEntries, sel: mapCheckSelectedLoc, updatedAt: mapCheckStoredTs() };
-}
+// Map Check محلي على الجهاز بس — من غير أي مزامنة مع الأجهزة التانية (لابتوب / موبايل كل واحد لوحده)
 function mapCheckPushCloud(){
-  if(!currentBranch) return;
-  const branchId = currentBranch.id;
   mapCheckTs = Date.now();
   saveMapCheckDB();
-  clearTimeout(mapCheckPushTimer);
-  mapCheckPushTimer = setTimeout(()=>{
-    mapCheckPushTimer = null;
-    if(!currentBranch || currentBranch.id !== branchId || typeof db === 'undefined' || !db) return;
-    saveSection(branchId, 'mapcheck', mapCheckPack()).catch(e=> console.error('mapcheck cloud save:', e));
-  }, 500);
 }
-function mapCheckApplyRemote(d){
-  if(!currentBranch || !d || typeof d !== 'object') return false;
-  if(mapCheckPushTimer) return false;                       // عندي تعديل لسه ما اترفعش — مش هنكتب فوقه
-  const t = Number(d.updatedAt) || 0;
-  if(t <= mapCheckStoredTs()) return false;                 // نفس النسخة أو أقدم
-  const toVal = (v)=> (typeof v === 'string') ? { loc: v, raw: '' } : { loc: (v && v.loc) || '', raw: (v && v.raw) || '' };
-  if(Array.isArray(d.rows)) mapCheckMap = new Map(d.rows.map(p=>[p[0], toVal(p[1])]));
-  else if(d.rows && typeof d.rows === 'object') mapCheckMap = new Map(Object.keys(d.rows).map(k=>[k, toVal(d.rows[k])]));
-  else mapCheckMap = new Map();
-  mapCheckEntries = Array.isArray(d.entries) ? d.entries.map(en=>({ code: en.code, norm: en.norm, loc: en.loc, sheetCode: (en.sheetCode || mapCheckRawOf(en.norm)) })) : [];
-  mapCheckSelectedLoc = (typeof d.sel === 'string') ? d.sel : '';
-  mapCheckTs = t;
-  saveMapCheckDB();
-  const scr = $('screen-mapcheck');
-  if(scr && scr.classList.contains('active')) refreshMapCheckScreenState();
-  return true;
-}
-async function mapCheckSyncOnOpen(){
-  if(!currentBranch || typeof db === 'undefined' || !db) return;
-  const branchId = currentBranch.id;
-  try{
-    const data = await loadBranchData(branchId);
-    if(!currentBranch || currentBranch.id !== branchId) return;
-    const remote = data && data.mapcheck;
-    const hasLocal = mapCheckMap.size > 0 || mapCheckEntries.length > 0;
-    if(remote){
-      mapCheckApplyRemote(remote);
-      if(hasLocal && mapCheckStoredTs() > (Number(remote.updatedAt) || 0)) mapCheckPushCloud();
-    } else if(hasLocal){
-      mapCheckPushCloud();                                   // أول مرة: ارفع اللي على الجهاز
-    }
-  }catch(e){ console.error('mapcheck open sync:', e); }
-}
+function mapCheckApplyRemote(){ return false; }
+async function mapCheckSyncOnOpen(){ return; }
 
 function refreshMapCheckScreenState(){
   mapCheckReport = null;
@@ -4390,7 +4379,6 @@ function openMapCheckScreen(){
   const mbar = $('mcInputBar'); if(mbar) mbar.style.display = 'none';
   loadMapCheckDB();
   refreshMapCheckScreenState();
-  mapCheckSyncOnOpen();
   $('mapCheckCodeInput').focus();
 }
 $('openMapCheckBtn') && $('openMapCheckBtn').addEventListener('click', openMapCheckScreen);
@@ -4464,7 +4452,7 @@ $('mapCheckLocSelect').addEventListener('change', ()=>{
 });
 
 $('mapCheckResetBtn').addEventListener('click', ()=>{
-  mapCheckEntries = [];
+  mapCheckEntries = mapCheckEntries.filter(en=> en.chk !== mapCheckSelectedLoc);
   mapCheckReport = null;
   $('mapCheckReportPanel').style.display = 'none';
   renderMapCheckList();
@@ -4474,6 +4462,33 @@ $('mapCheckResetBtn').addEventListener('click', ()=>{
   $('mapCheckCodeInput').focus();
 });
 
+function mcLocsWithEntries(){
+  const out = [];
+  mapCheckEntries.forEach(en=>{ if(en.chk && out.indexOf(en.chk) === -1) out.push(en.chk); });
+  return out;
+}
+function mcStats(loc){
+  const cur = mcEntriesFor(loc);
+  const correct = cur.filter(en=> en.loc === loc).length;
+  const wrong = cur.length - correct;
+  const expected = Array.from(mapCheckMap.values()).filter(v=> (typeof v === 'string' ? v : (v && v.loc) || '') === loc).length;
+  const total = cur.length;
+  return { sel: loc, entries: cur, expected, totalEntered: total, correct, wrong,
+    accPct: expected ? Math.round(correct / expected * 100) : 0,
+    wrongPct: expected ? Math.round(wrong / expected * 100) : 0,
+    missing: mcMissingFor(loc) };
+}
+function mcEntriesFor(loc){ return mapCheckEntries.filter(en=> en.chk === loc); }
+function mcMissingFor(loc){
+  // أكواد الشيت المسجلة في اللوكيشن ده ومتكتبتش/متسكانتش في فحصه
+  const done = new Set(mcEntriesFor(loc).map(en=> en.norm));
+  const out = [];
+  mapCheckMap.forEach((v, norm)=>{
+    const l = (typeof v === 'string') ? v : ((v && v.loc) || '');
+    if(l === loc && !done.has(norm)) out.push({ norm, raw: (v && typeof v === 'object' && v.raw) || norm, loc: l });
+  });
+  return out;
+}
 function mapCheckLocOf(norm){
   const v = mapCheckMap.get(norm);
   return v ? (typeof v === 'string' ? v : (v && v.loc) || '') : '';
@@ -4488,10 +4503,11 @@ function mapCheckAddCode(raw){
   if(!rawCode){ return; }
   const norm = normalizeLastPriceCode(rawCode);
   if(!norm){ showToast('اكتب كود صحيح.'); input.value = ''; return; }
-  if(mapCheckEntries.some(en=> en.norm === norm)){ showToast('الكود ده مضاف قبل كده.'); input.value = ''; return; }
+  if(!mapCheckSelectedLoc){ showToast('اختار اللوكيشن المفحوص الأول.'); return; }
+  if(mapCheckEntries.some(en=> en.norm === norm && en.chk === mapCheckSelectedLoc)){ showToast('الكود ده مضاف قبل كده في ' + mapCheckSelectedLoc + '.'); input.value = ''; return; }
   mapCheckReport = null;
   $('mapCheckReportPanel').style.display = 'none';
-  mapCheckEntries.push({ code: rawCode, norm, loc: mapCheckLocOf(norm), sheetCode: mapCheckRawOf(norm) });
+  mapCheckEntries.push({ code: rawCode, norm, loc: mapCheckLocOf(norm), sheetCode: mapCheckRawOf(norm), chk: mapCheckSelectedLoc });
   renderMapCheckList();
   refreshMapCheckSummary();
   saveMapCheckDB();
@@ -4506,20 +4522,38 @@ $('mapCheckScanBtn').addEventListener('click', ()=> camOpen((text)=>{ mapCheckAd
 function renderMapCheckList(){
   const list = $('mapCheckList');
   const sel = mapCheckSelectedLoc;
+  // الترتيب: اللوكيشن الحالي فوق، وبعده الأحدث نشاطًا (آخر كود اتسجل) فالأقدم
+  const lastIdx = {};
+  mapCheckEntries.forEach((en, i)=>{ if(en.chk) lastIdx[en.chk] = i; });
+  const locs = Object.keys(lastIdx).filter(l=> l !== sel).sort((a, b)=> lastIdx[b] - lastIdx[a]);
+  if(sel) locs.unshift(sel);
   let html = '';
-  if(mapCheckEntries.length === 0){
-    html = '<div class="empty-state"><div class="big">📋</div><div>لسه مفيش أكواد — اكتب كود أو اعمل سكان.</div></div>';
+  if(!locs.length){
+    html = '<div class="empty-state"><div class="big">📋</div><div>' + (sel ? 'لسه مفيش أكواد — اكتب كود أو اعمل سكان.' : 'اختار اللوكيشن المفحوص الأول.') + '</div></div>';
   } else {
-    mapCheckEntries.forEach((en, i)=>{
-      const checked = !!sel;
-      const ok = checked && en.loc === sel;
-      html += '<div class="mc-row ' + (checked ? (ok ? 'ok' : 'wrong') : '') + '">'
-        + '<span class="mc-code">' + escapeHtml(en.code) + '</span>'
-        + (en.sheetCode && en.sheetCode !== en.code ? '<span class="mc-sheet">← ' + escapeHtml(en.sheetCode) + '</span>' : '')
-        + '<span class="mc-status ' + (ok ? 'ok' : 'wrong') + '">' + (checked ? (ok ? '✔ صح' : '✘ خطأ') : '—') + '</span>'
-        + '<span class="mc-loc ' + (ok ? 'ok' : 'wrong') + '">' + escapeHtml(en.loc || 'مش موجود في الشيت') + '</span>'
-        + '<button type="button" class="mc-del" data-i="' + i + '">✕</button>'
+    locs.forEach(loc=>{
+      const st = mcStats(loc);
+      const active = loc === sel;
+      html += '<div style="margin-top:6px;padding:8px 12px;border-radius:12px;background:' + (active ? '#fef3c7' : '#f1f5f9') + ';border:1px solid ' + (active ? '#f59e0b' : '#e2e8f0') + ';font-weight:800;font-size:14px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">'
+        + '<span style="font-size:16px;">📍 ' + escapeHtml(loc) + '</span>'
+        + '<span style="color:#047857;">صح: ' + st.correct + '</span><span style="color:#b91c1c;">خطأ: ' + st.wrong + '</span><span>الإجمالي: ' + st.totalEntered + '</span>'
+        + (active ? '<span style="margin-inline-start:auto;color:#92400e;">← اللوكيشن الحالي</span>' : '')
         + '</div>';
+      if(!st.entries.length){
+        html += '<div style="color:var(--muted);font-size:13px;padding:6px 12px;">لسه مفيش أكواد في ' + escapeHtml(loc) + '.</div>';
+      }
+      for(let i = mapCheckEntries.length - 1; i >= 0; i--){
+        const en = mapCheckEntries[i];
+        if(en.chk !== loc) continue;
+        const ok = en.loc === en.chk;
+        html += '<div class="mc-row ' + (ok ? 'ok' : 'wrong') + '">'
+          + '<span class="mc-code">' + escapeHtml(en.code) + '</span>'
+          + (en.sheetCode && en.sheetCode !== en.code ? '<span class="mc-sheet">← ' + escapeHtml(en.sheetCode) + '</span>' : '')
+          + '<span class="mc-status ' + (ok ? 'ok' : 'wrong') + '">' + (ok ? '✔ صح' : '✘ خطأ') + '</span>'
+          + '<span class="mc-loc ' + (ok ? 'ok' : 'wrong') + '">' + escapeHtml(en.loc || 'مش موجود في الشيت') + '</span>'
+          + '<button type="button" class="mc-del" data-i="' + i + '">✕</button>'
+          + '</div>';
+      }
     });
   }
   list.innerHTML = html;
@@ -4536,28 +4570,26 @@ function renderMapCheckList(){
 
 function refreshMapCheckSummary(){
   const wrap = $('mapCheckSummary');
-  const sel = mapCheckSelectedLoc;
-  if(!mapCheckEntries.length || !sel){ wrap.style.display = 'none'; return; }
-  const correct = mapCheckEntries.filter(en=> en.loc === sel).length;
-  const wrong = mapCheckEntries.length - correct;
+  const locs = mcLocsWithEntries();
+  if(!locs.length){ wrap.style.display = 'none'; return; }
+  let correct = 0, wrong = 0;
+  locs.forEach(l=>{ const st = mcStats(l); correct += st.correct; wrong += st.wrong; });
   wrap.style.display = 'block';
   wrap.style.background = wrong ? '#fef2f2' : '#ecfdf5';
   wrap.style.borderColor = wrong ? '#fca5a5' : '#a7f3d0';
-  wrap.textContent = 'صح: ' + correct + '  •  خطأ: ' + wrong + '  •  الإجمالي: ' + mapCheckEntries.length
-    + (wrong ? '  — في أكواد خطأ، راجع الأحمر قبل ما تنهي.️' : '  — كل الأكواد في اللوكيشن الصح 👌');
+  wrap.textContent = 'لوكيشنات تم فحصها: ' + locs.length + '  •  صح: ' + correct + '  •  خطأ: ' + wrong + '  •  الإجمالي: ' + (correct + wrong)
+    + (wrong ? '  — في أكواد خطأ، راجع الأحمر قبل ما تنهي.' : '  — كل الأكواد في اللوكيشن الصح 👌');
 }
 
 $('mapCheckFinishBtn').addEventListener('click', ()=>{
   if(!mapCheckMap || !mapCheckMap.size){ showToast('ارفع شيت MAP LOC الأول.'); return; }
-  const sel = mapCheckSelectedLoc;
-  if(!sel){ showToast('اختار اللوكيشن المفحوص الأول.'); return; }
-  const correct = mapCheckEntries.filter(en=> en.loc === sel).length;
-  const wrong = mapCheckEntries.length - correct;
-  const expected = Array.from(mapCheckMap.values()).filter(v=> (typeof v === 'string' ? v : (v && v.loc) || '') === sel).length;
-  const totalEntered = mapCheckEntries.length;
-  const accPct = totalEntered ? Math.round(correct / totalEntered * 100) : 0;
-  const wrongPct = totalEntered ? Math.round(wrong / totalEntered * 100) : 0;
-  mapCheckReport = { sel, expected, totalEntered, correct, wrong, accPct, wrongPct };
+  const locs = mcLocsWithEntries();
+  if(!locs.length){ showToast('مفيش أكواد متسجلة في أي لوكيشن.'); return; }
+  const groups = locs.map(mcStats);
+  const tot = groups.reduce((a,g)=>({ totalEntered: a.totalEntered + g.totalEntered, correct: a.correct + g.correct, wrong: a.wrong + g.wrong, expected: a.expected + g.expected, missing: a.missing + g.missing.length }), { totalEntered:0, correct:0, wrong:0, expected:0, missing:0 });
+  tot.accPct = tot.expected ? Math.round(tot.correct / tot.expected * 100) : 0;
+  tot.wrongPct = tot.expected ? Math.round(tot.wrong / tot.expected * 100) : 0;
+  mapCheckReport = { groups, tot };
   renderMapCheckReport();
   $('mapCheckReportPanel').style.display = 'block';
   $('mapCheckReportPanel').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -4569,32 +4601,62 @@ function renderMapCheckReport(){
   const r = mapCheckReport;
   const body = $('mapCheckReportBody');
   if(!r) return;
-  const grade = r.totalEntered === 0 ? '—' : (r.accPct === 100 ? 'ممتاز' : r.accPct >= 85 ? 'جيد جدًا' : r.accPct >= 70 ? 'جيد' : 'محتاج مراجعة');
-  const barColor = r.accPct >= 85 ? 'var(--teal)' : r.accPct >= 70 ? 'var(--amber)' : 'var(--brick)';
-  let details = '';
-  mapCheckEntries.forEach(en=>{
-    const ok = !!r.sel && en.loc === r.sel;
-    details += '<tr><td class="code-cell">' + escapeHtml(en.code) + '</td><td>' + escapeHtml(en.sheetCode || '—') + '</td><td>' + escapeHtml(r.sel) + '</td><td>' + escapeHtml(en.loc || '—') + '</td><td>' + (ok ? '<span style="color:#047857;font-weight:800;">صح</span>' : '<span style="color:#b91c1c;font-weight:800;">خطأ</span>') + '</td></tr>';
+  const colOf = (pct)=> pct >= 85 ? '#059669' : pct >= 70 ? '#d97706' : '#dc2626';
+  const gradeOf = (g)=> g.totalEntered === 0 ? '—' : (g.accPct === 100 ? 'ممتاز' : g.accPct >= 85 ? 'جيد جدًا' : g.accPct >= 70 ? 'جيد' : 'محتاج مراجعة');
+  const pctOf = (n, d)=> d ? Math.round(n / d * 100) : 0;
+  const donut = (g)=>{
+    const R = 78, C = 2 * Math.PI * R;
+    const exp = g.expected;
+    const okLen = exp ? C * Math.min(g.correct, exp) / exp : 0;
+    const missLen = exp ? C - okLen : C;
+    return '<svg viewBox="0 0 200 200" width="200" height="200" style="transform:rotate(-90deg)">'
+      + '<circle cx="100" cy="100" r="' + R + '" fill="none" stroke="#e2e8f0" stroke-width="26"/>'
+      + (exp ? '<circle cx="100" cy="100" r="' + R + '" fill="none" stroke="#cbd5e1" stroke-width="26" stroke-dasharray="' + missLen.toFixed(2) + ' ' + C.toFixed(2) + '" stroke-dashoffset="' + (-okLen).toFixed(2) + '"/>' : '')
+      + (okLen ? '<circle cx="100" cy="100" r="' + R + '" fill="none" stroke="#10b981" stroke-width="26" stroke-linecap="butt" stroke-dasharray="' + okLen.toFixed(2) + ' ' + C.toFixed(2) + '"/>' : '')
+      + '</svg>';
+  };
+  const barRow = (label, pct, color, val)=> '<div class="mcd-bar-row"><span>' + label + '</span><div class="mcd-track"><div class="mcd-fill" style="width:' + Math.min(100, pct) + '%;background:' + color + ';"></div></div><span style="direction:ltr;text-align:end;">' + val + '</span></div>';
+
+  let html = '<div class="mcd-top">'
+    + '<div class="mcd-kpi" style="--c:#f59e0b"><div class="n">' + r.groups.length + '</div><div class="l">لوكيشنات تم فحصها</div></div>'
+    + '<div class="mcd-kpi" style="--c:#3b82f6"><div class="n">' + r.tot.expected + '</div><div class="l">إجمالي أكواد الشيت</div></div>'
+    + '<div class="mcd-kpi" style="--c:#10b981"><div class="n">' + r.tot.correct + '</div><div class="l">صحيحة</div></div>'
+    + '<div class="mcd-kpi" style="--c:#ef4444"><div class="n">' + r.tot.wrong + '</div><div class="l">أكواد خطأ</div></div>'
+    + '<div class="mcd-kpi" style="--c:#94a3b8"><div class="n">' + r.tot.missing + '</div><div class="l">لم يتم تمليتها</div></div>'
+    + '<div class="mcd-kpi" style="--c:' + colOf(r.tot.accPct) + '"><div class="n">' + r.tot.accPct + '%</div><div class="l">نسبة الصحة الإجمالية</div></div>'
+    + '</div>';
+
+  if(r.groups.length > 1){
+    html += '<div class="mcd-cmp"><h3>📊 مقارنة اللوكيشنات (نسبة الصح من أكواد الشيت)</h3><div class="mcd-bars">'
+      + r.groups.map(g=> barRow(escapeHtml(g.sel), g.accPct, colOf(g.accPct), g.accPct + '%')).join('')
+      + '</div></div>';
+  }
+
+  r.groups.forEach(g=>{
+    const progress = pctOf(g.totalEntered, g.expected);
+    html += '<div class="mcd-card">'
+      + '<div class="mcd-head"><h3>📍 ' + escapeHtml(g.sel) + '</h3>'
+      + '<div style="display:flex;gap:8px;flex-wrap:wrap;"><span class="mcd-badge">التقييم: ' + gradeOf(g) + '</span><span class="mcd-badge">' + g.expected + ' كود في الشيت</span></div></div>'
+      + '<div class="mcd-body">'
+      + '<div class="mcd-donut">' + donut(g) + '<div class="mid"><b style="color:' + colOf(g.accPct) + ';">' + g.accPct + '%</b><span>صح من الشيت</span></div></div>'
+      + '<div>'
+      + '<div class="mcd-grid">'
+      + '<div class="mcd-mini" style="--c:#3b82f6"><div class="n">' + g.expected + '</div><div class="l">أكواد الشيت</div></div>'
+      + '<div class="mcd-mini" style="--c:#8b5cf6"><div class="n">' + g.totalEntered + '</div><div class="l">المكتوب</div></div>'
+      + '<div class="mcd-mini" style="--c:#10b981"><div class="n">' + g.correct + '</div><div class="l">صحيحة</div></div>'
+      + '<div class="mcd-mini" style="--c:#ef4444"><div class="n">' + g.wrong + '</div><div class="l">خطأ</div></div>'
+      + '<div class="mcd-mini" style="--c:#94a3b8"><div class="n">' + g.missing.length + '</div><div class="l">لم يتم تمليتها</div></div>'
+      + '<div class="mcd-mini" style="--c:#f59e0b"><div class="n">' + progress + '%</div><div class="l">نسبة ما تم كتابته</div></div>'
+      + '</div>'
+      + '<div class="mcd-bars">'
+      + barRow('صح من الشيت', g.accPct, '#10b981', g.accPct + '%')
+      + barRow('خطأ من الشيت', g.wrongPct, '#ef4444', g.wrongPct + '%')
+      + barRow('لم يتم تمليتها', pctOf(g.missing.length, g.expected), '#94a3b8', pctOf(g.missing.length, g.expected) + '%')
+      + '</div>'
+      + '</div></div>'
+      + '</div>';
   });
-  body.innerHTML =
-    '<div class="mc-stats">'
-    + '<div class="stat-card amber"><div class="num">' + escapeHtml(r.sel) + '</div><div class="lbl">اللوكيشن المفحوص</div></div>'
-    + '<div class="stat-card"><div class="num">' + r.expected + '</div><div class="lbl">الأكواد الموجودة في اللوكيشن</div></div>'
-    + '<div class="stat-card"><div class="num">' + r.totalEntered + '</div><div class="lbl">الأكواد المكتوبة</div></div>'
-    + '<div class="stat-card teal"><div class="num">' + r.correct + '</div><div class="lbl">الأكواد الصحيحة</div></div>'
-    + '<div class="stat-card"><div class="num">' + r.wrong + '</div><div class="lbl">الأكواد الخطأ</div></div>'
-    + '<div class="stat-card teal"><div class="num">' + r.accPct + '%</div><div class="lbl">نسبة صحة الأكواد</div></div>'
-    + '</div>'
-    + '<div class="panel" style="margin:16px 0 0;padding:14px 16px;border-radius:12px;">'
-    + '<div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">'
-    + '<h3 style="font-size:16px;margin:0;">نسبة الأكواد الخطأ من إجمالي المكتوب: ' + r.wrongPct + '%</h3>'
-    + '<span style="font-weight:800;font-size:15px;color:' + (r.accPct >= 85 ? 'var(--teal)' : 'var(--brick)') + ';">التقييم: ' + grade + '</span>'
-    + '</div>'
-    + '<div style="background:#f1f5f9;border-radius:8px;height:12px;overflow:hidden;margin-top:10px;direction:ltr;">'
-    + '<div style="width:' + r.accPct + '%;height:100%;background:' + barColor + ';"></div>'
-    + '</div>'
-    + '</div>'
-    + '<table class="data-table" style="margin-top:14px;"><thead><tr><th>الكود المكتوب</th><th>الكود من الشيت</th><th>اللوكيشن المتوقع</th><th>اللوكيشن الفعلي</th><th>الحالة</th></tr></thead><tbody>' + details + '</tbody></table>';
+  body.innerHTML = html;
 }
 
 function mapCheckExport(){
@@ -4607,23 +4669,24 @@ function mapCheckExport(){
   const summaryData = [
     ['ريبورت فحص اللوكيشن (Map Check)'],
     ['الفرع', branchName],
-    ['اللوكيشن المفحوص', r.sel],
     ['وقت التقرير', d],
+    ['عدد اللوكيشنات المفحوصة', r.groups.length],
     [],
-    ['عدد الأكواد الموجودة في اللوكيشن', r.expected],
-    ['عدد الأكواد المكتوبة', r.totalEntered],
-    ['عدد الأكواد الصحيحة', r.correct],
-    ['عدد الأكواد الخطأ', r.wrong],
-    ['نسبة صحة الأكواد باللوكيشن', r.accPct + '%'],
-    ['نسبة الأكواد الخطأ من إجمالي المكتوب', r.wrongPct + '%']
+    ['اللوكيشن', 'الأكواد الموجودة في الشيت', 'الأكواد المكتوبة', 'الصحيحة', 'الخطأ', 'لم يتم تمليتها', 'نسبة الصحة (من أكواد الشيت)', 'نسبة الخطأ (من أكواد الشيت)']
   ];
+  r.groups.forEach(g=> summaryData.push([g.sel, g.expected, g.totalEntered, g.correct, g.wrong, g.missing.length, g.accPct + '%', g.wrongPct + '%']));
+  summaryData.push(['الإجمالي', r.tot.expected, r.tot.totalEntered, r.tot.correct, r.tot.wrong, r.tot.missing, r.tot.accPct + '%', r.tot.wrongPct + '%']);
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(summaryData), 'الملخص');
-  const detailData = [['الكود المكتوب', 'الكود من الشيت (كما هو)', 'اللوكيشن المتوقع', 'اللوكيشن الفعلي', 'الحالة']];
-  mapCheckEntries.forEach(en=>{
-    const ok = !!r.sel && en.loc === r.sel;
-    detailData.push([en.code, en.sheetCode || '', r.sel, en.loc || 'مش موجود في الشيت', ok ? 'صح' : 'خطأ']);
-  });
+  const detailData = [['اللوكيشن المفحوص', 'الكود المكتوب', 'الكود من الشيت (كما هو)', 'اللوكيشن الفعلي', 'الحالة']];
+  r.groups.forEach(g=> g.entries.forEach(en=>{
+    const ok = en.loc === g.sel;
+    detailData.push([g.sel, en.code, en.sheetCode || '', en.loc || 'مش موجود في الشيت', ok ? 'صح' : 'خطأ']);
+  }));
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(detailData), 'تفاصيل الأكواد');
+  const missData = [['اللوكيشن', 'الكود من الشيت (متسجل ولم يتم تمليته)']];
+  r.groups.forEach(g=> g.missing.forEach(m=> missData.push([g.sel, m.raw])));
+  if(missData.length === 1) missData.push(['—', 'كل أكواد اللوكيشنات اتملت']);
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(missData), 'لم يتم تمليتها');
   XLSX.writeFile(wb, branchFname('ريبورت_Map_Check') + '.xlsx');
 }
 $('mapCheckExportBtn').addEventListener('click', mapCheckExport);
