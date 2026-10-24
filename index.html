@@ -1447,7 +1447,7 @@ service cloud.firestore {
     </div>
   </div>
   <p class="tgt-note">
-    ارفع شيت المبيعات: التاب الأول فيه (Total ، Order Lines/Quantity ، Receipt Number ، عمود اسم البائع، وعمود التاريخ لو موجود)، والتاب التاني فيه أسماء السيلز في الفرع. التارجت بيتوزع على البائعين المستمرين بنسبة أيام عمل كل واحد، ولما بائع يترك العمل بيتثبّت له اللي حققه لحد يوم خروجه ويتخصم من تارجت الفرع والباقي يتوزع على الباقيين.
+    ارفع شيت المبيعات: التاب الأول فيه (Order Lines/Tax Incl. ، Order Lines/Quantity ، Receipt Number ، عمود اسم البائع، وعمود التاريخ لو موجود)، والتاب التاني فيه أسماء السيلز في الفرع. التارجت بيتوزع على البائعين المستمرين بنسبة أيام عمل كل واحد، ولما بائع يترك العمل بيتثبّت له اللي حققه لحد يوم خروجه ويتخصم من تارجت الفرع والباقي يتوزع على الباقيين.
   </p>
   <div class="upload-card" id="tgtUploadCard" style="margin-bottom:8px;">
     <div class="step-tag">شيت المبيعات + أسماء السيلز</div>
@@ -1484,7 +1484,7 @@ service cloud.firestore {
     <input id="tgtNewStart" placeholder="يبدأ من يوم (اختياري)" inputmode="numeric" autocomplete="off" style="width:150px;text-align:center;">
     <button class="btn-primary" id="tgtAddBtn" type="button">إضافة وإعادة التوزيع</button>
   </div>
-  <p class="tgt-note">المفروض لحد النهارده = التارجت اليومي × (اليوم من الشهر − أيام الإجازة)، بحد أقصى أيام عمل البائع. صف "الفرع" تحت بيحسب على إجمالي الشيت كله (مش مجموع السيلز): التارجت اليومي = تارجت الفرع ÷ أيام الشهر الفعلية (28/29/30/31)، والمفروض = اليومي × اليوم من الشهر. ولو البائع ليه "يبدأ من يوم" (معيّن جديد) فبيتحسب له التارجت اليومي × (اليوم من الشهر − يوم البداية)، يعني بدأ 13 والنهارده 16 = 3 أيام. النسبة الشهرية = المحقق ÷ التارجت الشهري، والنسبة اليومية = المحقق ÷ المفروض لحد النهارده. UPT = الكمية ÷ عدد الفواتير، ATV = إجمالي Total ÷ عدد الفواتير.</p>
+  <p class="tgt-note">المفروض لحد النهارده = التارجت اليومي × (اليوم من الشهر − أيام الإجازة)، بحد أقصى أيام عمل البائع. صف "الفرع" تحت بيحسب على إجمالي الشيت كله (مش مجموع السيلز): التارجت اليومي = تارجت الفرع ÷ أيام الشهر الفعلية (28/29/30/31)، والمفروض = اليومي × اليوم من الشهر. ولو البائع ليه "يبدأ من يوم" (معيّن جديد) فبيتحسب له التارجت اليومي × (اليوم من الشهر − يوم البداية)، يعني بدأ 13 والنهارده 16 = 3 أيام. النسبة الشهرية = المحقق ÷ التارجت الشهري، والنسبة اليومية = المحقق ÷ المفروض لحد النهارده. UPT = الكمية ÷ عدد الفواتير، ATV = إجمالي Tax Incl. ÷ عدد الفواتير.</p>
 
   <div class="tgt-dash-title">🎯 تقرير شرائح التحقيق — أقرب نسبة (90% / 95% / 100% / 110% / 120%)</div>
   <div id="tgtTiers"></div>
@@ -6904,14 +6904,14 @@ function tgtDetect(rows){
   let hi = -1;
   for(let i = 0; i < Math.min(rows.length, 15); i++){
     const hs = (rows[i] || []).map(x=> String(x == null ? '' : x).toLowerCase());
-    if(hs.some(h=> /receipt/.test(h) || /tax\s*incl/.test(h) || /^\s*total\s*$/.test(h))){ hi = i; break; }
+    if(hs.some(h=> /receipt/.test(h) || /tax\s*incl/.test(h))){ hi = i; break; }
   }
   if(hi < 0) hi = 0;
   const headers = (rows[hi] || []).map(h=> String(h == null ? '' : h).trim());
   const find = (res)=>{ for(const re of res){ const i = headers.findIndex(h=> re.test(h.toLowerCase())); if(i >= 0) return i; } return -1; };
   return { hi, headers, map:{
     seller: find([/sales\s*-?\s*person/, /salesman|sales\s*man|seller|cashier|employee|responsible/, /بائع|البائع|موظف|كاشير|سيلز|مسؤول/, /sales/, /user/]),
-    amt:    find([/^\s*total\s*$/, /^\s*total\b/, /order lines\/tax incl/, /tax\s*incl/, /الاجمالي|الإجمالي/]),
+    amt:    find([/order lines\/tax incl/, /tax\s*incl/, /الاجمالي|الإجمالي/]),
     qty:    find([/order lines\/quantity/, /quantity/, /qty/, /الكمية|كمية/]),
     rc:     find([/receipt\s*number/, /receipt/, /رقم الفاتورة|فاتورة/]),
     date:   find([/date/, /تاريخ/]),
@@ -7067,7 +7067,7 @@ async function tgtHandleFile(file){
       tgtRender();
       const miss = [];
       if(info.map.seller < 0) miss.push('اسم البائع');
-      if(info.map.amt < 0) miss.push('Total');
+      if(info.map.amt < 0) miss.push('Order Lines/Tax Incl.');
       if(info.map.rc < 0) miss.push('Receipt Number');
       if(info.map.qty < 0) miss.push('Order Lines/Quantity');
       if(miss.length) setStatus(st, 'اتقرا الملف لكن مش لاقي عمود: ' + miss.join(' ، ') + ' — اختاره من "ربط الأعمدة" تحت.', 'err');
@@ -7186,7 +7186,7 @@ function tgtRender(){
     mb.style.display = '';
     if(m.seller < 0) mb.setAttribute('open','');
     mb.innerHTML = '<summary>ربط الأعمدة (لو الأرقام مش مظبوطة)</summary><div class="row">' +
-      sel('seller','البائع') + sel('amt','Total') + sel('qty','Quantity') + sel('rc','Receipt Number') + sel('date','التاريخ') + sel('offer','Offer Name') + sel('disc','Discount (%)') +
+      sel('seller','البائع') + sel('amt','Tax Incl.') + sel('qty','Quantity') + sel('rc','Receipt Number') + sel('date','التاريخ') + sel('offer','Offer Name') + sel('disc','Discount (%)') +
       '<button class="btn-primary" type="button" id="tgtMapApply">تطبيق</button></div>';
   } else if(tgt.meta && tgt.meta.cols){
     mb.style.display = '';
@@ -7346,7 +7346,7 @@ function tgtRenderOffers(C){
   });
   let gn = 0, ga = 0;
   h += '</tbody><tfoot><tr><td></td><td class="nm">الإجمالي</td>' + M.cols.map(c=>{ const t = M.colTot[c]; gn += t.n; ga += t.a; return tgtOfferCell(t.n, t.a, M.grandSales, ''); }).join('') + tgtOfferCell(gn, ga, M.grandSales, '') + '<td class="num"><b>' + tgtF(M.grandSales) + '</b></td></tr></tfoot></table></div>';
-  h += '<p class="tgt-note">في كل خانة: (1) عدد الفواتير اللي فيها الأوفر، (2) إجمالي Total للفواتير دي، (3) نسبتها % من إجمالي مبيعات البائع. الفاتورة كلها بتتحسب على الأوفر لو أي سطر فيها له اسم أوفر (حتى لو باقي السطور بلانك)، ولو مفيش اسم أوفر بتتحسب على نسبة الخصم (Discount %). الصفوف هي أسماء السيلز في التاب التاني من الشيت.</p>';
+  h += '<p class="tgt-note">في كل خانة: (1) عدد الفواتير اللي فيها الأوفر، (2) إجمالي Order Lines/Tax Incl. للفواتير دي، (3) نسبتها % من إجمالي مبيعات البائع. الفاتورة كلها بتتحسب على الأوفر لو أي سطر فيها له اسم أوفر (حتى لو باقي السطور بلانك)، ولو مفيش اسم أوفر بتتحسب على نسبة الخصم (Discount %). الصفوف هي أسماء السيلز في التاب التاني من الشيت.</p>';
 
   el.innerHTML = h;
 }
