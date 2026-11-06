@@ -211,10 +211,12 @@ input, select{
 .export-btn{ background:var(--teal); color:#fff; border-color:var(--teal); font-family:'Cairo',sans-serif; }
 
 table.data-table{ width:100%; border-collapse:separate; border-spacing:0; font-size:15.5px; }
-table.data-table th{ text-align:center; padding:12px 14px; color:var(--muted); font-weight:700; border-bottom:2px solid var(--line); font-size:14px; white-space:nowrap; }
-table.data-table td{ text-align:center; padding:12px 14px; border-bottom:1px solid var(--line); vertical-align:middle; position:relative; }
+table.data-table th{ text-align:center; padding:7px 6px; color:var(--muted); font-weight:700; border-bottom:2px solid var(--line); font-size:14px; white-space:nowrap; }
+table.data-table td{ text-align:center; padding:6px 6px; border-bottom:1px solid var(--line); vertical-align:middle; position:relative; }
 table.data-table tr:hover td{ background:#FAFAF7; }
-.code-cell{ font-family:'Cairo',sans-serif; font-weight:800; font-size:16.5px; }
+.code-cell{ font-family:'Cairo',sans-serif; font-weight:800; font-size:16.5px; white-space:nowrap; }
+.thumb-pair{ width:max-content; margin:0 auto; }
+.thumb-pair a{ font-size:9px !important; }
 .qty-cell{ font-weight:800; color:var(--ink-soft); font-size:15.5px; }
 .size-pill{ display:inline-block; background:#EFEDE3; color:var(--ink-soft); padding:3px 12px; border-radius:999px; font-weight:700; font-size:14px; }
 .dept-badge{ display:inline-block; background:#EFF3EE; color:var(--teal); padding:4px 11px; border-radius:999px; font-size:13.5px; font-weight:700; }
@@ -229,8 +231,8 @@ table.data-table tr:hover td{ background:#FAFAF7; }
 .prod-thumb:hover{ transform:scale(4.5); z-index:999; box-shadow:0 18px 44px rgba(27,34,49,.45); }
 .prod-thumb-missing{ width:80px; height:80px; border-radius:10px; background:#F0F1EC; border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--muted); text-align:center; line-height:1.4; }
 table.data-table.transfer-table{ font-size:15px; }
-table.data-table.transfer-table th{ padding:9px 8px; font-size:13.5px; }
-table.data-table.transfer-table td{ padding:9px 8px; }
+table.data-table.transfer-table th{ padding:6px 5px; font-size:13px; }
+table.data-table.transfer-table td{ padding:5px 5px; }
 table.data-table.transfer-table .code-cell{ font-size:15.5px; }
 table.data-table.transfer-table .qty-cell{ font-size:15px; }
 th.code-out-th{ width:96px; text-align:center; }
@@ -295,21 +297,27 @@ th.code-out-th{ width:96px; text-align:center; }
   .stat-card{ padding:11px 10px; border-radius:11px; }
   .stat-card .num{ font-size:25px; }
   .stat-card .lbl{ font-size:11.5px; }
-  table.data-table{ font-size:12.5px; }
-  table.data-table th{ padding:7px 5px; font-size:11.5px; }
-  table.data-table td{ padding:7px 5px; }
-  table.data-table.transfer-table th, table.data-table.transfer-table td{ padding:6px 4px; font-size:11.5px; }
+  table.data-table{ font-size:11.5px; }
+  table.data-table th{ padding:4px 2px; font-size:10.5px; }
+  table.data-table td{ padding:4px 2px; }
+  table.data-table.transfer-table th, table.data-table.transfer-table td{ padding:4px 2px; font-size:10.5px; }
   table.data-table.transfer-table .code-cell{ font-size:12.5px; }
   .code-cell{ font-size:13.5px; }
   .qty-cell{ font-size:13px; }
-  .size-pill{ padding:2px 7px; font-size:11.5px; }
-  .dept-badge, .loc-badge{ padding:3px 7px; font-size:11.5px; }
-  .prod-thumb{ width:54px; height:54px; border-radius:8px; }
+  .size-pill{ padding:1px 4px; font-size:10.5px; }
+  .dept-badge, .loc-badge{ padding:2px 4px; font-size:10.5px; }
+  table.data-table .qty-cell{ font-size:11.5px; }
+  .prod-thumb{ width:34px; height:34px; border-radius:6px; }
   .prod-thumb:hover{ transform:scale(4); z-index:999; }
-  .prod-thumb-missing{ width:54px; height:54px; border-radius:8px; font-size:9px; }
-  th.code-out-th{ width:56px; }
-  .code-out-chk{ width:18px; height:18px; }
-  .chk-filter{ width:76px; font-size:10.5px; padding:2px 3px; }
+  .thumb-pair{ gap:2px !important; }
+  .thumb-pair a{ font-size:8px !important; margin-top:1px !important; }
+  .thumb-pair > div{ width:34px; }
+  table.data-table td:has(.thumb-pair){ padding:3px 1px; width:72px; }
+  table.data-table .code-cell{ white-space:nowrap; font-size:12.5px; }
+  .prod-thumb-missing{ width:34px; height:34px; border-radius:6px; font-size:7px; }
+  th.code-out-th{ width:38px; }
+  .code-out-chk{ width:15px; height:15px; }
+  .chk-filter{ width:50px; font-size:9.5px; padding:1px 1px; }
   .empty-state .big{ font-size:26px; }
   .tabs{ gap:4px; }
   .tab-btn{ padding:8px 10px; font-size:12px; }
@@ -2865,7 +2873,7 @@ function prodThumbPairHtml(code){
   const miss = "this.outerHTML='&lt;div class=&quot;prod-thumb-missing&quot;&gt;لا توجد صورة&lt;/div&gt;'";
   const one = (u, lbl)=> '<div style="text-align:center;"><img class="prod-thumb" src="'+escapeAttr(u)+'" alt="'+escapeAttr(code)+'" onerror="'+miss+'">'
     + '<a href="'+escapeAttr(u)+'" target="_blank" rel="noopener" style="display:block;font-size:10px;color:var(--muted);text-decoration:underline;margin-top:3px;">'+lbl+'</a></div>';
-  return '<div style="display:flex;gap:6px;justify-content:center;align-items:flex-start;">' + one(u1,'قديمة') + one(u2,'جديدة') + '</div>';
+  return '<div class="thumb-pair" style="display:flex;gap:6px;justify-content:center;align-items:flex-start;">' + one(u1,'قديمة') + one(u2,'جديدة') + '</div>';
 }
 
 function lastPriceImgUrl(codeSize){
