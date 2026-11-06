@@ -1541,8 +1541,22 @@ const BRANCH_COUNT = 34;
 const BRANCH_NAMES = ['CIT','cst','ssh2','snz','oct2','ztn','dmt','moe','sbr','ssh3','gsr','tnt','shb','mhl','ark','mns2','hdh','alx2','bsf','alx3','rh2','lbn','hdq','arb','mok','gen','ism','hrm','mdi','hlw','zqz','suz','fym','QC'];
 const DEFAULT_BRANCH_PASSWORD = '2020';
 const DEFAULT_ADMIN_PASSWORD = 'admin2026';
+// الصور القديمة (small / a.jpg) — فاضلة زي ما هي
 const IMG_BASE = 'https://www.ravinjeans.com/collection/small/';
 const IMG_SUFFIX = 'a.jpg';
+// الصور الجديدة (large / a.jpeg) — بتظهر جنب القديمة
+const IMG_BASE_NEW = 'https://www.ravinjeans.com/collection/large/';
+const IMG_SUFFIX_NEW = 'a.jpeg';
+// رابط صورة المنتج: أول حرف R → r ، وأول حرف O أو 0 → o ، وبعدين a.jpeg
+function productImgCode(code){
+  let c = String(code == null ? '' : code).trim().replace(/\s+/g, '');
+  if(/^[Rr]/.test(c)) c = 'r' + c.slice(1);
+  else if(/^[Oo0]/.test(c)) c = 'o' + c.slice(1);
+  return c;
+}
+function productImgUrl(code){
+  return IMG_BASE_NEW + encodeURIComponent(productImgCode(code)) + IMG_SUFFIX_NEW;
+}
 
 // ============================================================
 // عدّل القيم دي ببيانات مشروع Firebase بتاعك (خطوات الإعداد فوق)
@@ -2586,11 +2600,7 @@ function renderTransfersTable(){
     const imgUrl = buildImgUrl(r.code);
     html += `<tr>
       <td style="text-align:center;"><input type="checkbox" class="transfer-chk" data-mark="${escapeAttr(transferMarkKey(r))}"${transferIsMarked(r) ? ' checked' : ''}></td>
-      <td>
-        <img class="prod-thumb" src="${imgUrl}" alt="${escapeHtml(r.code)}"
-             onerror="this.outerHTML='&lt;div class=&quot;prod-thumb-missing&quot;&gt;لا توجد صورة&lt;/div&gt;'">
-        <a href="${imgUrl}" target="_blank" rel="noopener" style="display:block;font-size:10px;color:var(--muted);text-decoration:underline;margin-top:3px;">فتح الرابط</a>
-      </td>
+      <td>${prodThumbPairHtml(r.code)}</td>
       <td class="code-cell">${escapeHtml(r.code)}</td>
       <td><span class="size-pill">${escapeHtml(r.size)}</span></td>
       <td class="qty-cell">${r.qty.toLocaleString('en-US')}</td>
@@ -2846,11 +2856,26 @@ $('salesSearchInput').addEventListener('input', renderSalesTable);
 function buildImgUrl(code){
   return IMG_BASE + String(code).trim() + IMG_SUFFIX;
 }
+function buildImgUrlNew(code){
+  return productImgUrl(code);
+}
+// صورتين جنب بعض: القديمة + الجديدة
+function prodThumbPairHtml(code){
+  const u1 = buildImgUrl(code), u2 = buildImgUrlNew(code);
+  const miss = "this.outerHTML='&lt;div class=&quot;prod-thumb-missing&quot;&gt;لا توجد صورة&lt;/div&gt;'";
+  const one = (u, lbl)=> '<div style="text-align:center;"><img class="prod-thumb" src="'+escapeAttr(u)+'" alt="'+escapeAttr(code)+'" onerror="'+miss+'">'
+    + '<a href="'+escapeAttr(u)+'" target="_blank" rel="noopener" style="display:block;font-size:10px;color:var(--muted);text-decoration:underline;margin-top:3px;">'+lbl+'</a></div>';
+  return '<div style="display:flex;gap:6px;justify-content:center;align-items:flex-start;">' + one(u1,'قديمة') + one(u2,'جديدة') + '</div>';
+}
 
 function lastPriceImgUrl(codeSize){
   const parts = splitCodeSize(String(codeSize || '').trim());
   const fixed = fixLeadingZero(parts.code);
   return IMG_BASE + fixed + IMG_SUFFIX;
+}
+function lastPriceImgUrlNew(codeSize){
+  const parts = splitCodeSize(String(codeSize || '').trim());
+  return productImgUrl(parts.code);
 }
 
 function currentSortFor(tab){
@@ -3055,11 +3080,7 @@ function renderSalesTable(){
     const imgUrl = buildImgUrl(r.code);
     html += `<tr>
       <td style="text-align:center;"><input type="checkbox" class="code-out-chk" data-code="${escapeAttr(r.code)}"${codeOut.has(r.code) ? ' checked' : ''}></td>
-      <td>
-        <img class="prod-thumb" src="${imgUrl}" alt="${escapeHtml(r.code)}"
-             onerror="this.outerHTML='&lt;div class=&quot;prod-thumb-missing&quot;&gt;لا توجد صورة&lt;/div&gt;'">
-        <a href="${imgUrl}" target="_blank" rel="noopener" style="display:block;font-size:10px;color:var(--muted);text-decoration:underline;margin-top:3px;">فتح الرابط</a>
-      </td>
+      <td>${prodThumbPairHtml(r.code)}</td>
       <td class="code-cell">${escapeHtml(r.code)}</td>
       <td><span class="size-pill">${escapeHtml(r.size)}</span></td>
       <td class="qty-cell">${r.qtySold.toLocaleString('en-US')}</td>
@@ -3073,10 +3094,10 @@ function renderSalesTable(){
 }
 
 function getFilteredSalesData(){
-  const data = [ ['code','size','qty','loc','dpt','total','رابط الصورة'] ];
+  const data = [ ['code','size','qty','loc','dpt','total','رابط الصورة','رابط الصورة 2'] ];
   salesVisibleRows().forEach(r=>{
     const stockInfo = stockTotalsMap.get(r.code);
-    data.push([ r.code, r.size, r.qtySold, locationMap.get(r.code) || '', stockInfo ? stockInfo.department : '', stockInfo ? stockInfo.totalQty : '', buildImgUrl(r.code) ]);
+    data.push([ r.code, r.size, r.qtySold, locationMap.get(r.code) || '', stockInfo ? stockInfo.department : '', stockInfo ? stockInfo.totalQty : '', buildImgUrl(r.code), buildImgUrlNew(r.code) ]);
   });
   return data;
 }
@@ -3188,6 +3209,9 @@ async function exportTablePdf(opts){
 function pdfImgUrl(code){
   return 'https://images.weserv.nl/?url=' + encodeURIComponent(buildImgUrl(code));
 }
+function pdfImgUrlNew(code){
+  return 'https://images.weserv.nl/?url=' + encodeURIComponent(buildImgUrlNew(code));
+}
 function salesPdfCells(){
   const S_CELL = 'padding:6px;border:1px solid #A9A9A9;text-align:center;font-size:12px;color:#1B2231;';
   const S_HEAD = 'background:#E7E7E7;font-weight:700;color:#1B2231;';
@@ -3195,6 +3219,7 @@ function salesPdfCells(){
     headHtml: '<table style="direction:rtl;border-collapse:collapse;width:896px;font-family:Cairo,sans-serif;">'
       + '<thead><tr>'
       + '<th style="' + S_HEAD + S_CELL + '">image</th>'
+      + '<th style="' + S_HEAD + S_CELL + '">image 2</th>'
       + '<th style="' + S_HEAD + S_CELL + '">code</th>'
       + '<th style="' + S_HEAD + S_CELL + '">size</th>'
       + '<th style="' + S_HEAD + S_CELL + '">qty</th>'
@@ -3209,6 +3234,7 @@ function salesPdfCells(){
       const loc = escapeHtml(locationMap.get(r.code) || '—');
       return '<tr>'
         + '<td style="' + S_CELL + '"><img src="' + pdfImgUrl(r.code) + '" style="width:34px;height:34px;object-fit:cover;" onerror="this.style.visibility=\'hidden\';"></td>'
+        + '<td style="' + S_CELL + '"><img src="' + pdfImgUrlNew(r.code) + '" style="width:34px;height:34px;object-fit:cover;" onerror="this.style.visibility=\'hidden\';"></td>'
         + '<td style="' + S_CELL + '">' + escapeHtml(r.code) + '</td>'
         + '<td style="' + S_CELL + '">' + escapeHtml(r.size) + '</td>'
         + '<td style="' + S_CELL + '">' + escapeHtml(String(r.qtySold)) + '</td>'
@@ -3218,6 +3244,7 @@ function salesPdfCells(){
         + '</tr>';
     },
     probeRowHtml: '<tr>'
+      + '<td style="' + S_CELL + '"><div style="width:34px;height:34px;"></div></td>'
       + '<td style="' + S_CELL + '"><div style="width:34px;height:34px;"></div></td>'
       + '<td style="' + S_CELL + '">ZWX</td>'
       + '<td style="' + S_CELL + '">M</td>'
@@ -3257,19 +3284,19 @@ function stockPdfCells(){
   };
 }
 function getSalesSheetsData(){
-  const data = [ ['image','code','size','qty','loc','dpt','total','image link'] ];
+  const data = [ ['image','image 2','code','size','qty','loc','dpt','total','image link','image 2 link'] ];
   salesReportRows().forEach(r=>{
     const stockInfo = stockTotalsMap.get(r.code);
-    const url = buildImgUrl(r.code);
-    data.push([ '=IMAGE("' + url + '")', r.code, r.size, r.qtySold, locationMap.get(r.code) || '', stockInfo ? stockInfo.department : '', stockInfo ? stockInfo.totalQty : '', url ]);
+    const url = buildImgUrl(r.code), url2 = buildImgUrlNew(r.code);
+    data.push([ '=IMAGE("' + url + '")', '=IMAGE("' + url2 + '")', r.code, r.size, r.qtySold, locationMap.get(r.code) || '', stockInfo ? stockInfo.department : '', stockInfo ? stockInfo.totalQty : '', url, url2 ]);
   });
   return data;
 }
 function getStockSheetsData(){
-  const data = [ ['image','code','size','qty','loc','dpt','total','image link'] ];
+  const data = [ ['image','image 2','code','size','qty','loc','dpt','total','image link','image 2 link'] ];
   stockReportRows().forEach(r=> r.sizes.forEach(s=>{
-    const url = buildImgUrl(r.code);
-    data.push([ '=IMAGE("' + url + '")', r.code, s.size, s.qty, s.location, r.department, r.totalQty, url ]);
+    const url = buildImgUrl(r.code), url2 = buildImgUrlNew(r.code);
+    data.push([ '=IMAGE("' + url + '")', '=IMAGE("' + url2 + '")', r.code, s.size, s.qty, s.location, r.department, r.totalQty, url, url2 ]);
   }));
   return data;
 }
@@ -4045,7 +4072,10 @@ function addLastPriceRow(){
         + '<div class="' + totalClass + '"><div class="lp-val">' + totalQty.toLocaleString('en-US') + '</div><div class="lp-lbl">توتال الموديل</div></div>'
         + '<div class="lp-item teal"><div class="lp-val">' + priceEGP(price) + '</div><div class="lp-lbl">سعر القطعة</div></div>'
         + '<div class="lp-item teal"><div class="lp-val">' + (mapLocTxt === '—' ? '—' : '<span class="loc-badge">' + escapeHtml(mapLocTxt) + '</span>') + '</div><div class="lp-lbl">Map Loc</div></div>'
-        + '<img class="prod-thumb" src="' + lastPriceImgUrl(found.matched[0].origCode) + '" alt="' + escapeHtml(fixLeadingZero(splitCodeSize(String(found.matched[0].origCode || '')).code)) + '" onerror="this.outerHTML=\'<div class=&quot;prod-thumb-missing&quot;>لا توجد صورة</div>\'">';
+        + '<div style="display:flex;gap:6px;">'
+        + '<img class="prod-thumb" title="قديمة" src="' + lastPriceImgUrl(found.matched[0].origCode) + '" alt="' + escapeHtml(fixLeadingZero(splitCodeSize(String(found.matched[0].origCode || '')).code)) + '" onerror="this.outerHTML=\'<div class=&quot;prod-thumb-missing&quot;>لا توجد صورة</div>\'">'
+        + '<img class="prod-thumb" title="جديدة" src="' + lastPriceImgUrlNew(found.matched[0].origCode) + '" alt="' + escapeHtml(fixLeadingZero(splitCodeSize(String(found.matched[0].origCode || '')).code)) + '" onerror="this.outerHTML=\'<div class=&quot;prod-thumb-missing&quot;>لا توجد صورة</div>\'">'
+        + '</div>';;
       if(over){
         showLastPriceWarn('تحذير: الكود "' + q + '" توتاله (' + totalQty + ') أزيد من العدد المحدد (' + limit + ') — مش من اللاست بيس!');
       }
@@ -5650,10 +5680,12 @@ function renderCountCard(code){
     ? '<span class="cnt-badge trs">ترصيد</span>'
     : (totalModel > 0 ? '<span class="cnt-badge deficit">عجز</span>' : '<span class="cnt-badge surplus">زيادة</span>');
   const imgUrl = IMG_BASE + encodeURIComponent(code) + IMG_SUFFIX;
-  const imgHtml = '<img class="cnt-thumb cnt-thumb-img" src="'+escapeAttr(imgUrl)+'" alt="'+escapeAttr(code)+'" loading="lazy" title="اضغط للتكبير" ' +
+  const imgUrlNew = productImgUrl(code);
+  const cntImg = (u)=> '<img class="cnt-thumb cnt-thumb-img" src="'+escapeAttr(u)+'" alt="'+escapeAttr(code)+'" loading="lazy" title="اضغط للتكبير" ' +
     'style="cursor:zoom-in;border:1px solid #e2e8f0;" ' +
     'onclick="var w=window.open(this.src,\'_blank\');return false;" ' +
     'onerror="this.onerror=null;this.style.display=\'none\';var p=this.parentNode;var n=document.createElement(\'span\');n.className=\'cnt-thumb-missing\';n.textContent=\'لا صورة\';p.insertBefore(n,this.nextSibling);"></img>';
+  const imgHtml = cntImg(imgUrl) + cntImg(imgUrlNew);
   return '<div class="cnt-code-card">'
     + '<div class="cnt-head">'
     + imgHtml
@@ -7919,6 +7951,5 @@ try{ localStorage.removeItem(mapCheckDBKey()); }catch(e){}
       <button type="button" class="btn-primary" id="camRetryBtn">إعادة المحاولة</button>
     </div>
   </div>
-<div id="buildStamp" style="position:fixed;bottom:6px;left:6px;z-index:99999;background:#16a34a;color:#fff;font:700 11px/1 sans-serif;padding:5px 9px;border-radius:8px;opacity:.92;direction:ltr;pointer-events:none;">BUILD TEST 2026-11-05 • v2</div>
 </body>
 </html>
