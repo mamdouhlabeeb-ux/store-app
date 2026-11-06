@@ -228,7 +228,7 @@ table.data-table tr:hover td{ background:#FAFAF7; }
 .size-chip{ display:inline-block; background:#F4F5F2; border:1px solid var(--line); border-radius:8px; padding:4px 9px; margin:2px; font-size:12px; }
 
 .prod-thumb{ width:80px; height:80px; border-radius:10px; object-fit:cover; background:#F0F1EC; border:1px solid var(--line); display:block; margin:0 auto; position:relative; z-index:1; transition:transform .2s ease; }
-.prod-thumb:hover{ transform:scale(4.5); z-index:999; box-shadow:0 18px 44px rgba(27,34,49,.45); }
+.prod-thumb:hover{ transform:scale(8); z-index:999; box-shadow:0 18px 44px rgba(27,34,49,.45); }
 .prod-thumb-missing{ width:80px; height:80px; border-radius:10px; background:#F0F1EC; border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font-size:11px; color:var(--muted); text-align:center; line-height:1.4; }
 table.data-table.transfer-table{ font-size:15px; }
 table.data-table.transfer-table th{ padding:6px 5px; font-size:13px; }
@@ -308,7 +308,7 @@ th.code-out-th{ width:96px; text-align:center; }
   .dept-badge, .loc-badge{ padding:2px 4px; font-size:10.5px; }
   table.data-table .qty-cell{ font-size:11.5px; }
   .prod-thumb{ width:34px; height:34px; border-radius:6px; }
-  .prod-thumb:hover{ transform:scale(4); z-index:999; }
+  .prod-thumb:hover{ transform:scale(7); z-index:999; }
   .thumb-pair{ gap:2px !important; }
   .thumb-pair a{ font-size:8px !important; margin-top:1px !important; }
   .thumb-pair > div{ width:34px; }
@@ -1065,7 +1065,7 @@ service cloud.firestore {
     .cnt-code-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:16px;box-shadow:0 2px 10px rgba(15,23,42,.05);}
     .cnt-head{display:flex;gap:14px;align-items:flex-start;margin-bottom:12px;}
     .cnt-thumb{width:128px;height:128px;object-fit:contain;border-radius:14px;background:#fff;flex:0 0 auto;transition:transform .25s ease,box-shadow .25s ease;position:relative;z-index:3;cursor:zoom-in;border:1px solid #e2e8f0;box-sizing:border-box;padding:2px;}
-    .cnt-thumb:hover{transform:scale(3);box-shadow:0 18px 40px rgba(0,0,0,.35);transform-origin:top right;}
+    .cnt-thumb:hover{transform:scale(4.5);box-shadow:0 18px 40px rgba(0,0,0,.35);transform-origin:top right;}
     .cnt-thumb-btn{display:inline-flex;align-items:center;gap:5px;background:#f1f5f9;border:1px solid var(--line);border-radius:10px;padding:8px 12px;font-size:12.5px;font-weight:800;color:#1e3a8a;text-decoration:none;cursor:pointer;flex:0 0 auto;transition:background .15s ease;}
     .cnt-thumb-btn:hover{background:#dbeafe;border-color:#93c5fd;}
     .cnt-thumb-missing{width:128px;height:128px;border-radius:14px;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-size:11px;text-align:center;flex:0 0 auto;padding:4px;}
