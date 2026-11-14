@@ -1368,6 +1368,11 @@ service cloud.firestore {
     .tgt-table .num{direction:ltr;}
     .tgt-in{width:62px;padding:5px 4px;border:1px solid #cdd3db;border-radius:8px;font-family:inherit;font-size:16px;font-weight:800;text-align:center;box-sizing:border-box;}
     .tgt-in:focus{outline:none;border-color:#059669;box-shadow:0 0 0 3px rgba(5,150,105,.15);}
+    .tgt-tabs{display:flex;gap:8px;margin:4px 0 12px;flex-wrap:wrap;}
+    .tgt-tabs button{flex:1 1 160px;border:1px solid #cdd3db;background:#fff;border-radius:12px;padding:10px 14px;font-family:inherit;font-size:15px;font-weight:900;color:#475569;cursor:pointer;}
+    .tgt-tabs button.on{background:linear-gradient(135deg,#064e3b,#0f766e);color:#fff;border-color:#064e3b;box-shadow:0 6px 16px rgba(6,78,59,.25);}
+    #tgtWkTopBox{position:sticky;top:0;z-index:30;background:linear-gradient(135deg,#1e3a8a,#0369a1 55%,#0f766e);color:#fff;border-radius:16px;padding:14px 16px;margin:10px 0 14px;box-shadow:0 10px 26px rgba(30,58,138,.28);}
+    .tgt-settings input.wide{width:92px;}
     .tgt-seg{display:inline-flex;border:1px solid #cdd3db;border-radius:999px;overflow:hidden;}
     .tgt-seg button{white-space:nowrap;border:0;background:#fff;padding:5px 11px;font-family:inherit;font-size:12px;font-weight:800;color:#6b7280;cursor:pointer;}
     .tgt-seg button.on{background:#059669;color:#fff;}
@@ -1454,6 +1459,10 @@ service cloud.firestore {
       <button class="link-btn" id="tgtBackBtn" type="button">رجوع</button>
     </div>
   </div>
+  <div class="tgt-tabs" id="tgtTabs">
+    <button type="button" class="on" data-tgt-tab="month">📅 التارجت الشهري</button>
+    <button type="button" data-tgt-tab="week">🗓 التارجت الأسبوعي</button>
+  </div>
   <p class="tgt-note">
     ارفع شيت المبيعات: التاب الأول فيه (Total ، Order Lines/Quantity ، Receipt Number ، عمود اسم البائع، وعمود التاريخ لو موجود)، والتاب التاني فيه أسماء السيلز في الفرع. التارجت بيتوزع على البائعين المستمرين بنسبة أيام عمل كل واحد، ولما بائع يترك العمل بيتثبّت له اللي حققه لحد يوم خروجه ويتخصم من تارجت الفرع والباقي يتوزع على الباقيين.
   </p>
@@ -1466,6 +1475,7 @@ service cloud.firestore {
   </div>
   <details id="tgtMapBox" style="display:none;"></details>
 
+  <div id="tgtPaneMonth">
   <div id="tgtTopBox">
     <div class="tgt-top">
       <div class="tgt-target-field">
@@ -1504,6 +1514,32 @@ service cloud.firestore {
   <div id="tgtDash"></div>
 
   <div id="tgtOffersDashBox"></div>
+  </div>
+
+  <div id="tgtPaneWeek" style="display:none;">
+    <div id="tgtWkTopBox">
+      <div class="tgt-top">
+        <div class="tgt-target-field">
+          <label for="tgtWkTarget">🎯 تارجت الفرع الأسبوعي</label>
+          <input id="tgtWkTarget" inputmode="decimal" autocomplete="off">
+        </div>
+        <div class="tgt-kpis" id="tgtWkKpis"></div>
+      </div>
+      <div class="tgt-settings">
+        <label>من يوم <input id="tgtWkFrom" inputmode="numeric" autocomplete="off"></label>
+        <label>إلى يوم <input id="tgtWkTo" inputmode="numeric" autocomplete="off"></label>
+        <label>أيام الإجازة المحسوبة <input id="tgtWkOff" inputmode="numeric" autocomplete="off"></label>
+        <label>اليوم من الشهر <input id="tgtWkToday" inputmode="numeric" autocomplete="off"></label>
+        <span style="opacity:.8;font-weight:600;">(الأسبوع الافتراضي: من آخر سبت لحد الجمعة. غيّر "من يوم / إلى يوم" لأي أسبوع، واليوم بيتحسب تلقائي)</span>
+      </div>
+    </div>
+    <div id="tgtWkWarn"></div>
+    <div class="tgt-dash-title">👥 توزيع التارجت الأسبوعي على السيلز <small id="tgtWkPer1" style="font-size:13px;font-weight:800;color:#0369a1;"></small></div>
+    <div class="tgt-wrap"><div id="tgtWkTable"></div></div>
+    <p class="tgt-note">كل الأرقام (المحقق، النسب، UPT، ATV، الفواتير، القطع، وتقرير الأوفرات) بتتحسب على الفترة اللي محددها فوق "من يوم / إلى يوم" بس، ومقارنتها بالتارجت الأسبوعي (مش الشهري). التارجت الأسبوعي بيتوزع على البائعين المستمرين بنسبة أيام عملهم في الفترة. "أيام العمل" فاضية = كل أيام الأسبوع بعد خصم الإجازات المحسوبة. "أيام الإجازة" = الإجازات اللي البائع أخدها فعلًا في الأسبوع لحد النهارده. المفروض لحد النهارده = التارجت اليومي × (الأيام اللي عدّت من الأسبوع − الإجازات المحسوبة − إجازة البائع)، بحد أقصى أيام عمله. البائع التارك بيتثبّت تارجته على اللي حققه لحد يوم خروجه (حالة البائع بتتغيّر من التاب الشهري).</p>
+    <div class="tgt-dash-title">🎁 تقرير الأوفرات <small id="tgtWkPer2" style="font-size:13px;font-weight:800;color:#0369a1;"></small></div>
+    <div id="tgtWkOffers"></div>
+  </div>
 </div>
 
 <script>
@@ -6864,7 +6900,7 @@ let tgtSaveTimer = null;
 const TGT_COLORS = ['#10b981','#0ea5e9','#8b5cf6','#f59e0b','#ef4444','#14b8a6','#ec4899','#6366f1','#84cc16','#f97316','#06b6d4','#a855f7'];
 const TGT_HDR_RE = /^(sales\s*(person|persons|man|men|rep|reps|employee|employees|name|names)?|employees?|employee\s*name|sellers?|seller\s*name|names?|staff|cashiers?|اسم|الاسم|اسم البائع|اسم الموظف|الأسماء|الاسماء|اسماء|أسماء|البائع|البائعين|السيلز|سيلز|الموظف|الموظفين|مبيعات|المبيعات)$/i;
 function tgtIsHeaderName(n){ return TGT_HDR_RE.test(String(n == null ? '' : n).trim()); }
-function tgtNew(){ return { branchTarget:1000000, workDays:26, offDays:2, todayDay:0, sellers:[], agg:{}, offers:null, meta:null, updatedAt:'' }; }
+function tgtNew(){ return { branchTarget:1000000, workDays:26, offDays:2, todayDay:0, weekTarget:250000, weekFrom:0, weekTo:0, weekOff:1, sellers:[], agg:{}, offers:null, offersD:null, meta:null, updatedAt:'' }; }
 function tgtKey(){ return 'target_v1_' + (currentBranch ? currentBranch.id : 'anon'); }
 function tgtNorm(s){
   return String(s == null ? '' : s).toLowerCase().replace(/[\u064B-\u065F\u0670\u0640]/g,'').replace(/[أإآٱ]/g,'ا').replace(/ى/g,'ي').replace(/ة/g,'ه').replace(/\s+/g,' ').trim();
@@ -6888,14 +6924,21 @@ function tgtNormalizeState(p){
   if(p.workDays > 0) o.workDays = Math.round(p.workDays);
   if(isFinite(p.offDays) && p.offDays >= 0) o.offDays = Math.round(p.offDays);
   if(p.todayDay > 0) o.todayDay = Math.min(31, Math.round(p.todayDay));
+  if(isFinite(p.weekTarget)) o.weekTarget = Math.max(0, Number(p.weekTarget));
+  if(p.weekFrom >= 1 && p.weekFrom <= 31) o.weekFrom = Math.round(p.weekFrom);
+  if(p.weekTo >= 1 && p.weekTo <= 31) o.weekTo = Math.round(p.weekTo);
+  if(isFinite(p.weekOff) && p.weekOff >= 0) o.weekOff = Math.min(30, Math.round(p.weekOff));
   o.sellers = (Array.isArray(p.sellers) ? p.sellers : []).filter(s=> s && s.name && !tgtIsHeaderName(s.name)).map(s=>({
     id: s.id || tgtId(), name: String(s.name), days: s.days > 0 ? Math.round(s.days) : null,
     status: s.status === 'left' ? 'left' : 'active', leftDay: s.leftDay > 0 ? Math.round(s.leftDay) : 0,
     startDay: s.startDay > 0 ? Math.round(s.startDay) : 0,
-    leave: s.leave > 0 ? Math.min(31, Math.round(s.leave)) : 0
+    leave: s.leave > 0 ? Math.min(31, Math.round(s.leave)) : 0,
+    wDays: s.wDays > 0 ? Math.min(31, Math.round(s.wDays)) : null,
+    wLeave: s.wLeave > 0 ? Math.min(31, Math.round(s.wLeave)) : 0
   }));
   o.agg = (p.agg && typeof p.agg === 'object') ? p.agg : {};
   o.offers = (p.offers && typeof p.offers === 'object') ? p.offers : null;
+  o.offersD = (p.offersD && typeof p.offersD === 'object') ? p.offersD : null;
   o.meta = p.meta || null;
   o.updatedAt = typeof p.updatedAt === 'string' ? p.updatedAt : '';
   return o;
@@ -7015,7 +7058,8 @@ function tgtAggregate(rows, det, map){
     const nm = it.name || '(بدون اسم)';
     const k = tgtNorm(nm);
     const rkey = it.rc || ('#' + it.idx);
-    const ro = recOff[rkey] || (recOff[rkey] = { names:{}, offers:new Set(), discs:new Set(), amt:0 });
+    const ro = recOff[rkey] || (recOff[rkey] = { names:{}, offers:new Set(), discs:new Set(), amt:0, day:0 });
+    if(day && !ro.day) ro.day = day;
     if(it.name) ro.names[k] = (ro.names[k] || 0) + 1;
     ro.amt += it.amt;
     if(it.offer) ro.offers.add(it.offer); else if(it.disc > 0) ro.discs.add(tgtDiscLabel(it.disc));
@@ -7033,6 +7077,7 @@ function tgtAggregate(rows, det, map){
   // الأوفرات على مستوى الفاتورة كلها: لو أي سطر فيها له اسم أوفر (حتى لو أول السطور بلانك) كل الفاتورة تتحسب على الأوفر ده
   // وإلا بتتحسب على نسبة الخصم. البائع = أكتر اسم ظاهر في سطور الفاتورة.
   const offers = {};
+  const offersD = {};
   const blankKey = tgtNorm('(بدون اسم)');
   Object.keys(recOff).forEach(rk=>{
     const ro = recOff[rk];
@@ -7045,10 +7090,17 @@ function tgtAggregate(rows, det, map){
       const m = offers[sk] || (offers[sk] = {});
       const v = m[l] || (m[l] = [0, 0]);
       v[0] += 1; v[1] += share;
+      if(ro.day){
+        const dm = offersD[sk] || (offersD[sk] = {});
+        const dd = dm[ro.day] || (dm[ro.day] = {});
+        const dv = dd[l] || (dd[l] = [0, 0]);
+        dv[0] += 1; dv[1] += share;
+      }
     });
   });
+  Object.keys(offersD).forEach(k=> Object.keys(offersD[k]).forEach(d=> Object.keys(offersD[k][d]).forEach(l=>{ offersD[k][d][l][1] = Math.round(offersD[k][d][l][1] * 100) / 100; })));
   Object.keys(offers).forEach(k=> Object.keys(offers[k]).forEach(l=>{ offers[k][l][1] = Math.round(offers[k][l][1] * 100) / 100; }));
-  return { agg, hasDates, ym: maxYM, tot, offers: (map.offer >= 0 || map.disc >= 0) ? offers : null };
+  return { agg, hasDates, ym: maxYM, tot, offers: (map.offer >= 0 || map.disc >= 0) ? offers : null, offersD: (map.offer >= 0 || map.disc >= 0) ? offersD : null };
 }
 function tgtReadNames(rows2){
   if(!rows2 || !rows2.length) return [];
@@ -7077,6 +7129,7 @@ function tgtBuildFromRaw(userMap){
   const res = tgtAggregate(tgtRaw.rows1, det, map);
   tgt.agg = res.agg;
   tgt.offers = res.offers;
+  tgt.offersD = res.offersD;
   tgt.meta = {
     fileName: tgtRaw.fileName, uploadedAt: new Date().toISOString(), hasDates: res.hasDates, ym: res.ym, tot: res.tot,
     cols: { seller: det.headers[map.seller] || '', amt: det.headers[map.amt] || '', qty: det.headers[map.qty] || '', rc: det.headers[map.rc] || '', date: det.headers[map.date] || '', offer: det.headers[map.offer] || '', disc: det.headers[map.disc] || '' }
@@ -7270,6 +7323,149 @@ function tgtRender(){
   tgtRenderOffers(C);
   tgtRenderDash(C);
   tgtRenderOffersDash(C);
+  tgtRenderWeek();
+}
+
+
+/* ---------- التارجت الأسبوعي ---------- */
+function tgtMonthInfo(){
+  const ym = tgt.meta && tgt.meta.ym;
+  const now = new Date();
+  const y = ym ? Math.floor(ym / 100) : now.getFullYear(), m = ym ? (ym % 100) : (now.getMonth() + 1);
+  return { y, m, dim: new Date(y, m, 0).getDate() };
+}
+function tgtWeekRange(){
+  const mi = tgtMonthInfo(), today = Math.min(tgtToday(), mi.dim);
+  let ws = tgt.weekFrom, we = tgt.weekTo;
+  if(!(ws >= 1)){
+    const dow = new Date(mi.y, mi.m - 1, today).getDay();      // 0 = الأحد ... 6 = السبت
+    ws = today - ((dow + 1) % 7);                              // آخر سبت
+    if(ws < 1) ws = 1;
+  }
+  if(!(we >= 1)) we = ws + 6;
+  we = Math.min(we, mi.dim);
+  if(ws > we) ws = we;
+  return { ws, we, len: we - ws + 1, dim: mi.dim };
+}
+function tgtComputeWeek(){
+  const R = tgtWeekRange();
+  const today = tgtToday();
+  const wOff = Math.max(0, Math.min(R.len - 1, tgt.weekOff || 0));
+  const wWork = Math.max(1, R.len - wOff);
+  const cur = Math.min(today, R.we);
+  const elapsedW = Math.max(0, Math.min(wWork, cur - R.ws + 1 - wOff));
+  const noDates = !!(tgt.meta && !tgt.meta.hasDates);
+  const inRange = (d, maxDay)=> d >= R.ws && d <= Math.min(R.we, maxDay);
+  const rows = tgt.sellers.map(s=>{
+    const a = tgt.agg[tgtNorm(s.name)];
+    const left = s.status === 'left';
+    const maxDay = left ? (s.leftDay || today) : 99;
+    let amt = 0, qty = 0, rc = 0;
+    if(a) Object.keys(a.d).forEach(k=>{ const d = +k; if(d > 0 && inRange(d, maxDay)){ const v = a.d[k]; amt += v[0]; qty += v[1]; rc += v[2]; } });
+    return { s, left, days: s.wDays > 0 ? s.wDays : wWork, leave: s.wLeave > 0 ? s.wLeave : 0, amt, qty, rc };
+  });
+  const leavers = rows.filter(r=> r.left), active = rows.filter(r=> !r.left);
+  const locked = leavers.reduce((t,r)=> t + r.amt, 0);
+  const pool = Math.max(0, (tgt.weekTarget || 0) - locked);
+  const sumDays = active.reduce((t,r)=> t + r.days, 0);
+  const daily = sumDays > 0 ? pool / sumDays : 0;
+  rows.forEach(r=>{
+    if(r.left){ r.target = r.amt; r.daily = 0; r.exp = r.amt; r.el = 0; }
+    else { r.daily = daily; r.target = daily * r.days; r.el = Math.max(0, Math.min(r.days, elapsedW - r.leave)); r.exp = daily * r.el; }
+    r.mp = (!r.left && r.target > 0) ? r.amt / r.target * 100 : null;
+    r.dp = (!r.left && r.exp > 0) ? r.amt / r.exp * 100 : null;
+    r.upt = r.rc > 0 ? r.qty / r.rc : null;
+    r.atv = r.rc > 0 ? r.amt / r.rc : null;
+  });
+  let totAmt = 0, totQty = 0, totRc = 0;
+  Object.keys(tgt.agg).forEach(k=> Object.keys(tgt.agg[k].d).forEach(d=>{ if(+d > 0 && inRange(+d, 99)){ const v = tgt.agg[k].d[d]; totAmt += v[0]; totQty += v[1]; totRc += v[2]; } }));
+  const B = tgt.weekTarget || 0;
+  const bDaily = B / wWork, bExp = bDaily * elapsedW;
+  const br = { target: B, daily: bDaily, exp: bExp, amt: totAmt, qty: totQty, rc: totRc,
+    mp: B > 0 ? totAmt / B * 100 : null, dp: bExp > 0 ? totAmt / bExp * 100 : null,
+    upt: totRc > 0 ? totQty / totRc : null, atv: totRc > 0 ? totAmt / totRc : null };
+  return { R, rows, active, leavers, locked, pool, daily, wWork, wOff, elapsedW, cur, noDates, totAmt, totQty, totRc, totExp: bExp, br };
+}
+function tgtWeekSales(R){
+  return function(k){
+    const a = tgt.agg[k]; let t = 0;
+    if(a) Object.keys(a.d).forEach(d=>{ if(+d >= R.ws && +d <= R.we) t += a.d[d][0]; });
+    return t;
+  };
+}
+function tgtWeekOffersSrc(R){
+  if(!tgt.offersD) return null;
+  const out = {};
+  Object.keys(tgt.offersD).forEach(k=>{
+    Object.keys(tgt.offersD[k]).forEach(d=>{
+      if(+d < R.ws || +d > R.we) return;
+      const m = out[k] || (out[k] = {});
+      Object.keys(tgt.offersD[k][d]).forEach(l=>{
+        const v = tgt.offersD[k][d][l]; const t = m[l] || (m[l] = [0, 0]);
+        t[0] += v[0] || 0; t[1] += v[1] || 0;
+      });
+    });
+  });
+  return out;
+}
+function tgtRenderWeek(){
+  if(!$('tgtWkTable')) return;
+  const C = tgtComputeWeek(), R = C.R;
+  tgtSetInput('tgtWkTarget', tgtF(tgt.weekTarget, 0));
+  tgtSetInput('tgtWkFrom', String(R.ws));
+  tgtSetInput('tgtWkTo', String(R.we));
+  tgtSetInput('tgtWkOff', String(C.wOff));
+  tgtSetInput('tgtWkToday', tgt.todayDay > 0 ? String(tgt.todayDay) : '');
+  $('tgtWkToday').placeholder = String(new Date().getDate());
+
+  const perTxt = '(الفترة: من يوم ' + R.ws + ' إلى يوم ' + R.we + ' — ' + R.len + ' يوم)';
+  if($('tgtWkPer1')) $('tgtWkPer1').textContent = perTxt;
+  if($('tgtWkPer2')) $('tgtWkPer2').textContent = perTxt;
+  const remaining = (tgt.weekTarget || 0) - C.totAmt;
+  const pct = tgt.weekTarget > 0 ? C.totAmt / tgt.weekTarget * 100 : null;
+  const diff = C.totAmt - C.totExp;
+  $('tgtWkKpis').innerHTML =
+    '<div class="tgt-kpi"><span>الأسبوع</span><b>' + R.ws + ' → ' + R.we + '</b></div>' +
+    '<div class="tgt-kpi"><span>المحقق</span><b>' + tgtF(C.totAmt) + '</b></div>' +
+    '<div class="tgt-kpi"><span>المتبقي</span><b>' + tgtF(Math.max(0, remaining)) + '</b></div>' +
+    '<div class="tgt-kpi"><span>نسبة التحقيق الأسبوعية</span><b>' + (pct == null ? '—' : tgtF(pct, 1) + '%') + '</b></div>' +
+    '<div class="tgt-kpi"><span>نسبة التحقيق اليومية</span><b>' + (C.br.dp == null ? '—' : tgtF(C.br.dp, 1) + '%') + '</b></div>' +
+    '<div class="tgt-kpi"><span>المفروض لحد اليوم ' + C.cur + '</span><b>' + tgtF(C.totExp) + '</b></div>' +
+    '<div class="tgt-kpi"><span>' + (diff >= 0 ? 'متقدم بـ' : 'متأخر بـ') + '</span><b>' + tgtF(Math.abs(diff)) + '</b></div>';
+
+  let warn = '';
+  if(!tgt.sellers.length) warn += '<div class="tgt-warn">لسه مفيش بائعين — ارفع الشيت من فوق (نفس الشيت بتاع الشهري).</div>';
+  if(C.noDates) warn += '<div class="tgt-warn">الشيت مفيهوش عمود تاريخ — التقرير الأسبوعي محتاج عمود التاريخ عشان يفصل مبيعات الأسبوع.</div>';
+  if(C.active.length === 0 && tgt.sellers.length) warn += '<div class="tgt-warn">كل البائعين تاركين العمل — مفيش حد يتوزع عليه الباقي.</div>';
+  $('tgtWkWarn').innerHTML = warn;
+
+  let html = '<table class="tgt-table" style="min-width:1000px;"><thead><tr><th>#</th><th>اسم البائع</th><th>الحالة</th><th>أيام العمل</th><th>أيام الإجازة</th><th>التارجت الأسبوعي</th><th>التارجت اليومي</th><th>المفروض لحد ' + C.cur + '</th><th>المحقق</th><th>النسبة الأسبوعية %</th><th>النسبة اليومية %</th><th>UPT</th><th>ATV</th><th>الفواتير</th><th>القطع</th></tr></thead><tbody>';
+  C.rows.forEach((r,i)=>{
+    html += '<tr class="' + (r.left ? 'left' : '') + '" data-id="' + r.s.id + '">' +
+      '<td>' + (i+1) + '</td>' +
+      '<td class="nm">' + escapeHtml(r.s.name) + '</td>' +
+      '<td>' + (r.left ? '🚪 ترك العمل (حتى يوم ' + (r.s.leftDay || C.cur) + ')' : 'مستمر') + '</td>' +
+      '<td>' + (r.left ? '—' : '<input class="tgt-in" data-wrole="wDays" inputmode="numeric" placeholder="' + C.wWork + '" value="' + (r.s.wDays || '') + '">') + '</td>' +
+      '<td>' + (r.left ? '—' : '<input class="tgt-in" data-wrole="wLeave" inputmode="numeric" placeholder="0" value="' + (r.leave || '') + '">') + '</td>' +
+      '<td class="num"><b>' + tgtF(r.target) + '</b>' + (r.left ? '<div style="font-size:10.5px;">(مثبّت)</div>' : '') + '</td>' +
+      '<td class="num">' + (r.left ? '—' : tgtF(r.daily)) + '</td>' +
+      '<td class="num">' + (r.left ? '—' : tgtF(r.exp)) + '</td>' +
+      '<td class="num"><b>' + tgtF(r.amt) + '</b></td>' +
+      '<td>' + tgtPill(r.mp, 'm') + '</td><td>' + tgtPill(r.dp, 'd') + '</td>' +
+      '<td class="num">' + tgtF(r.upt, 2) + '</td><td class="num">' + tgtF(r.atv, 0) + '</td>' +
+      '<td class="num">' + tgtF(r.rc) + '</td><td class="num">' + tgtF(r.qty) + '</td></tr>';
+  });
+  if(!C.rows.length) html += '<tr><td colspan="15" style="padding:22px;color:#6C7480;">مفيش بيانات لسه.</td></tr>';
+  const BR = C.br;
+  if(C.rows.length || C.totAmt){
+    html += '</tbody><tfoot><tr><td></td><td class="nm">🏢 الفرع (إجمالي الأسبوع)</td><td></td><td class="num">' + C.wWork + ' يوم</td><td></td><td class="num">' + tgtF(BR.target) + '</td><td class="num">' + tgtF(BR.daily) + '</td><td class="num">' + tgtF(BR.exp) + '</td><td class="num">' + tgtF(BR.amt) + '</td>' +
+      '<td>' + tgtPill(BR.mp, 'm') + '</td><td>' + tgtPill(BR.dp, 'd') + '</td>' +
+      '<td class="num">' + tgtF(BR.upt, 2) + '</td><td class="num">' + tgtF(BR.atv, 0) + '</td><td class="num">' + tgtF(BR.rc) + '</td><td class="num">' + tgtF(BR.qty) + '</td></tr></tfoot></table>';
+  } else html += '</tbody></table>';
+  $('tgtWkTable').innerHTML = html;
+
+  tgtRenderOffers(null, { elId:'tgtWkOffers', src: tgtWeekOffersSrc(R), salesFn: tgtWeekSales(R),
+    missMsg: tgt.meta ? 'تقرير الأوفرات الأسبوعي محتاج الشيت يكون فيه عمود Offer Name أو Discount (%) وعمود التاريخ — ولو الشيت اترفع قبل إضافة التارجت الأسبوعي ارفعه تاني.' : 'ارفع الشيت عشان يظهر تقرير الأوفرات.' });
 }
 
 /* ---------- تقرير شرائح التحقيق ---------- */
@@ -7349,13 +7545,14 @@ function tgtSellerSales(k){
   if(a) Object.keys(a.d).forEach(d=> t += a.d[d][0]);
   return t;
 }
-function tgtOfferMatrix(){
-  if(!tgt.offers) return null;
+function tgtOfferMatrix(src, salesFn){
+  src = src === undefined ? tgt.offers : src; salesFn = salesFn || tgtSellerSales;
+  if(!src) return null;
   // الصفوف = أسماء البائعين من التاب التاني (قائمة السيلز) بس
-  const rowsDef = tgt.sellers.map(s=>{ const k = tgtNorm(s.name); return { name:s.name, k, left:s.status === 'left', sales: tgtSellerSales(k) }; });
+  const rowsDef = tgt.sellers.map(s=>{ const k = tgtNorm(s.name); return { name:s.name, k, left:s.status === 'left', sales: salesFn(k) }; });
   const colTot = {};
   rowsDef.forEach(r=>{
-    const m = tgt.offers[r.k] || {};
+    const m = src[r.k] || {};
     Object.keys(m).forEach(l=>{ const g = tgtOfferGet(m, l); const t = colTot[l] || (colTot[l] = { n:0, a:0 }); t.n += g.n; t.a += g.a; });
   });
   const cols = Object.keys(colTot).sort((a,b)=> colTot[b].n - colTot[a].n || a.localeCompare(b));
@@ -7364,20 +7561,23 @@ function tgtOfferMatrix(){
 function tgtOfferCell(n, a, sales, bg){
   return '<td class="c"' + (bg ? ' style="background:' + bg + ';"' : '') + '><div class="oc-n">' + tgtF(n) + '</div><div class="oc-a">' + tgtF(a) + '</div><div class="oc-p">' + (sales > 0 ? tgtF(a / sales * 100, 1) + '%' : '—') + '</div></td>';
 }
-function tgtRenderOffers(C){
-  const el = $('tgtOffers'); if(!el) return;
-  if(!tgt.offers){
+function tgtRenderOffers(C, opt){
+  const o = opt || {};
+  const SRC = o.src !== undefined ? o.src : tgt.offers;
+  const el = $(o.elId || 'tgtOffers'); if(!el) return;
+  if(!SRC){
+    if(o.missMsg){ el.innerHTML = '<div class="tgt-note">' + o.missMsg + '</div>'; return; }
     el.innerHTML = '<div class="tgt-note">' + (tgt.meta ? 'مفيش بيانات أوفرات: لازم الشيت يكون فيه عمود Order Lines/Offer Name أو Order Lines/Discount (%) — ولو الشيت اترفع قبل إضافة التقرير ده ارفعه تاني. تقدر تختار الأعمدة من "ربط الأعمدة".' : 'ارفع الشيت عشان يظهر تقرير الأوفرات.') + '</div>';
     return;
   }
-  const M = tgtOfferMatrix();
+  const M = tgtOfferMatrix(SRC, o.salesFn);
   if(!M.rowsDef.length){ el.innerHTML = '<div class="tgt-note">مفيش بائعين في قائمة السيلز (التاب التاني).</div>'; return; }
   if(!M.cols.length){ el.innerHTML = '<div class="tgt-note">مفيش أوفرات أو خصومات للبائعين دول في الشيت.</div>'; return; }
   const colMax = {};
-  M.cols.forEach(c=>{ colMax[c] = Math.max(1, ...M.rowsDef.map(r=> tgtOfferGet(tgt.offers[r.k], c).n)); });
+  M.cols.forEach(c=>{ colMax[c] = Math.max(1, ...M.rowsDef.map(r=> tgtOfferGet(SRC[r.k], c).n)); });
   let h = '<div class="tgt-wrap"><table class="tgt-table tgt-off"><thead><tr><th>#</th><th>اسم البائع</th>' + M.cols.map(c=> '<th>' + escapeHtml(c) + '</th>').join('') + '<th>الإجمالي</th><th>مبيعات البائع</th></tr></thead><tbody>';
   M.rowsDef.forEach((r, i)=>{
-    const m = tgt.offers[r.k] || {};
+    const m = SRC[r.k] || {};
     let tn = 0, ta = 0;
     h += '<tr class="' + (r.left ? 'left' : '') + '"><td>' + (i + 1) + '</td><td class="nm">' + escapeHtml(r.name) + (r.left ? ' 🚪' : '') + '</td>';
     M.cols.forEach(c=>{
@@ -7596,13 +7796,39 @@ function tgtRenderDash(C){
 async function tgtOpen(){
   if(!currentBranch){ showToast('اختار الفرع الأول.'); return; }
   switchScreen('screen-target');
+  tgtSetTab('month');
   tgtRaw = null;
   setStatus($('uploadStatusTarget'), 'جاري تحميل البيانات...', '');
   await tgtLoad();
   setStatus($('uploadStatusTarget'), tgt.meta ? ('الشيت محفوظ ✓ ' + (tgt.meta.fileName ? '(' + tgt.meta.fileName + ')' : '')) : 'ارفع شيت المبيعات (التاب الأول مبيعات، التاني أسماء السيلز).', tgt.meta ? 'ok' : '');
   tgtRender();
 }
+function tgtExportWeek(){
+  const C = tgtComputeWeek(), R = C.R;
+  const data = [['اسم البائع','الحالة','أيام العمل','أيام الإجازة','التارجت الأسبوعي','التارجت اليومي','المفروض لحد اليوم ' + C.cur,'المحقق','النسبة الأسبوعية %','النسبة اليومية %','UPT','ATV','الفواتير','القطع']];
+  C.rows.forEach(r=> data.push([r.s.name, r.left ? 'ترك العمل (حتى يوم ' + (r.s.leftDay || C.cur) + ')' : 'مستمر', r.left ? '' : r.days, r.leave || '', Math.round(r.target), r.left ? '' : Math.round(r.daily), r.left ? '' : Math.round(r.exp), Math.round(r.amt), r.mp == null ? '' : Math.round(r.mp * 10) / 10, r.dp == null ? '' : Math.round(r.dp * 10) / 10, r.upt == null ? '' : Math.round(r.upt * 100) / 100, r.atv == null ? '' : Math.round(r.atv), r.rc, r.qty]));
+  const BR = C.br; data.push([]); data.push(['الفرع (إجمالي الأسبوع ' + R.ws + '→' + R.we + ')', '', C.wWork, '', Math.round(BR.target), Math.round(BR.daily), Math.round(BR.exp), Math.round(BR.amt), BR.mp == null ? '' : Math.round(BR.mp * 10) / 10, BR.dp == null ? '' : Math.round(BR.dp * 10) / 10, BR.upt == null ? '' : Math.round(BR.upt * 100) / 100, BR.atv == null ? '' : Math.round(BR.atv), BR.rc, BR.qty]);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), 'Weekly Target');
+  const src = tgtWeekOffersSrc(R);
+  const OM = src ? tgtOfferMatrix(src, tgtWeekSales(R)) : null;
+  if(OM && OM.cols.length){
+    const hd = ['اسم البائع'];
+    OM.cols.forEach(c=>{ hd.push(c + ' (عدد)', c + ' (قيمة)', c + ' (% من المبيعات)'); });
+    hd.push('الإجمالي (عدد)', 'الإجمالي (قيمة)', 'الإجمالي (% من المبيعات)', 'مبيعات البائع');
+    const od = [hd];
+    OM.rowsDef.forEach(r=>{
+      const m = src[r.k] || {}; let tn = 0, ta = 0; const line = [r.name];
+      OM.cols.forEach(c=>{ const g = tgtOfferGet(m, c); tn += g.n; ta += g.a; line.push(g.n || '', g.n ? Math.round(g.a) : '', g.n && r.sales > 0 ? Math.round(g.a / r.sales * 1000) / 10 : ''); });
+      line.push(tn, Math.round(ta), r.sales > 0 ? Math.round(ta / r.sales * 1000) / 10 : '', Math.round(r.sales));
+      od.push(line);
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(od), 'Weekly Offers');
+  }
+  XLSX.writeFile(wb, branchFname('Target_Weekly') + '.xlsx');
+}
 function tgtExport(){
+  if(tgtTab === 'week'){ tgtExportWeek(); return; }
   const C = tgtCompute();
   const data = [['اسم البائع','الحالة','أيام العمل','يبدأ من يوم','أيام الإجازة','التارجت الشهري','التارجت اليومي','المفروض لحد اليوم ' + C.today,'المحقق','النسبة الشهرية %','النسبة اليومية %','UPT','ATV','الفواتير','القطع']];
   C.rows.forEach(r=> data.push([r.s.name, r.left ? 'ترك العمل (حتى يوم ' + (r.s.leftDay || C.today) + ')' : 'مستمر', r.left ? '' : r.days, r.start || '', r.leave || '', Math.round(r.target), r.left ? '' : Math.round(r.daily), r.left ? '' : Math.round(r.exp), Math.round(r.amt), r.mp == null ? '' : Math.round(r.mp * 10) / 10, r.dp == null ? '' : Math.round(r.dp * 10) / 10, r.upt == null ? '' : Math.round(r.upt * 100) / 100, r.atv == null ? '' : Math.round(r.atv), r.rc, r.qty]));
@@ -7716,6 +7942,7 @@ async function tgtBuildHolder(){
     else { d.value = el.value; d.setAttribute('value', el.value); }
   });
   const tb = clone.querySelector('#tgtTopBox'); if(tb){ tb.style.position = 'static'; }
+  const tbw = clone.querySelector('#tgtWkTopBox'); if(tbw){ tbw.style.position = 'static'; }
   clone.querySelectorAll('.tgt-wrap').forEach(w=>{ w.style.overflow = 'visible'; });
   clone.querySelectorAll('.tgt-table').forEach(t=>{ t.style.minWidth = '0'; t.style.width = '100%'; });
   clone.querySelectorAll('.tgt-table thead th').forEach(th=>{ th.style.position = 'static'; });
@@ -7800,7 +8027,7 @@ $('tgtPdfBtn') && $('tgtPdfBtn').addEventListener('click', tgtExportPdf);
 $('tgtClearBtn') && $('tgtClearBtn').addEventListener('click', ()=>{
   if(!currentBranch){ showToast('اختار الفرع الأول.'); return; }
   if(!confirm('هتمسح الشيت المرفوع وكل البائعين (والمستمر/ترك العمل) من Target فرع ' + currentBranch.name + ' على كل الأجهزة. تارجت الفرع وأيام العمل هيفضلوا. تكمل؟')) return;
-  tgt.sellers = []; tgt.agg = {}; tgt.offers = null; tgt.meta = null; tgtRaw = null;
+  tgt.sellers = []; tgt.agg = {}; tgt.offers = null; tgt.offersD = null; tgt.meta = null; tgtRaw = null;
   tgtPersist(); tgtRender();
   setStatus($('uploadStatusTarget'), 'اتمسحت البيانات ✓ — ارفع شيت جديد.', 'ok');
   showToast('تم مسح بيانات Target ✓');
@@ -7836,6 +8063,31 @@ $('tgtTable') && $('tgtTable').addEventListener('change', (event)=>{
   if(inp.getAttribute('data-role') === 'startDay') s.startDay = (n >= 1 && n <= 31) ? n : 0;
   if(inp.getAttribute('data-role') === 'leave') s.leave = (n >= 1 && n <= 31) ? n : 0;
   if(inp.getAttribute('data-role') === 'leftDay') s.leftDay = (n >= 1 && n <= 31) ? n : (s.leftDay || tgtToday());
+  tgtPersist(); tgtRender();
+});
+
+let tgtTab = 'month';
+function tgtSetTab(t){
+  tgtTab = t === 'week' ? 'week' : 'month';
+  const pm = $('tgtPaneMonth'), pw = $('tgtPaneWeek');
+  if(pm) pm.style.display = tgtTab === 'month' ? '' : 'none';
+  if(pw) pw.style.display = tgtTab === 'week' ? '' : 'none';
+  document.querySelectorAll('#tgtTabs button[data-tgt-tab]').forEach(b=> b.classList.toggle('on', b.getAttribute('data-tgt-tab') === tgtTab));
+}
+$('tgtTabs') && $('tgtTabs').addEventListener('click', (e)=>{ const b = e.target.closest('button[data-tgt-tab]'); if(b) tgtSetTab(b.getAttribute('data-tgt-tab')); });
+$('tgtWkTarget') && $('tgtWkTarget').addEventListener('change', ()=>{ tgt.weekTarget = Math.max(0, tgtNum($('tgtWkTarget').value)); tgtPersist(); tgtRender(); });
+$('tgtWkTarget') && $('tgtWkTarget').addEventListener('keydown', e=>{ if(e.key === 'Enter'){ e.preventDefault(); e.currentTarget.blur(); } });
+$('tgtWkFrom') && $('tgtWkFrom').addEventListener('change', ()=>{ const n = Math.round(tgtNum($('tgtWkFrom').value)); tgt.weekFrom = (n >= 1 && n <= 31) ? n : 0; if(tgt.weekFrom && tgt.weekTo && tgt.weekTo < tgt.weekFrom) tgt.weekTo = 0; tgtPersist(); tgtRender(); });
+$('tgtWkTo') && $('tgtWkTo').addEventListener('change', ()=>{ const n = Math.round(tgtNum($('tgtWkTo').value)); tgt.weekTo = (n >= 1 && n <= 31) ? n : 0; tgtPersist(); tgtRender(); });
+$('tgtWkOff') && $('tgtWkOff').addEventListener('change', ()=>{ const n = Math.round(tgtNum($('tgtWkOff').value)); tgt.weekOff = n >= 0 ? Math.min(30, n) : 1; tgtPersist(); tgtRender(); });
+$('tgtWkToday') && $('tgtWkToday').addEventListener('change', ()=>{ const n = Math.round(tgtNum($('tgtWkToday').value)); tgt.todayDay = (n >= 1 && n <= 31) ? n : 0; tgtPersist(); tgtRender(); });
+['tgtWkFrom','tgtWkTo','tgtWkOff','tgtWkToday'].forEach(id=> $(id) && $(id).addEventListener('keydown', e=>{ if(e.key === 'Enter'){ e.preventDefault(); e.currentTarget.blur(); } }));
+$('tgtWkTable') && $('tgtWkTable').addEventListener('change', (event)=>{
+  const inp = event.target.closest('input[data-wrole]'); if(!inp) return;
+  const tr = inp.closest('tr'); const s = tr && tgt.sellers.find(x=> x.id === tr.getAttribute('data-id')); if(!s) return;
+  const n = Math.round(tgtNum(inp.value));
+  if(inp.getAttribute('data-wrole') === 'wDays') s.wDays = (n >= 1 && n <= 31) ? n : null;
+  if(inp.getAttribute('data-wrole') === 'wLeave') s.wLeave = (n >= 1 && n <= 31) ? n : 0;
   tgtPersist(); tgtRender();
 });
 $('tgtWarn') && $('tgtWarn').addEventListener('click', (event)=>{
