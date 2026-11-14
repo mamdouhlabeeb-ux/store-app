@@ -1539,6 +1539,12 @@ service cloud.firestore {
     <p class="tgt-note">كل الأرقام (المحقق، النسب، UPT، ATV، الفواتير، القطع، وتقرير الأوفرات) بتتحسب على الفترة اللي محددها فوق "من يوم / إلى يوم" بس، ومقارنتها بالتارجت الأسبوعي (مش الشهري). التارجت الأسبوعي بيتوزع على البائعين المستمرين بنسبة أيام عملهم في الفترة. "أيام العمل" فاضية = كل أيام الأسبوع بعد خصم الإجازات المحسوبة. "أيام الإجازة" = الإجازات اللي البائع أخدها فعلًا في الأسبوع لحد النهارده. المفروض لحد النهارده = التارجت اليومي × (الأيام اللي عدّت من الأسبوع − الإجازات المحسوبة − إجازة البائع)، بحد أقصى أيام عمله. البائع التارك بيتثبّت تارجته على اللي حققه لحد يوم خروجه (حالة البائع بتتغيّر من التاب الشهري).</p>
     <div class="tgt-dash-title">🎁 تقرير الأوفرات <small id="tgtWkPer2" style="font-size:13px;font-weight:800;color:#0369a1;"></small></div>
     <div id="tgtWkOffers"></div>
+
+    <div class="tgt-dash-title">🎯 تقرير شرائح التحقيق — أقرب نسبة (90% / 95% / 100% / 110% / 120%) <small id="tgtWkPer3" style="font-size:13px;font-weight:800;color:#0369a1;"></small></div>
+    <div id="tgtWkTiers"></div>
+
+    <div class="tgt-dash-title">📊 داش بورد الفرع <small id="tgtWkPer4" style="font-size:13px;font-weight:800;color:#0369a1;"></small></div>
+    <div id="tgtWkDash"></div>
   </div>
 </div>
 
@@ -7381,7 +7387,7 @@ function tgtComputeWeek(){
   Object.keys(tgt.agg).forEach(k=> Object.keys(tgt.agg[k].d).forEach(d=>{ if(+d > 0 && inRange(+d, 99)){ const v = tgt.agg[k].d[d]; totAmt += v[0]; totQty += v[1]; totRc += v[2]; } }));
   const B = tgt.weekTarget || 0;
   const bDaily = B / wWork, bExp = bDaily * elapsedW;
-  const br = { target: B, daily: bDaily, exp: bExp, amt: totAmt, qty: totQty, rc: totRc,
+  const br = { target: B, daily: bDaily, exp: bExp, amt: totAmt, qty: totQty, rc: totRc, remDays: Math.max(0, wWork - elapsedW),
     mp: B > 0 ? totAmt / B * 100 : null, dp: bExp > 0 ? totAmt / bExp * 100 : null,
     upt: totRc > 0 ? totQty / totRc : null, atv: totRc > 0 ? totAmt / totRc : null };
   return { R, rows, active, leavers, locked, pool, daily, wWork, wOff, elapsedW, cur, noDates, totAmt, totQty, totRc, totExp: bExp, br };
@@ -7421,6 +7427,8 @@ function tgtRenderWeek(){
   const perTxt = '(الفترة: من يوم ' + R.ws + ' إلى يوم ' + R.we + ' — ' + R.len + ' يوم)';
   if($('tgtWkPer1')) $('tgtWkPer1').textContent = perTxt;
   if($('tgtWkPer2')) $('tgtWkPer2').textContent = perTxt;
+  if($('tgtWkPer3')) $('tgtWkPer3').textContent = perTxt;
+  if($('tgtWkPer4')) $('tgtWkPer4').textContent = perTxt;
   const remaining = (tgt.weekTarget || 0) - C.totAmt;
   const pct = tgt.weekTarget > 0 ? C.totAmt / tgt.weekTarget * 100 : null;
   const diff = C.totAmt - C.totExp;
@@ -7466,6 +7474,9 @@ function tgtRenderWeek(){
 
   tgtRenderOffers(null, { elId:'tgtWkOffers', src: tgtWeekOffersSrc(R), salesFn: tgtWeekSales(R),
     missMsg: tgt.meta ? 'تقرير الأوفرات الأسبوعي محتاج الشيت يكون فيه عمود Offer Name أو Discount (%) وعمود التاريخ — ولو الشيت اترفع قبل إضافة التارجت الأسبوعي ارفعه تاني.' : 'ارفع الشيت عشان يظهر تقرير الأوفرات.' });
+  tgtRenderTiers(C, { elId:'tgtWkTiers', noGauge:true, tLabel:'التارجت الأسبوعي', brName:'الفرع (إجمالي الأسبوع)',
+    note:'كل خانة: (1) المبيعات المطلوبة للوصول للنسبة = التارجت الأسبوعي × النسبة، (2) المتبقي عن المحقق في الفترة، (3) المطلوب يوميًا في الأيام المتبقية. الأيام المتبقية للبائع = أيام عمله في الفترة − الأيام اللي عدّت (بعد خصم إجازته)، وللفرع = أيام الفترة المحسوبة − الأيام اللي عدّت. لو الفترة خلصت بيظهر "انتهت الأيام". البائعين التاركين مش داخلين (تارجتهم مثبّت).' });
+  tgtRenderDash(C, { elId:'tgtWkDash', B: tgt.weekTarget || 0, todayLbl: C.cur, tLabel:'التارجت الأسبوعي', weekly:true });
 }
 
 /* ---------- تقرير شرائح التحقيق ---------- */
@@ -7484,22 +7495,23 @@ function tgtTierCalc(target, amt, remDays){
   const next = cells.find(c=> !c.ok) || null;
   return { pct, near, reached, cells, next, remDays };
 }
-function tgtTierRows(C){
+function tgtTierRows(C, brName){
   const rows = [];
   C.rows.filter(r=> !r.left).forEach(r=>{
     const remDays = Math.max(0, r.days - (r.el || 0));
     rows.push(Object.assign({ name: r.s.name, target: r.target, amt: r.amt, branch: false }, tgtTierCalc(r.target, r.amt, remDays)));
   });
   const br = C.br;
-  rows.push(Object.assign({ name: 'الفرع (إجمالي الشيت)', target: br.target, amt: br.amt, branch: true }, tgtTierCalc(br.target, br.amt, Math.max(0, br.dim - br.today))));
+  rows.push(Object.assign({ name: brName || 'الفرع (إجمالي الشيت)', target: br.target, amt: br.amt, branch: true }, tgtTierCalc(br.target, br.amt, br.remDays != null ? br.remDays : Math.max(0, br.dim - br.today))));
   return rows;
 }
-function tgtRenderTiers(C){
-  const el = $('tgtTiers'); if(!el) return;
-  const rows = tgtTierRows(C);
+function tgtRenderTiers(C, opt){
+  const o = opt || {};
+  const el = $(o.elId || 'tgtTiers'); if(!el) return;
+  const rows = tgtTierRows(C, o.brName);
   if(!C.active.length && !(C.br && C.br.amt)){ el.innerHTML = '<div class="tgt-note">ارفع الشيت وضيف البائعين عشان يظهر التقرير.</div>'; return; }
   const tagCls = (p)=> p == null ? '' : (p >= 100 ? 'g' : (p >= 90 ? 'y' : 'r'));
-  let h = '<div class="tgt-wrap"><table class="tgt-table tgt-off tgt-tier"><thead><tr><th>#</th><th>اسم البائع</th><th>التارجت الشهري</th><th>المحقق</th><th>النسبة الحالية</th><th>أقرب نسبة</th><th>الشريحة الحالية</th>' +
+  let h = '<div class="tgt-wrap"><table class="tgt-table tgt-off tgt-tier"><thead><tr><th>#</th><th>اسم البائع</th><th>' + (o.tLabel || 'التارجت الشهري') + '</th><th>المحقق</th><th>النسبة الحالية</th><th>أقرب نسبة</th><th>الشريحة الحالية</th>' +
     TGT_TIERS.map(t=> '<th>' + t + '%</th>').join('') + '</tr></thead><tbody>';
   let i = 0;
   rows.forEach(x=>{
@@ -7519,9 +7531,9 @@ function tgtRenderTiers(C){
     h += '</tr>';
   });
   h += '</tbody></table></div>';
-  h += '<p class="tgt-note">كل خانة: (1) المبيعات المطلوبة للوصول للنسبة = التارجت × النسبة، (2) المتبقي عن المحقق الحالي، (3) المطلوب يوميًا في الأيام المتبقية. الأيام المتبقية للبائع = أيام عمله − الأيام اللي عدّت (بعد خصم أيام إجازته)، وللفرع = أيام الشهر − اليوم الحالي. البائعين التاركين مش داخلين (تارجتهم مثبّت).</p>';
+  h += o.note ? ('<p class="tgt-note">' + o.note + '</p>') : '<p class="tgt-note">كل خانة: (1) المبيعات المطلوبة للوصول للنسبة = التارجت × النسبة، (2) المتبقي عن المحقق الحالي، (3) المطلوب يوميًا في الأيام المتبقية. الأيام المتبقية للبائع = أيام عمله − الأيام اللي عدّت (بعد خصم أيام إجازته)، وللفرع = أيام الشهر − اليوم الحالي. البائعين التاركين مش داخلين (تارجتهم مثبّت).</p>';
 
-  // مقياس التحقيق
+  if(!o.noGauge){
   const MAXP = 130;
   const axis = '<div class="tgt-lad-row"><div></div><div class="tgt-lad-axis">' + TGT_TIERS.map(t=> '<span style="left:' + (t / MAXP * 100).toFixed(2) + '%;">' + t + '%</span>').join('') + '</div><div></div></div>';
   h += '<div class="tgt-card wide" style="margin-top:10px;"><h4>📏 مقياس التحقيق مقابل الشرائح</h4>' + axis + rows.map(x=>{
@@ -7531,6 +7543,7 @@ function tgtRenderTiers(C){
       TGT_TIERS.map(t=> '<div class="t" style="left:' + (t / MAXP * 100).toFixed(2) + '%;"></div>').join('') + '</div><div style="direction:ltr;text-align:left;">' + (x.pct == null ? '—' : tgtF(x.pct, 1) + '%') + '</div></div>';
   }).join('') +
     '<div class="tgt-legend"><span><i style="background:#dc2626"></i>أقل من 90%</span><span><i style="background:#d97706"></i>90% – 100%</span><span><i style="background:#16a34a"></i>100% – 110%</span><span><i style="background:#0f766e"></i>110% فأكتر</span></div></div>';
+  }
   el.innerHTML = h;
 }
 
@@ -7653,11 +7666,12 @@ function tgtRenderOffersDash(C){
 }
 
 /* ---------- الداش بورد ---------- */
-function tgtRenderDash(C){
-  const el = $('tgtDash');
+function tgtRenderDash(C, opt){
+  const o = opt || {};
+  const el = $(o.elId || 'tgtDash');
   const rows = C.rows;
-  if(!rows.length || !(C.totAmt || tgt.branchTarget)){ el.innerHTML = '<div class="tgt-note">ارفع الشيت عشان تظهر الرسومات.</div>'; return; }
-  const B = tgt.branchTarget || 0;
+  if(!rows.length || !(C.totAmt || (o.B !== undefined ? o.B : tgt.branchTarget))){ el.innerHTML = '<div class="tgt-note">ارفع الشيت عشان تظهر الرسومات.</div>'; return; }
+  const B = (o.B !== undefined ? o.B : tgt.branchTarget) || 0;
   const pct = B > 0 ? C.totAmt / B : 0;
   const expPct = B > 0 ? C.totExp / B : 0;
   let out = '<div class="tgt-grid">';
@@ -7674,7 +7688,7 @@ function tgtRenderDash(C){
     '<line x1="' + ex1[0].toFixed(1) + '" y1="' + ex1[1].toFixed(1) + '" x2="' + ex1[2].toFixed(1) + '" y2="' + ex1[3].toFixed(1) + '" stroke="#7c3aed" stroke-width="3"/>' +
     '<text x="150" y="118" text-anchor="middle" font-size="34" font-weight="900" fill="#0f172a">' + tgtF(pct * 100, 1) + '%</text>' +
     '<text x="150" y="138" text-anchor="middle" font-size="11.5" font-weight="700" fill="#64748b">' + tgtF(C.totAmt) + ' من ' + tgtF(B) + '</text>' +
-    '<text x="150" y="160" text-anchor="middle" font-size="11" font-weight="700" fill="#7c3aed">| المفروض لحد اليوم ' + C.today + ': ' + tgtF(expPct * 100, 1) + '%</text></svg></div>';
+    '<text x="150" y="160" text-anchor="middle" font-size="11" font-weight="700" fill="#7c3aed">| المفروض لحد اليوم ' + (o.todayLbl || C.today) + ': ' + tgtF(expPct * 100, 1) + '%</text></svg></div>';
 
   // 2) ترتيب أفضل 3
   const top = rows.slice().sort((a,b)=> b.amt - a.amt).slice(0, 3);
@@ -7712,10 +7726,10 @@ function tgtRenderDash(C){
         '<div class="tgt-tick" style="left:calc(' + Math.min(100, x.target / scale * 100).toFixed(1) + '% - 1px)"></div></div>' +
         '<div class="val">' + tgtF(x.amt) + ' / ' + tgtF(x.target) + '</div></div>';
     }).join('') +
-    '<div class="tgt-legend"><span><i style="background:linear-gradient(90deg,#10b981,#0ea5e9)"></i>المحقق</span><span><i style="background:#0f172a"></i>التارجت الشهري</span><span><i style="background:#7c3aed"></i>المفروض لحد اليوم</span><span><i style="background:#f97316"></i>متأخر عن المفروض</span></div></div>';
+    '<div class="tgt-legend"><span><i style="background:linear-gradient(90deg,#10b981,#0ea5e9)"></i>المحقق</span><span><i style="background:#0f172a"></i>' + (o.tLabel || 'التارجت الشهري') + '</span><span><i style="background:#7c3aed"></i>المفروض لحد اليوم</span><span><i style="background:#f97316"></i>متأخر عن المفروض</span></div></div>';
 
   // 5) خط التقدّم اليومي
-  if(tgt.meta && tgt.meta.hasDates){
+  if(!o.weekly && tgt.meta && tgt.meta.hasDates){
     const perDay = {};
     let maxD = C.today;
     Object.keys(tgt.agg).forEach(k=> Object.keys(tgt.agg[k].d).forEach(d=>{ const n = +d; if(n > 0){ perDay[n] = (perDay[n] || 0) + tgt.agg[k].d[d][0]; if(n > maxD) maxD = n; } }));
@@ -7747,7 +7761,7 @@ function tgtRenderDash(C){
 
   // 6) UPT مقابل ATV
   const sc = rows.filter(x=> x.upt != null && x.atv != null && x.amt > 0);
-  if(sc.length){
+  if(!o.weekly && sc.length){
     const W = 640, H = 300, pl = 56, pr = 24, pt2 = 20, pb = 38;
     const ux = sc.map(x=> x.upt), ay = sc.map(x=> x.atv);
     let x0 = Math.min(...ux), x1 = Math.max(...ux), y0 = Math.min(...ay), y1 = Math.max(...ay);
@@ -7810,6 +7824,17 @@ function tgtExportWeek(){
   const BR = C.br; data.push([]); data.push(['الفرع (إجمالي الأسبوع ' + R.ws + '→' + R.we + ')', '', C.wWork, '', Math.round(BR.target), Math.round(BR.daily), Math.round(BR.exp), Math.round(BR.amt), BR.mp == null ? '' : Math.round(BR.mp * 10) / 10, BR.dp == null ? '' : Math.round(BR.dp * 10) / 10, BR.upt == null ? '' : Math.round(BR.upt * 100) / 100, BR.atv == null ? '' : Math.round(BR.atv), BR.rc, BR.qty]);
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(data), 'Weekly Target');
+  {
+    const th = ['اسم البائع', 'التارجت الأسبوعي', 'المحقق', 'النسبة الحالية %', 'أقرب نسبة %', 'الشريحة الحالية'];
+    TGT_TIERS.forEach(t=> th.push(t + '% (المطلوب)', t + '% (المتبقي)', t + '% (يومي مطلوب)'));
+    const td = [th];
+    tgtTierRows(C, 'الفرع (إجمالي الأسبوع)').forEach(x=>{
+      const line = [x.name, Math.round(x.target), Math.round(x.amt), x.pct == null ? '' : Math.round(x.pct * 10) / 10, x.near == null ? '' : x.near, x.reached == null ? 'أقل من 90%' : x.reached + '%'];
+      x.cells.forEach(c=> line.push(Math.round(c.need), c.ok ? 'تحقق' : Math.round(c.rem), c.ok ? '' : (c.daily == null ? '' : Math.round(c.daily))));
+      td.push(line);
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(td), 'Weekly Tiers');
+  }
   const src = tgtWeekOffersSrc(R);
   const OM = src ? tgtOfferMatrix(src, tgtWeekSales(R)) : null;
   if(OM && OM.cols.length){
