@@ -1530,7 +1530,7 @@ service cloud.firestore {
         <label>إلى يوم <input id="tgtWkTo" inputmode="numeric" autocomplete="off"></label>
         <label>أيام الإجازة المحسوبة <input id="tgtWkOff" inputmode="numeric" autocomplete="off"></label>
         <label>اليوم من الشهر <input id="tgtWkToday" inputmode="numeric" autocomplete="off"></label>
-        <span style="opacity:.8;font-weight:600;">(الأسبوع الافتراضي: من آخر سبت لحد الجمعة. غيّر "من يوم / إلى يوم" لأي أسبوع، واليوم بيتحسب تلقائي)</span>
+        <span style="opacity:.8;font-weight:600;">(الأسبوع الافتراضي: من آخر سبت لحد الجمعة. غيّر "من يوم / إلى يوم" لأي فترة. أيام الإجازة المحسوبة بتتخصم من آخر الفترة، فأول يوم بيتحسب عادي)</span>
       </div>
     </div>
     <div id="tgtWkWarn"></div>
@@ -7359,7 +7359,9 @@ function tgtComputeWeek(){
   const wOff = Math.max(0, Math.min(R.len - 1, tgt.weekOff || 0));
   const wWork = Math.max(1, R.len - wOff);
   const cur = Math.min(today, R.we);
-  const elapsedW = Math.max(0, Math.min(wWork, cur - R.ws + 1 - wOff));
+  // الأيام اللي عدّت: بتبدأ من أول يوم في الفترة، وأيام الإجازة المحسوبة بتتخصم من آخر الفترة (زي الجمعة) فمبتأثرش على أول الأسبوع
+  const passedW = Math.max(0, cur - R.ws + 1);
+  const elapsedW = Math.max(0, Math.min(wWork, passedW));
   const noDates = !!(tgt.meta && !tgt.meta.hasDates);
   const inRange = (d, maxDay)=> d >= R.ws && d <= Math.min(R.we, maxDay);
   const rows = tgt.sellers.map(s=>{
