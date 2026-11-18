@@ -7379,7 +7379,9 @@ function tgtComputeWeek(){
   const daily = sumDays > 0 ? pool / sumDays : 0;
   rows.forEach(r=>{
     if(r.left){ r.target = r.amt; r.daily = 0; r.exp = r.amt; r.el = 0; }
-    else { r.daily = daily; r.target = daily * r.days; r.el = Math.max(0, Math.min(r.days, elapsedW - r.leave)); r.exp = daily * r.el; }
+    else { r.daily = daily; r.target = daily * r.days; r.el = Math.max(0, Math.min(r.days, elapsedW - r.leave)); r.exp = daily * r.el;
+      // الأيام المتبقية (للشرائح): زي الشهري، أيام الفترة اللي لسه جاية بعد خصم إجازة البائع
+      r.rem = Math.max(0, r.days - Math.max(0, passedW - wOff - r.leave)); }
     r.mp = (!r.left && r.target > 0) ? r.amt / r.target * 100 : null;
     r.dp = (!r.left && r.exp > 0) ? r.amt / r.exp * 100 : null;
     r.upt = r.rc > 0 ? r.qty / r.rc : null;
@@ -7389,7 +7391,7 @@ function tgtComputeWeek(){
   Object.keys(tgt.agg).forEach(k=> Object.keys(tgt.agg[k].d).forEach(d=>{ if(+d > 0 && inRange(+d, 99)){ const v = tgt.agg[k].d[d]; totAmt += v[0]; totQty += v[1]; totRc += v[2]; } }));
   const B = tgt.weekTarget || 0;
   const bDaily = B / wWork, bExp = bDaily * elapsedW;
-  const br = { target: B, daily: bDaily, exp: bExp, amt: totAmt, qty: totQty, rc: totRc, remDays: Math.max(0, wWork - elapsedW),
+  const br = { target: B, daily: bDaily, exp: bExp, amt: totAmt, qty: totQty, rc: totRc, remDays: Math.max(0, wWork - Math.max(0, passedW - wOff)),
     mp: B > 0 ? totAmt / B * 100 : null, dp: bExp > 0 ? totAmt / bExp * 100 : null,
     upt: totRc > 0 ? totQty / totRc : null, atv: totRc > 0 ? totAmt / totRc : null };
   return { R, rows, active, leavers, locked, pool, daily, wWork, wOff, elapsedW, cur, noDates, totAmt, totQty, totRc, totExp: bExp, br };
@@ -7500,7 +7502,7 @@ function tgtTierCalc(target, amt, remDays){
 function tgtTierRows(C, brName){
   const rows = [];
   C.rows.filter(r=> !r.left).forEach(r=>{
-    const remDays = Math.max(0, r.days - (r.el || 0));
+    const remDays = r.rem != null ? r.rem : Math.max(0, r.days - (r.el || 0));
     rows.push(Object.assign({ name: r.s.name, target: r.target, amt: r.amt, branch: false }, tgtTierCalc(r.target, r.amt, remDays)));
   });
   const br = C.br;
