@@ -1530,7 +1530,7 @@ service cloud.firestore {
         <label>إلى يوم <input id="tgtWkTo" inputmode="numeric" autocomplete="off"></label>
         <label>أيام الإجازة المحسوبة <input id="tgtWkOff" inputmode="numeric" autocomplete="off"></label>
         <label>اليوم من الشهر <input id="tgtWkToday" inputmode="numeric" autocomplete="off"></label>
-        <span style="opacity:.8;font-weight:600;">(الأسبوع الافتراضي: من آخر سبت لحد الجمعة. غيّر "من يوم / إلى يوم" لأي فترة. أيام الإجازة المحسوبة بتتخصم من آخر الفترة، فأول يوم بيتحسب عادي)</span>
+        <span style="opacity:.8;font-weight:600;">(الأسبوع الافتراضي: من آخر سبت لحد الجمعة. غيّر "من يوم / إلى يوم" لأي فترة. بعد آخر يوم في الفترة الأرقام بتثبت على نهاية الفترة)</span>
       </div>
     </div>
     <div id="tgtWkWarn"></div>
@@ -7359,9 +7359,9 @@ function tgtComputeWeek(){
   const wOff = Math.max(0, Math.min(R.len - 1, tgt.weekOff || 0));
   const wWork = Math.max(1, R.len - wOff);
   const cur = Math.min(today, R.we);
-  // الأيام اللي عدّت: بتبدأ من أول يوم في الفترة، وأيام الإجازة المحسوبة بتتخصم من آخر الفترة (زي الجمعة) فمبتأثرش على أول الأسبوع
+  // الأيام اللي عدّت: بتبدأ من أول يوم في الفترة، وأيام الإجازة المحسوبة بتتوزع على الفترة كلها فمبتأثرش على أول يوم
   const passedW = Math.max(0, cur - R.ws + 1);
-  const elapsedW = Math.max(0, Math.min(wWork, passedW));
+  const elapsedW = Math.max(0, Math.min(wWork, passedW * wWork / R.len));   // أيام الإجازة المحسوبة بتتوزع على الفترة كلها، فالرقم بيتغيّر كل يوم لحد آخر يوم
   const noDates = !!(tgt.meta && !tgt.meta.hasDates);
   const inRange = (d, maxDay)=> d >= R.ws && d <= Math.min(R.we, maxDay);
   const rows = tgt.sellers.map(s=>{
@@ -7421,6 +7421,7 @@ function tgtWeekOffersSrc(R){
 function tgtRenderWeek(){
   if(!$('tgtWkTable')) return;
   const C = tgtComputeWeek(), R = C.R;
+  const today0 = tgtToday();
   tgtSetInput('tgtWkTarget', tgtF(tgt.weekTarget, 0));
   tgtSetInput('tgtWkFrom', String(R.ws));
   tgtSetInput('tgtWkTo', String(R.we));
@@ -7451,7 +7452,7 @@ function tgtRenderWeek(){
   if(C.active.length === 0 && tgt.sellers.length) warn += '<div class="tgt-warn">كل البائعين تاركين العمل — مفيش حد يتوزع عليه الباقي.</div>';
   $('tgtWkWarn').innerHTML = warn;
 
-  let html = '<table class="tgt-table" style="min-width:1000px;"><thead><tr><th>#</th><th>اسم البائع</th><th>الحالة</th><th>أيام العمل</th><th>أيام الإجازة</th><th>التارجت الأسبوعي</th><th>التارجت اليومي</th><th>المفروض لحد ' + C.cur + '</th><th>المحقق</th><th>النسبة الأسبوعية %</th><th>النسبة اليومية %</th><th>UPT</th><th>ATV</th><th>الفواتير</th><th>القطع</th></tr></thead><tbody>';
+  let html = '<table class="tgt-table" style="min-width:1000px;"><thead><tr><th>#</th><th>اسم البائع</th><th>الحالة</th><th>أيام العمل</th><th>أيام الإجازة</th><th>التارجت الأسبوعي</th><th>التارجت اليومي</th><th>المفروض لحد ' + C.cur + (today0 > R.we ? ' (نهاية الفترة)' : '') + '</th><th>المحقق</th><th>النسبة الأسبوعية %</th><th>النسبة اليومية %</th><th>UPT</th><th>ATV</th><th>الفواتير</th><th>القطع</th></tr></thead><tbody>';
   C.rows.forEach((r,i)=>{
     html += '<tr class="' + (r.left ? 'left' : '') + '" data-id="' + r.s.id + '">' +
       '<td>' + (i+1) + '</td>' +
