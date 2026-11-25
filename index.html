@@ -593,6 +593,13 @@ service cloud.firestore {
         <button class="upload-btn" id="openTargetBtn">فتح Target</button>
         <div class="upload-status" id="uploadStatusTargetCard"></div>
       </div>
+      <div class="upload-card" id="uploadCardBT" style="display:none;">
+        <div class="step-tag">13 - BRANCHES TARGET</div>
+        <h3>BRANCHES TARGET</h3>
+        <p>تارجت كل فروع الشركة في مكان واحد — ارفع شيت مبيعات كل الفروع (آخر عمود اسم الفرع) + تاب اختصارات الفروع والتارجت، وهتلاقي ترتيب الفروع، سرعة التحقيق، ATV وUPT، أعلى 10 بائعين، خريطة حرارية، مرتجعات وتحليل كامل لكل فرع</p>
+        <button class="upload-btn" id="openBTBtn">فتح BRANCHES TARGET</button>
+        <div class="upload-status" id="uploadStatusBTCard"></div>
+      </div>
     </div>
 
     <div class="panel" id="drivePanel" style="padding:16px;margin-bottom:22px;">
@@ -1335,6 +1342,45 @@ service cloud.firestore {
   </div>
 </div>
 
+<div class="screen" id="screen-btarget" style="padding:16px 12px 40px;max-width:1320px;margin:0 auto;">
+  <div class="panel-head">
+    <h2 style="font-family:'Cairo',sans-serif;">BRANCHES TARGET</h2>
+    <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;">
+      <button class="export-btn" id="btExportBtn" type="button">تنزيل الاكسيل</button>
+      <button class="export-btn" id="btPdfBtn" type="button">تنزيل PDF</button>
+      <button class="export-btn" id="btClearBtn" type="button" style="background:#dc2626;color:#fff;border-color:#dc2626;">🗑 مسح البيانات</button>
+      <button class="link-btn" id="btBackBtn" type="button">رجوع</button>
+    </div>
+  </div>
+  <p class="tgt-note">ارفع ملف إكسيل: التاب الأول فيه مبيعات كل الفروع (نفس أعمدة شيت Target + آخر عمود اسم الفرع مثلًا BRANCHES - CITY STARS)، والتاب التاني أول عمود فيه اختصار الفرع (CST ، ALX2 ...) وجنبه التارجت. النظام بيربط الاختصار بالاسم تلقائي وتقدر تعدّل من تاب "ربط الفروع".</p>
+  <div class="upload-card" style="margin-bottom:8px;">
+    <div class="step-tag">ملف تارجت كل الفروع</div>
+    <h3>اختيار ملف</h3>
+    <label class="upload-btn" for="btFileInput">اختيار ملف</label>
+    <input type="file" id="btFileInput" accept=".xlsx,.xls,.csv">
+    <div class="upload-status" id="btStatus"></div>
+  </div>
+  <div id="btSettings" style="display:none;">
+    <div class="tgt-settings">
+      <label>اليوم من الشهر <input id="btToday" inputmode="numeric" autocomplete="off"></label>
+      <label>أقل عدد فواتير للبائع <input id="btMinRc" inputmode="numeric" autocomplete="off"></label>
+      <span id="btInfo" style="opacity:.85;font-weight:700;"></span>
+    </div>
+  </div>
+  <div id="btTabs" style="display:none;">
+    <button type="button" class="on" data-bt-tab="overview">📊 نظرة عامة</button>
+    <button type="button" data-bt-tab="branches">🏢 الفروع</button>
+    <button type="button" data-bt-tab="tiers">🎯 شرائح التحقيق</button>
+    <button type="button" data-bt-tab="offers">🎁 تحليل الأوفرات</button>
+    <button type="button" data-bt-tab="branch">🔎 تحليل فرع</button>
+    <button type="button" data-bt-tab="sellers">🏆 أعلى 10 بائعين</button>
+    <button type="button" data-bt-tab="heat">🔥 خريطة حرارية</button>
+    <button type="button" data-bt-tab="returns">↩️ المرتجعات</button>
+    <button type="button" data-bt-tab="map">🔗 ربط الفروع</button>
+  </div>
+  <div id="btBody"></div>
+</div>
+
 <div class="screen" id="screen-target" style="padding:16px 12px 40px;max-width:1280px;margin:0 auto;">
   <style>
     #uploadCardTarget{ position:relative; overflow:hidden; border-radius:18px; transition:transform .18s ease, box-shadow .18s ease; background:linear-gradient(180deg,#ecfdf5,#fff 58%); border:1px solid #a7f3d0; box-shadow:0 10px 26px rgba(5,150,105,.13); }
@@ -1368,6 +1414,51 @@ service cloud.firestore {
     .tgt-table .num{direction:ltr;}
     .tgt-in{width:62px;padding:5px 4px;border:1px solid #cdd3db;border-radius:8px;font-family:inherit;font-size:16px;font-weight:800;text-align:center;box-sizing:border-box;}
     .tgt-in:focus{outline:none;border-color:#059669;box-shadow:0 0 0 3px rgba(5,150,105,.15);}
+    #uploadCardBT{ position:relative; overflow:hidden; border-radius:18px; transition:transform .18s ease, box-shadow .18s ease; background:linear-gradient(180deg,#eef2ff,#fff 58%); border:1px solid #c7d2fe; box-shadow:0 10px 26px rgba(79,70,229,.12); }
+    #uploadCardBT::before{ content:""; position:absolute; top:0; inset-inline:0; height:6px; background:linear-gradient(90deg,#4f46e5,#0ea5e9,#059669); }
+    #uploadCardBT .step-tag{ background:#4f46e5; color:#fff; }
+    #uploadCardBT h3{ color:#312e81; }
+    #uploadCardBT .upload-btn{ background:#4f46e5; color:#fff; }
+    #uploadCardBT:hover{ transform:translateY(-4px); }
+    #screen-btarget input[type=file]{display:none;}
+    #btSettings{background:linear-gradient(135deg,#312e81,#4338ca 55%,#0369a1);color:#fff;border-radius:16px;padding:12px 16px;margin:10px 0 12px;box-shadow:0 10px 26px rgba(49,46,129,.25);}
+    #btSettings .tgt-settings{margin-top:0;}
+    #btSettings select{max-width:210px;padding:5px 6px;border-radius:8px;border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.16);color:#fff;font-family:inherit;font-weight:800;font-size:13px;}
+    #btSettings select option{color:#111;}
+    #btTabs{display:flex;gap:8px;margin:4px 0 12px;flex-wrap:wrap;}
+    #btTabs button{flex:1 1 130px;border:1px solid #cdd3db;background:#fff;border-radius:12px;padding:9px 10px;font-family:inherit;font-size:14px;font-weight:900;color:#475569;cursor:pointer;}
+    #btTabs button.on{background:linear-gradient(135deg,#312e81,#4f46e5);color:#fff;border-color:#312e81;box-shadow:0 6px 16px rgba(49,46,129,.25);}
+    .bt-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:6px 0 12px;}
+    .bt-kpi{background:#fff;border:1px solid #d9dee5;border-radius:14px;padding:10px 12px;text-align:center;box-shadow:0 6px 16px rgba(16,24,40,.05);}
+    .bt-kpi span{display:block;font-size:11.5px;font-weight:800;color:#64748b;}
+    .bt-kpi b{display:block;font-size:19px;font-weight:900;color:#1e1b4b;margin-top:2px;font-variant-numeric:tabular-nums;direction:ltr;}
+    .bt-kpi em{display:block;font-style:normal;font-size:11px;font-weight:700;color:#6b7280;margin-top:2px;}
+    .bt-bars{display:flex;flex-direction:column;gap:7px;}
+    .bt-brow{display:grid;grid-template-columns:70px 1fr 220px;gap:10px;align-items:center;cursor:pointer;font-size:12.5px;font-weight:800;}
+    .bt-brow:hover .nm{color:#4338ca;}
+    .bt-brow .trk{position:relative;height:16px;background:#f1f5f9;border-radius:8px;direction:ltr;overflow:visible;}
+    .bt-brow .fill{position:absolute;left:0;top:0;bottom:0;border-radius:8px;}
+    .bt-brow .mk{position:absolute;top:-3px;bottom:-3px;width:2px;}
+    .bt-brow .mk.t{background:#0f172a;} .bt-brow .mk.e{background:#7c3aed;width:3px;}
+    .bt-brow .val{direction:ltr;text-align:left;color:#334155;font-size:11.5px;font-variant-numeric:tabular-nums;}
+    .bt-mini{display:grid;grid-template-columns:60px 1fr auto;gap:8px;align-items:center;padding:7px 4px;border-bottom:1px dashed #e5e7eb;cursor:pointer;font-size:12.5px;}
+    .bt-mini span{color:#6b7280;font-weight:700;} .bt-mini em{grid-column:1/-1;font-style:normal;font-size:11px;color:#6b7280;direction:ltr;text-align:left;}
+    .bt-ins{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:7px;}
+    .bt-ins li{padding:8px 12px;border-radius:10px;font-size:13px;font-weight:700;line-height:1.7;background:#f8fafc;border-inline-start:4px solid #94a3b8;}
+    .bt-ins li.g{background:#f0fdf4;border-color:#16a34a;} .bt-ins li.y{background:#fffbeb;border-color:#f59e0b;} .bt-ins li.r{background:#fef2f2;border-color:#ef4444;}
+    .bt-wd{display:flex;flex-direction:column;gap:6px;}
+    .bt-wdrow{display:grid;grid-template-columns:80px 1fr 90px;gap:8px;align-items:center;font-size:12.5px;font-weight:700;}
+    .bt-wdrow .trk{height:14px;background:#f1f5f9;border-radius:7px;overflow:hidden;direction:ltr;} .bt-wdrow .trk i{display:block;height:100%;border-radius:7px;}
+    .bt-wdrow .val{direction:ltr;text-align:left;color:#334155;font-variant-numeric:tabular-nums;}
+    .bt-hb{display:flex;flex-direction:column;gap:7px;}
+    .bt-hb .r{display:grid;grid-template-columns:minmax(110px,190px) 1fr auto;gap:8px;align-items:center;font-size:12.5px;font-weight:700;cursor:default;}
+    .bt-hb .r[data-bk]{cursor:pointer;}
+    .bt-hb .nm{white-space:normal;line-height:1.3;} .bt-hb .trk{height:14px;background:#f1f5f9;border-radius:7px;overflow:hidden;direction:ltr;} .bt-hb .trk i{display:block;height:100%;border-radius:7px;} .bt-hb .val{direction:ltr;font-size:11.5px;color:#334155;font-variant-numeric:tabular-nums;}
+    .bt-sec{font-size:22px;border-bottom:2px solid #c7d2fe;padding-bottom:6px;margin-top:34px;color:#312e81;}
+    .bt-pick{margin:6px 0 12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-weight:800;}
+    .bt-pick select{padding:8px 10px;border-radius:10px;border:1px solid #cdd3db;font-family:inherit;font-weight:800;font-size:15px;max-width:100%;}
+    .tgt-table th.bt-sort{cursor:pointer;} .tgt-table tr.bt-row{cursor:pointer;} .tgt-table tr.bt-row:hover td{background:#eef2ff;}
+    @media (max-width:640px){ .bt-brow{grid-template-columns:54px 1fr;} .bt-brow .val{grid-column:1/-1;} }
     .tgt-tabs{display:flex;gap:8px;margin:4px 0 12px;flex-wrap:wrap;}
     .tgt-tabs button{flex:1 1 160px;border:1px solid #cdd3db;background:#fff;border-radius:12px;padding:10px 14px;font-family:inherit;font-size:15px;font-weight:900;color:#475569;cursor:pointer;}
     .tgt-tabs button.on{background:linear-gradient(135deg,#064e3b,#0f766e);color:#fff;border-color:#064e3b;box-shadow:0 6px 16px rgba(6,78,59,.25);}
@@ -1574,9 +1665,20 @@ function ordersAllowed(){
     return nm === 'cst' || nm === 'qc' || id === 'b2' || id === 'b34';
   }catch(e){ return false; }
 }
+function btAllowed(){
+  // أيقونة BRANCHES TARGET لحسابَي area managers و CST بس
+  try{
+    if(!currentBranch) return false;
+    const nm = String(currentBranch.name || '').trim().toLowerCase();
+    const id = String(currentBranch.id || '').trim().toLowerCase();
+    return nm === 'area managers' || nm === 'cst' || id === 'b35' || id === 'b2';
+  }catch(e){ return false; }
+}
 function applyOrdersVisibility(){
   const c = document.getElementById('uploadCardOrders');
   if(c) c.style.display = ordersAllowed() ? '' : 'none';
+  const cb = document.getElementById('uploadCardBT');
+  if(cb) cb.style.display = btAllowed() ? '' : 'none';
 }
 function switchScreen(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
@@ -1587,8 +1689,8 @@ function escapeHtml(str){ const d = document.createElement('div'); d.textContent
 function escapeAttr(str){ return String(str).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 function formatDate(iso){ if(!iso) return ''; const d = new Date(iso); return d.toLocaleString('en-GB', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }); }
 
-const BRANCH_COUNT = 34;
-const BRANCH_NAMES = ['CIT','cst','ssh2','snz','oct2','ztn','dmt','moe','sbr','ssh3','gsr','tnt','shb','mhl','ark','mns2','hdh','alx2','bsf','alx3','rh2','lbn','hdq','arb','mok','gen','ism','hrm','mdi','hlw','zqz','suz','fym','QC'];
+const BRANCH_COUNT = 35;
+const BRANCH_NAMES = ['CIT','cst','ssh2','snz','oct2','ztn','dmt','moe','sbr','ssh3','gsr','tnt','shb','mhl','ark','mns2','hdh','alx2','bsf','alx3','rh2','lbn','hdq','arb','mok','gen','ism','hrm','mdi','hlw','zqz','suz','fym','QC','area managers'];
 const DEFAULT_BRANCH_PASSWORD = '2020';
 const DEFAULT_ADMIN_PASSWORD = 'admin2026';
 // الصور القديمة (small / a.jpg) — فاضلة زي ما هي
@@ -1679,7 +1781,7 @@ async function loadBranchConfig(){
       });
     }catch(e){ console.error('add branches:', e); }
   }
-  cfg.branches.forEach((b,i)=>{ b.name = BRANCH_NAMES[i] || b.name; });
+  cfg.branches.forEach((b,i)=>{ const n = parseInt(String(b.id).replace(/\D/g, ''), 10); b.name = BRANCH_NAMES[(n > 0 ? n : i + 1) - 1] || b.name; });
   cfg.adminPassword = cfg.adminPassword || DEFAULT_ADMIN_PASSWORD;
   return cfg;
 }
@@ -1848,6 +1950,11 @@ async function saveBranchData(branchId, data){
 }
 
 // ---------------- login ----------------
+// أكونت area managers (b35) بيظهر الأول فوق CIT
+function orderedBranches(){
+  const list = branchConfig.branches.slice();
+  return list.filter(b=> b.id === 'b35').concat(list.filter(b=> b.id !== 'b35'));
+}
 async function initLogin(){
   showLoading('جاري تجهيز قائمة الفروع...');
   try{ branchConfig = await loadBranchConfig(); }
@@ -1858,7 +1965,7 @@ async function initLogin(){
   }
   const sel = $('branchSelect');
   sel.innerHTML = '';
-  branchConfig.branches.forEach(b=>{
+  orderedBranches().forEach(b=>{
     const opt = document.createElement('option');
     opt.value = b.id; opt.textContent = b.name;
     sel.appendChild(opt);
@@ -1896,7 +2003,7 @@ $('adminBackBtn').addEventListener('click', ()=>{ switchScreen('screen-login'); 
 function renderAdmin(){
   const wrap = $('branchListWrap');
   wrap.innerHTML = '';
-  branchConfig.branches.forEach(b=>{
+  orderedBranches().forEach(b=>{
     const row = document.createElement('div');
     row.className = 'branch-row';
     row.innerHTML = `
@@ -7516,7 +7623,7 @@ function tgtRenderTiers(C, opt){
   const rows = tgtTierRows(C, o.brName);
   if(!C.active.length && !(C.br && C.br.amt)){ el.innerHTML = '<div class="tgt-note">ارفع الشيت وضيف البائعين عشان يظهر التقرير.</div>'; return; }
   const tagCls = (p)=> p == null ? '' : (p >= 100 ? 'g' : (p >= 90 ? 'y' : 'r'));
-  let h = '<div class="tgt-wrap"><table class="tgt-table tgt-off tgt-tier"><thead><tr><th>#</th><th>اسم البائع</th><th>' + (o.tLabel || 'التارجت الشهري') + '</th><th>المحقق</th><th>النسبة الحالية</th><th>أقرب نسبة</th><th>الشريحة الحالية</th>' +
+  let h = '<div class="tgt-wrap"><table class="tgt-table tgt-off tgt-tier"><thead><tr><th>#</th><th>' + (o.nmLabel || 'اسم البائع') + '</th><th>' + (o.tLabel || 'التارجت الشهري') + '</th><th>المحقق</th><th>النسبة الحالية</th><th>أقرب نسبة</th><th>الشريحة الحالية</th>' +
     TGT_TIERS.map(t=> '<th>' + t + '%</th>').join('') + '</tr></thead><tbody>';
   let i = 0;
   rows.forEach(x=>{
@@ -7812,6 +7919,963 @@ function tgtRenderDash(C, opt){
 }
 
 /* ---------- الأحداث ---------- */
+/* ================= BRANCHES TARGET (تارجت كل الفروع) ================= */
+const BT_LS = 'branchesTarget_v1';
+const BT_COMPANY_ID = '__company__';
+const BT_ALIAS = { cst:'city stars', alx2:'alexandria 2' };
+const BT_DAYS_AR = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+function btNew(){ return { branches:{}, targets:[], override:{}, today:0, minRc:3, colIdx:-1, meta:null, updatedAt:'' }; }
+let bt = btNew(), btRaw = null, btTab = 'overview', btSel = '', btSort = { key:'pct', dir:-1 }, btSaveTimer = null, btC = null, btSellerMode = 'pct';
+const btE = (s)=> escapeHtml(s == null ? '' : String(s));
+function btAKey(a){ return String(a == null ? '' : a).toLowerCase().replace(/[^a-z0-9\u0600-\u06FF]/g, ''); }
+function btCleanName(raw){
+  let s = String(raw == null ? '' : raw).trim();
+  const t = s.replace(/^\s*branch(es)?\s*[-–—:|\/]*\s*/i, '').trim();
+  return t || s;
+}
+function btNormalize(p){
+  const o = btNew();
+  if(!p || typeof p !== 'object') return o;
+  o.branches = (p.branches && typeof p.branches === 'object') ? p.branches : {};
+  o.targets = Array.isArray(p.targets) ? p.targets.filter(t=> t && t.abbr && t.target > 0).map(t=>({ abbr:String(t.abbr), target:Number(t.target) })) : [];
+  o.override = (p.override && typeof p.override === 'object') ? p.override : {};
+  if(p.today > 0) o.today = Math.min(31, Math.round(p.today));
+  if(p.minRc >= 0) o.minRc = Math.min(500, Math.round(p.minRc));
+  if(p.colIdx >= 0) o.colIdx = Math.round(p.colIdx);
+  o.meta = p.meta || null;
+  o.updatedAt = typeof p.updatedAt === 'string' ? p.updatedAt : '';
+  return o;
+}
+function btSaveLocal(){ try{ localStorage.setItem(BT_LS, JSON.stringify(bt)); }catch(e){ console.error('bt local save', e); } }
+function btLoadLocal(){ try{ const r = localStorage.getItem(BT_LS); return r ? JSON.parse(r) : null; }catch(e){ return null; } }
+function btPersist(){
+  bt.updatedAt = new Date().toISOString();
+  btSaveLocal();
+  const payload = JSON.parse(JSON.stringify(bt));
+  clearTimeout(btSaveTimer);
+  btSaveTimer = setTimeout(()=>{
+    if(typeof db === 'undefined' || !db) return;
+    saveSection(BT_COMPANY_ID, 'branchesTarget', payload).catch(e=> console.error('bt cloud save', e));
+  }, 700);
+}
+async function btLoad(){
+  const local = btLoadLocal();
+  let best = local;
+  try{
+    if(typeof db !== 'undefined' && db){
+      const bd = await loadBranchData(BT_COMPANY_ID);
+      if(bd && bd.branchesTarget && (!local || tgtTime(bd.branchesTarget) >= tgtTime(local))) best = bd.branchesTarget;
+    }
+  }catch(e){ console.error('bt load', e); }
+  bt = btNormalize(best);
+  btSaveLocal();
+}
+
+/* ---------- ربط اختصار الفرع باسمه الكامل ---------- */
+function btScore(abbr, name){
+  const NEG = -1e9;
+  const aClean = btCleanName(abbr);
+  const nClean = btCleanName(name);
+  if(tgtNorm(aClean) === tgtNorm(nClean)) return 1000;
+  const a = String(aClean).toLowerCase().replace(/[^a-z0-9]/g, '');
+  if(!a) return NEG;
+  const toks = String(nClean).toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim().split(' ').filter(Boolean);
+  if(!toks.length) return NEG;
+  let bonus = 0;
+  const al = BT_ALIAS[a];
+  if(al && toks.join(' ') === al) bonus = 500;
+  let aDig = (a.match(/\d+$/) || [''])[0];
+  const aLet = a.replace(/\d+$/, '');
+  const ltoks = toks.slice();
+  let nDig = '';
+  if(ltoks.length > 1 && /^\d+$/.test(ltoks[ltoks.length - 1])) nDig = ltoks.pop();
+  if(aDig === '1') aDig = '';
+  if(nDig === '1') nDig = '';
+  if(aDig !== nDig) return NEG;
+  if(!aLet) return NEG;
+  const chars = [], start = [];
+  ltoks.forEach(t=>{ t.replace(/[^a-z]/g, '').split('').forEach((c, i)=>{ chars.push(c); start.push(i === 0); }); });
+  const n = chars.length, m = aLet.length;
+  if(!n || m > n) return NEG;
+  let prev = new Array(n).fill(NEG);
+  for(let i = 0; i < n; i++) if(chars[i] === aLet[0]) prev[i] = (start[i] ? 3 : 1) + (i === 0 ? 6 : 0) - i * 0.15;
+  for(let j = 1; j < m; j++){
+    const cur = new Array(n).fill(NEG);
+    for(let i = j; i < n; i++){
+      if(chars[i] !== aLet[j]) continue;
+      let best = NEG;
+      for(let k = j - 1; k < i; k++){
+        if(prev[k] > NEG / 2){ const v = prev[k] + (start[i] ? 3 : 1) - (i - k - 1) * 0.15; if(v > best) best = v; }
+      }
+      cur[i] = best;
+    }
+    prev = cur;
+  }
+  let best = NEG;
+  for(let i = 0; i < n; i++) if(prev[i] > best) best = prev[i];
+  if(best <= NEG / 2) return NEG;
+  return best - n * 0.02 + bonus;
+}
+function btHungarian(cost){
+  const n = cost.length, INF = 1e15;
+  const u = new Array(n + 1).fill(0), v = new Array(n + 1).fill(0), p = new Array(n + 1).fill(0), way = new Array(n + 1).fill(0);
+  for(let i = 1; i <= n; i++){
+    p[0] = i; let j0 = 0;
+    const minv = new Array(n + 1).fill(INF), used = new Array(n + 1).fill(false);
+    do{
+      used[j0] = true;
+      const i0 = p[j0]; let delta = INF, j1 = 0;
+      for(let j = 1; j <= n; j++){
+        if(used[j]) continue;
+        const cur = cost[i0 - 1][j - 1] - u[i0] - v[j];
+        if(cur < minv[j]){ minv[j] = cur; way[j] = j0; }
+        if(minv[j] < delta){ delta = minv[j]; j1 = j; }
+      }
+      for(let j = 0; j <= n; j++){ if(used[j]){ u[p[j]] += delta; v[j] -= delta; } else minv[j] -= delta; }
+      j0 = j1;
+    }while(p[j0] !== 0);
+    do{ const j1 = way[j0]; p[j0] = p[j1]; j0 = j1; }while(j0);
+  }
+  const ans = new Array(n).fill(-1);
+  for(let j = 1; j <= n; j++) if(p[j]) ans[p[j] - 1] = j - 1;
+  return ans;
+}
+function btAutoMap(){
+  const map = {}, usedB = new Set();
+  const bks = Object.keys(bt.branches);
+  bt.targets.forEach(t=>{
+    const k = btAKey(t.abbr), o = bt.override[k];
+    if(o === '') map[k] = '';
+    else if(o && bt.branches[o]){ map[k] = o; usedB.add(o); }
+  });
+  const restA = bt.targets.map(t=> t.abbr).filter(a=> !(btAKey(a) in map));
+  const restB = bks.filter(k=> !usedB.has(k));
+  const N = Math.max(restA.length, restB.length);
+  if(!N) return map;
+  const S = {};
+  const cost = [];
+  for(let i = 0; i < N; i++){
+    const row = [];
+    for(let j = 0; j < N; j++){
+      if(i < restA.length && j < restB.length){
+        const sc = btScore(restA[i], bt.branches[restB[j]].name);
+        S[i + '_' + j] = sc;
+        row.push(sc > -1e8 ? -sc : 1e6);
+      } else row.push(1e6);
+    }
+    cost.push(row);
+  }
+  const ans = btHungarian(cost);
+  restA.forEach((a, i)=>{
+    const j = ans[i];
+    if(j >= 0 && j < restB.length && S[i + '_' + j] > -1e8) map[btAKey(a)] = restB[j];
+  });
+  return map;
+}
+
+/* ---------- قراءة الملف ---------- */
+function btReadTargets(rows){
+  const out = [], seen = new Set();
+  (rows || []).forEach(r=>{
+    r = r || [];
+    const a = String(r[0] == null ? '' : r[0]).trim();
+    if(!a || /^[\d.,\s-]+$/.test(a)) return;
+    let t = 0;
+    for(let c = 1; c < Math.min(r.length, 6); c++){
+      if(String(r[c] == null ? '' : r[c]).trim() === '') continue;
+      const n = tgtNum(r[c]);
+      if(n > 0){ t = n; break; }
+    }
+    if(!(t > 0)) return;
+    const k = btAKey(a);
+    if(!k || seen.has(k)) return;
+    seen.add(k); out.push({ abbr:a, target:t });
+  });
+  return out;
+}
+function btFindBranchCol(rows, hi){
+  const hdr = rows[hi] || [];
+  let last = -1;
+  for(let i = hdr.length - 1; i >= 0; i--){ if(String(hdr[i] == null ? '' : hdr[i]).trim()){ last = i; break; } }
+  const looks = (ci)=>{
+    let n = 0, ok = 0;
+    for(let r = hi + 1; r < Math.min(rows.length, hi + 400); r++){
+      const v = String((rows[r] || [])[ci] == null ? '' : rows[r][ci]).trim();
+      if(!v) continue; n++; if(/branch/i.test(v)) ok++;
+    }
+    return n > 0 && ok / n > 0.5;
+  };
+  if(last >= 0 && looks(last)) return last;
+  for(let i = 0; i < hdr.length; i++){
+    if(/branch|فرع|config|point of sale|shop|store/i.test(String(hdr[i] == null ? '' : hdr[i])) && looks(i)) return i;
+  }
+  return last;
+}
+function btAggregate(rows, det, map, bc){
+  const start = det.hi + 1;
+  let maxYM = 0;
+  if(map.date >= 0){
+    for(let i = start; i < rows.length; i++){
+      const r = rows[i]; if(!r || !r.length) continue;
+      const dt = tgtParseDate(r[map.date]);
+      if(dt){ const ym = dt.y * 100 + dt.m; if(ym > maxYM) maxYM = ym; }
+    }
+  }
+  const branches = {}, rcSets = {}, recOff = {};
+  const hasOff = map.offer >= 0 || map.disc >= 0;
+  let hasDates = false, used = 0, maxDay = 0;
+  for(let i = start; i < rows.length; i++){
+    const r = rows[i]; if(!r || !r.length) continue;
+    const braw = String(r[bc] == null ? '' : r[bc]).trim();
+    if(!braw) continue;
+    const amt = map.amt >= 0 ? tgtNum(r[map.amt]) : 0;
+    const qty = map.qty >= 0 ? tgtNum(r[map.qty]) : 0;
+    const rc = map.rc >= 0 ? String(r[map.rc] == null ? '' : r[map.rc]).trim() : '';
+    const sname = map.seller >= 0 ? String(r[map.seller] == null ? '' : r[map.seller]).trim() : '';
+    if(!sname && !amt && !qty && !rc) continue;
+    let day = 0;
+    const dt = map.date >= 0 ? tgtParseDate(r[map.date]) : null;
+    if(dt){
+      if(maxYM && (dt.y * 100 + dt.m) !== maxYM) continue;
+      day = dt.d; hasDates = true; if(day > maxDay) maxDay = day;
+    }
+    const cn = btCleanName(braw);
+    const bk = tgtNorm(cn) || tgtNorm(braw);
+    const b = branches[bk] || (branches[bk] = { name:cn, d:{}, s:{} });
+    if(hasOff){
+      const offer = map.offer >= 0 ? tgtOfferName(r[map.offer]) : '';
+      const disc = map.disc >= 0 ? tgtNum(r[map.disc]) : 0;
+      const rkey = bk + '|' + (rc || ('#' + i));
+      const ro = recOff[rkey] || (recOff[rkey] = { bk, day, amt:0, of:[], dc:[] });
+      ro.amt += amt;
+      if(day && !ro.day) ro.day = day;
+      if(offer){ if(ro.of.indexOf(offer) < 0) ro.of.push(offer); }
+      else if(disc > 0){ const lb = tgtDiscLabel(disc); if(ro.dc.indexOf(lb) < 0) ro.dc.push(lb); }
+    }
+    const dv = b.d[day] || (b.d[day] = [0, 0, 0, 0, 0]);
+    dv[0] += amt; dv[1] += qty;
+    if(amt < 0){ dv[3] += amt; dv[4] += 1; }
+    if(rc){
+      const key = bk + '|' + day;
+      const set = rcSets[key] || (rcSets[key] = new Set());
+      if(!set.has(rc)){ set.add(rc); dv[2] += 1; }
+    }
+    const sk = tgtNorm(sname || '(بدون اسم)');
+    const s = b.s[sk] || (b.s[sk] = { name:sname || '(بدون اسم)', d:{}, ret:0, retN:0 });
+    const sv = s.d[day] || (s.d[day] = [0, 0, 0]);
+    sv[0] += amt; sv[1] += qty;
+    if(amt < 0){ s.ret += amt; s.retN += 1; }
+    if(rc){
+      const key2 = bk + '|' + sk + '|' + day;
+      const set2 = rcSets[key2] || (rcSets[key2] = new Set());
+      if(!set2.has(rc)){ set2.add(rc); sv[2] += 1; }
+    }
+    used++;
+  }
+  if(hasOff) Object.keys(recOff).forEach(k=>{
+    const ro = recOff[k], labels = ro.of.length ? ro.of : ro.dc;
+    if(!labels.length) return;
+    const share = ro.amt / labels.length, b = branches[ro.bk];
+    const od = b.od || (b.od = {}), dd = od[ro.day] || (od[ro.day] = {});
+    labels.forEach(l=>{ const v = dd[l] || (dd[l] = [0, 0]); v[0] += 1; v[1] += share; });
+  });
+  Object.keys(branches).forEach(bk=>{
+    const b = branches[bk];
+    if(b.od) Object.keys(b.od).forEach(d=> Object.keys(b.od[d]).forEach(l=>{ b.od[d][l][1] = Math.round(b.od[d][l][1] * 100) / 100; }));
+    Object.keys(b.d).forEach(d=>{ const v = b.d[d]; v[0] = Math.round(v[0] * 100) / 100; v[1] = Math.round(v[1] * 100) / 100; v[3] = Math.round(v[3] * 100) / 100; });
+    Object.keys(b.s).forEach(sk=>{
+      const s = b.s[sk]; s.ret = Math.round(s.ret * 100) / 100;
+      Object.keys(s.d).forEach(d=>{ const v = s.d[d]; v[0] = Math.round(v[0] * 100) / 100; v[1] = Math.round(v[1] * 100) / 100; });
+    });
+  });
+  return { branches, hasDates, ym:maxYM, maxDay, used, hasOff };
+}
+function btBuildFromRaw(colIdx){
+  const det = tgtDetect(btRaw.rows1);
+  const bc = colIdx >= 0 ? colIdx : btFindBranchCol(btRaw.rows1, det.hi);
+  if(bc < 0) return { err:'مش لاقي عمود الفرع في التاب الأول.' };
+  const res = btAggregate(btRaw.rows1, det, det.map, bc);
+  bt.branches = res.branches;
+  bt.colIdx = colIdx >= 0 ? colIdx : -1;
+  bt.meta = { fileName:btRaw.fileName, uploadedAt:new Date().toISOString(), ym:res.ym, maxDay:res.maxDay, hasDates:res.hasDates, rows:res.used, branchCol:bc,
+    hasOff: res.hasOff,
+    cols:{ seller:det.headers[det.map.seller] || '', amt:det.headers[det.map.amt] || '', qty:det.headers[det.map.qty] || '', rc:det.headers[det.map.rc] || '', date:det.headers[det.map.date] || '' } };
+  return { det, res, bc };
+}
+async function btHandleFile(file){
+  const st = $('btStatus');
+  setStatus(st, 'جاري قراءة الملف (الشيتات الكبيرة ممكن تاخد شوية)...', '');
+  await new Promise(r=> setTimeout(r, 30));
+  const reader = new FileReader();
+  reader.onload = async (event)=>{
+    try{
+      const bytes = new Uint8Array(event.target.result);
+      const wb = parseSheetData(bytes, file.name);
+      const sheets = wb.SheetNames.map(n=> ({ n, rows: XLSX.utils.sheet_to_json(wb.Sheets[n], { header:1, defval:'', raw:true }) }));
+      let sales = sheets[0], targ = sheets[1] || null;
+      if(targ && targ.rows.length > sales.rows.length){ const t = sales; sales = targ; targ = t; }
+      btRaw = { rows1: sales.rows, rows2: targ ? targ.rows : [], fileName: file.name };
+      const out = btBuildFromRaw(-1);
+      if(out.err){ setStatus(st, out.err + ' لازم آخر عمود في التاب الأول يكون اسم الفرع.', 'err'); return; }
+      const newT = targ ? btReadTargets(targ.rows) : [];
+      if(newT.length) bt.targets = newT;
+      btPersist();
+      btRender();
+      const nb = Object.keys(bt.branches).length;
+      const map = btAutoMap();
+      const matched = bt.targets.filter(t=> map[btAKey(t.abbr)]).length;
+      let msg = 'تم ✓ (' + nb + ' فرع في الشيت، ' + bt.targets.length + ' تارجت، اتربط ' + matched + ')';
+      if(!out.res.hasDates) msg += ' — مفيش عمود تاريخ';
+      if(!newT.length) msg += ' — مفيش تارجت في التاب التاني';
+      setStatus(st, msg, matched === bt.targets.length && newT.length ? 'ok' : '');
+    }catch(error){
+      console.error(error);
+      setStatus(st, 'تعذر قراءة الملف (' + ((error && error.message) || '').slice(0, 90) + ').', 'err');
+    }finally{ const fi = $('btFileInput'); if(fi) fi.value = ''; }
+  };
+  reader.onerror = ()=> setStatus(st, 'تعذر قراءة الملف.', 'err');
+  reader.readAsArrayBuffer(file);
+}
+
+/* ---------- الحسابات ---------- */
+function btCompute(){
+  const ym = (bt.meta && bt.meta.ym) || 0, now = new Date();
+  const y = ym ? Math.floor(ym / 100) : now.getFullYear(), m = ym ? ym % 100 : now.getMonth() + 1;
+  const dim = new Date(y, m, 0).getDate();
+  const maxDay = (bt.meta && bt.meta.maxDay) || now.getDate();
+  const today = Math.max(1, Math.min(dim, bt.today > 0 ? bt.today : maxDay));
+  const expPct = today / dim;
+  const map = btAutoMap();
+  const tByB = {};
+  bt.targets.forEach(t=>{ const bk = map[btAKey(t.abbr)]; if(bk) tByB[bk] = t; });
+  const inRange = (d)=> d === 0 || d <= today;
+  const bks = Object.keys(bt.branches);
+  // البائع بيتحسب على الفرع اللي ليه فيه أكتر فواتير، وأي ظهور في فروع تانية = مرتجعات
+  const sb = {};
+  bks.forEach(bk=>{
+    const b = bt.branches[bk];
+    Object.keys(b.s).forEach(sk=>{
+      let rc = 0, amt = 0;
+      Object.keys(b.s[sk].d).forEach(d=>{ if(inRange(+d)){ rc += b.s[sk].d[d][2]; amt += b.s[sk].d[d][0]; } });
+      (sb[sk] = sb[sk] || []).push({ bk, rc, amt });
+    });
+  });
+  const home = {};
+  Object.keys(sb).forEach(sk=>{ home[sk] = sb[sk].slice().sort((p, q)=> (q.rc - p.rc) || (q.amt - p.amt))[0].bk; });
+  const rows = [], sellersAll = [], cross = [];
+  bks.forEach(bk=>{
+    const b = bt.branches[bk], tg = tByB[bk];
+    let amt = 0, qty = 0, rc = 0, ret = 0, retN = 0;
+    const daily = new Array(dim + 1).fill(0), dRc = new Array(dim + 1).fill(0);
+    Object.keys(b.d).forEach(k=>{
+      const d = +k; if(!inRange(d)) return;
+      const v = b.d[k];
+      amt += v[0]; qty += v[1]; rc += v[2]; ret += v[3]; retN += v[4];
+      if(d > 0 && d <= dim){ daily[d] += v[0]; dRc[d] += v[2]; }
+    });
+    const off = {}; let offN = 0, offA = 0;
+    if(b.od) Object.keys(b.od).forEach(k=>{
+      if(!inRange(+k)) return;
+      Object.keys(b.od[k]).forEach(l=>{ const v = b.od[k][l], t = off[l] || (off[l] = [0, 0]); t[0] += v[0]; t[1] += v[1]; offN += v[0]; offA += v[1]; });
+    });
+    const sellers = [];
+    Object.keys(b.s).forEach(sk=>{
+      const s = b.s[sk]; let a = 0, q = 0, r = 0;
+      Object.keys(s.d).forEach(k=>{ if(inRange(+k)){ a += s.d[k][0]; q += s.d[k][1]; r += s.d[k][2]; } });
+      sellers.push({ sk, name:s.name, amt:a, qty:q, rc:r, ret:s.ret, retN:s.retN, home: home[sk] === bk });
+    });
+    const active = sellers.filter(s=> s.home && s.rc >= bt.minRc && s.amt > 0);
+    const target = tg ? tg.target : 0;
+    const sT = (active.length && target) ? target / active.length : 0;
+    sellers.forEach(s=>{
+      s.active = active.indexOf(s) >= 0; s.target = s.active ? sT : 0;
+      s.pct = s.target > 0 ? s.amt / s.target * 100 : null;
+      s.upt = s.rc > 0 ? s.qty / s.rc : null; s.atv = s.rc > 0 ? s.amt / s.rc : null;
+      s.bk = bk; s.branchName = b.name;
+      if(!s.home) cross.push({ sk:s.sk, name:s.name, bk, branchName:b.name, homeBk: home[s.sk], amt:s.amt, rc:s.rc, ret:s.ret, retN:s.retN });
+    });
+    sellers.sort((p, q)=> q.amt - p.amt);
+    const exp = target * expPct;
+    const pct = target > 0 ? amt / target * 100 : null;
+    const pace = exp > 0 ? amt / exp * 100 : null;
+    const proj = amt / today * dim;
+    const projPct = target > 0 ? proj / target * 100 : null;
+    const remaining = Math.max(0, target - amt);
+    const dl = dim - today;
+    const reqDaily = dl > 0 ? remaining / dl : remaining;
+    const curDaily = amt / today;
+    let status = 'n';
+    if(target > 0){ status = (pct >= 100 || pace >= 100) ? 'g' : (pace >= 90 ? 'y' : 'r'); }
+    // الأيام
+    const wd = new Array(7).fill(0), wdN = new Array(7).fill(0);
+    let bestDay = 0, worstDay = 0;
+    for(let d = 1; d <= today; d++){
+      const w = new Date(y, m - 1, d).getDay();
+      wd[w] += daily[d]; wdN[w] += 1;
+      if(!bestDay || daily[d] > daily[bestDay]) bestDay = d;
+      if(!worstDay || daily[d] < daily[worstDay]) worstDay = d;
+    }
+    const avgD = amt / today;
+    const weak = []; for(let d = 1; d <= today; d++) if(avgD > 0 && daily[d] < avgD * 0.5) weak.push(d);
+    const topS = active.length ? Math.max.apply(null, active.map(s=> s.amt)) : 0;
+    const actAmt = active.reduce((t, s)=> t + s.amt, 0);
+    const r = { bk, name:b.name, target, tracked: !!tg, abbr: tg ? tg.abbr : '', label: tg ? tg.abbr.toUpperCase() : b.name,
+      amt, qty, rc, ret, retN, gross: amt - ret, daily, dRc, exp, pct, pace, proj, projPct, remaining, reqDaily, curDaily, dl,
+      atv: rc > 0 ? amt / rc : null, upt: rc > 0 ? qty / rc : null, status, sellers, active, sellerTarget:sT, off, offN, offA, offPct: amt > 0 ? offA / amt * 100 : null,
+      wd, wdN, bestDay, worstDay, weak, topShare: actAmt > 0 ? topS / actAmt * 100 : null,
+      perSeller: active.length ? actAmt / active.length : null, retRate: (amt - ret) > 0 ? -ret / (amt - ret) * 100 : null };
+    rows.push(r);
+    active.forEach(s=>{ if(s.target > 0) sellersAll.push(s); });
+  });
+  rows.forEach(r=>{ cross.forEach(c=>{ if(c.homeBk === r.bk) c.homeLabel = r.label; }); });
+  const offTot = {}; let offSales = 0;
+  rows.forEach(r=>{ offSales += r.amt; Object.keys(r.off).forEach(l=>{ const t = offTot[l] || (offTot[l] = { n:0, a:0 }); t.n += r.off[l][0]; t.a += r.off[l][1]; }); });
+  const offCols = Object.keys(offTot).sort((a, b)=> offTot[b].n - offTot[a].n || a.localeCompare(b));
+  const tracked = rows.filter(r=> r.tracked);
+  const sum = (arr, f)=> arr.reduce((t, x)=> t + f(x), 0);
+  const tTot = sum(tracked, r=> r.target), aTot = sum(tracked, r=> r.amt), qTot = sum(tracked, r=> r.qty), rcTot = sum(tracked, r=> r.rc);
+  const cumDaily = new Array(dim + 1).fill(0);
+  tracked.forEach(r=>{ for(let d = 1; d <= dim; d++) cumDaily[d] += r.daily[d]; });
+  const wdC = new Array(7).fill(0), wdCn = new Array(7).fill(0);
+  for(let d = 1; d <= today; d++){ const w = new Date(y, m - 1, d).getDay(); wdC[w] += cumDaily[d]; wdCn[w] += 1; }
+  const expT = tTot * expPct;
+  const remT = Math.max(0, tTot - aTot);
+  const C = { offTot, offCols, offSales, y, m, dim, today, expPct, rows, tracked, untracked: rows.filter(r=> !r.tracked), sellersAll, cross, map, home, cumDaily, wdC, wdCn,
+    target:tTot, amt:aTot, qty:qTot, rc:rcTot, exp:expT, pct: tTot > 0 ? aTot / tTot * 100 : null, pace: expT > 0 ? aTot / expT * 100 : null,
+    proj: aTot / today * dim, projPct: tTot > 0 ? (aTot / today * dim) / tTot * 100 : null, remaining: remT, reqDaily: dim - today > 0 ? remT / (dim - today) : remT,
+    atv: rcTot > 0 ? aTot / rcTot : null, upt: rcTot > 0 ? qTot / rcTot : null,
+    nG: tracked.filter(r=> r.status === 'g').length, nY: tracked.filter(r=> r.status === 'y').length, nR: tracked.filter(r=> r.status === 'r').length,
+    nHit: tracked.filter(r=> r.pct >= 100).length,
+    unmatchedT: bt.targets.filter(t=> !map[btAKey(t.abbr)]) };
+  C.perSeller = C.sellersAll.length ? sum(C.sellersAll, s=> s.amt) / C.sellersAll.length : null;
+  tracked.slice().sort((p, q)=> (q.pct || 0) - (p.pct || 0)).forEach((r, i)=>{ r.rank = i + 1; });
+  return C;
+}
+
+/* ---------- تحليل نصي لكل فرع ---------- */
+function btInsights(r, C){
+  const out = [];
+  const add = (c, t)=> out.push({ c, t });
+  const wdName = (i)=> BT_DAYS_AR[i];
+  if(r.target > 0){
+    if(r.pct >= 100) add('g', '✅ الفرع حقق التارجت (' + tgtF(r.pct, 1) + '%) وزاد عنه بـ ' + tgtF(r.amt - r.target) + '.');
+    else if(r.pace >= 100) add('g', '🟢 ماشي أعلى من المعدل: المفروض لحد يوم ' + C.today + ' ' + tgtF(r.exp) + ' والمحقق ' + tgtF(r.amt) + ' (سرعة ' + tgtF(r.pace, 1) + '%).');
+    else if(r.pace >= 90) add('y', '🟡 قريب من المعدل: ناقص ' + tgtF(r.exp - r.amt) + ' عن المفروض لحد يوم ' + C.today + ' (سرعة ' + tgtF(r.pace, 1) + '%).');
+    else add('r', '🔴 متأخر عن المعدل بـ ' + tgtF(r.exp - r.amt) + ' (سرعة ' + tgtF(r.pace, 1) + '%): المحقق ' + tgtF(r.amt) + ' من مفروض ' + tgtF(r.exp) + '.');
+    if(r.pct < 100){
+      if(r.dl > 0){
+        add(r.curDaily >= r.reqDaily ? 'g' : 'r', 'لو كمّل بنفس المتوسط اليومي (' + tgtF(r.curDaily) + ') هيقفل على ' + tgtF(r.proj) + ' = ' + tgtF(r.projPct, 1) + '% من التارجت. المطلوب يوميًا في الـ ' + r.dl + ' يوم الباقيين ' + tgtF(r.reqDaily) + (r.curDaily > 0 ? ' (يعني ' + tgtF(r.reqDaily / r.curDaily * 100, 0) + '% من متوسطه الحالي).' : '.'));
+      } else add('r', 'الشهر خلص والمتبقي من التارجت ' + tgtF(r.remaining) + '.');
+    }
+  } else add('n', 'الفرع ده مالوش تارجت في التاب التاني — اربطه من تاب "ربط الفروع" لو ليه اختصار.');
+  if(r.atv != null && C.atv > 0){
+    const dA = (r.atv / C.atv - 1) * 100;
+    add(dA >= 0 ? 'g' : 'y', 'ATV ' + tgtF(r.atv) + ' ' + (dA >= 0 ? 'أعلى' : 'أقل') + ' من متوسط الشركة (' + tgtF(C.atv) + ') بـ ' + tgtF(Math.abs(dA), 0) + '%.');
+  }
+  if(r.upt != null && C.upt > 0){
+    const dU = (r.upt / C.upt - 1) * 100;
+    add(dU >= 0 ? 'g' : 'y', 'UPT ' + tgtF(r.upt, 2) + ' ' + (dU >= 0 ? 'أعلى' : 'أقل') + ' من متوسط الشركة (' + tgtF(C.upt, 2) + ') بـ ' + tgtF(Math.abs(dU), 0) + '%' + (dU < -5 ? ' — فرصة تحسين بالـ cross-selling.' : '.'));
+  }
+  const wdAvg = r.wd.map((v, i)=> r.wdN[i] ? v / r.wdN[i] : null);
+  const valid = wdAvg.map((v, i)=> ({ v, i })).filter(x=> x.v != null);
+  if(valid.length >= 3){
+    valid.sort((p, q)=> q.v - p.v);
+    add('n', 'أقوى يوم في الأسبوع: ' + wdName(valid[0].i) + ' (متوسط ' + tgtF(valid[0].v) + ')، وأضعف يوم: ' + wdName(valid[valid.length - 1].i) + ' (متوسط ' + tgtF(valid[valid.length - 1].v) + ').');
+  }
+  if(r.bestDay) add('n', 'أعلى يوم مبيعات: يوم ' + r.bestDay + ' (' + tgtF(r.daily[r.bestDay]) + ')، وأقل يوم: يوم ' + r.worstDay + ' (' + tgtF(r.daily[r.worstDay]) + ').');
+  if(r.weak.length) add('y', 'أيام مبيعاتها أقل من نص المتوسط اليومي: ' + r.weak.slice(0, 8).join('، ') + (r.weak.length > 8 ? ' ...' : '') + '.');
+  if(r.active.length){
+    add('n', 'عدد البائعين المحسوبين ' + r.active.length + '، متوسط مبيعات البائع ' + tgtF(r.perSeller) + (C.perSeller > 0 ? ' (متوسط الشركة ' + tgtF(C.perSeller) + ')' : '') + '، وتارجت كل بائع ' + tgtF(r.sellerTarget) + '.');
+    if(r.topShare != null && r.topShare >= 40 && r.active.length > 2) add('y', '⚠️ اعتماد عالي على بائع واحد: أعلى بائع بيجيب ' + tgtF(r.topShare, 0) + '% من مبيعات السيلز.');
+  }
+  if(r.retRate != null && r.ret < 0){
+    add(r.retRate >= 8 ? 'r' : 'n', 'المرتجعات ' + tgtF(-r.ret) + ' (' + tgtF(r.retRate, 1) + '% من المبيعات قبل المرتجع) على ' + tgtF(r.retN) + ' سطر.');
+  }
+  return out;
+}
+
+/* ---------- رسومات ---------- */
+const BT_COL = { g:'#16a34a', y:'#f59e0b', r:'#ef4444', n:'#94a3b8' };
+function btBars(rows, C){
+  const MAX = 140;
+  if(!rows.length) return '';
+  const mk100 = 100 / MAX * 100, mkE = Math.min(MAX, C.expPct * 100) / MAX * 100;
+  let h = '<div class="bt-bars">';
+  rows.forEach(r=>{
+    const w = Math.min(MAX, Math.max(0, r.pct || 0)) / MAX * 100;
+    h += '<div class="bt-brow" data-bk="' + escapeAttr(r.bk) + '" title="' + escapeAttr(r.name) + '"><div class="nm">' + btE(r.label) + '</div>' +
+      '<div class="trk"><i class="fill" style="width:' + w + '%;background:' + BT_COL[r.status] + '"></i><i class="mk e" style="left:' + mkE + '%"></i><i class="mk t" style="left:' + mk100 + '%"></i></div>' +
+      '<div class="val">' + (r.pct == null ? '—' : tgtF(r.pct, 1) + '%') + ' • ' + tgtF(r.amt) + ' / ' + tgtF(r.target) + '</div></div>';
+  });
+  h += '</div><div class="tgt-legend"><span><i style="background:#16a34a"></i>ماشي بأعلى من المعدل / محقق</span><span><i style="background:#f59e0b"></i>قريب (90%+ من المعدل)</span><span><i style="background:#ef4444"></i>متأخر</span><span><i style="background:#0f172a"></i>خط 100%</span><span><i style="background:#7c3aed"></i>المفروض لحد يوم ' + C.today + '</span></div>';
+  return h;
+}
+function btBubble(C){
+  const pts = C.tracked.filter(r=> r.atv != null && r.upt != null);
+  if(pts.length < 2) return '<div class="tgt-note">محتاج فرعين على الأقل بفواتير.</div>';
+  const W = 640, H = 340, pl = 56, pr = 18, pt = 16, pb = 36;
+  const xs = pts.map(r=> r.upt), ys = pts.map(r=> r.atv);
+  let x0 = Math.min.apply(null, xs), x1 = Math.max.apply(null, xs), y0 = Math.min.apply(null, ys), y1 = Math.max.apply(null, ys);
+  const px = (x1 - x0) * 0.12 || 0.3, py = (y1 - y0) * 0.12 || 50;
+  x0 -= px; x1 += px; y0 = Math.max(0, y0 - py); y1 += py;
+  const X = (v)=> pl + (v - x0) / (x1 - x0) * (W - pl - pr), Y = (v)=> H - pb - (v - y0) / (y1 - y0) * (H - pt - pb);
+  const maxA = Math.max.apply(null, pts.map(r=> r.amt)) || 1;
+  let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;direction:ltr;font-family:inherit;">';
+  for(let i = 0; i <= 4; i++){
+    const yv = y0 + (y1 - y0) * i / 4, xv = x0 + (x1 - x0) * i / 4;
+    s += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + Y(yv) + '" y2="' + Y(yv) + '" stroke="#eef0f3"/><text x="' + (pl - 6) + '" y="' + (Y(yv) + 4) + '" font-size="10" text-anchor="end" fill="#64748b">' + tgtF(yv) + '</text>';
+    s += '<text x="' + X(xv) + '" y="' + (H - 16) + '" font-size="10" text-anchor="middle" fill="#64748b">' + tgtF(xv, 2) + '</text>';
+  }
+  if(C.upt) s += '<line x1="' + X(C.upt) + '" x2="' + X(C.upt) + '" y1="' + pt + '" y2="' + (H - pb) + '" stroke="#94a3b8" stroke-dasharray="4 4"/>';
+  if(C.atv) s += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + Y(C.atv) + '" y2="' + Y(C.atv) + '" stroke="#94a3b8" stroke-dasharray="4 4"/>';
+  pts.forEach(r=>{
+    const rad = 7 + Math.sqrt(Math.max(0, r.amt) / maxA) * 20;
+    s += '<g data-bk="' + escapeAttr(r.bk) + '" style="cursor:pointer;"><circle cx="' + X(r.upt) + '" cy="' + Y(r.atv) + '" r="' + rad + '" fill="' + BT_COL[r.status] + '" fill-opacity=".55" stroke="' + BT_COL[r.status] + '" stroke-width="1.5"/><text x="' + X(r.upt) + '" y="' + (Y(r.atv) + 3.5) + '" font-size="9.5" font-weight="800" text-anchor="middle" fill="#0f172a">' + btE(r.label) + '</text><title>' + btE(r.name) + ' — UPT ' + tgtF(r.upt, 2) + ' | ATV ' + tgtF(r.atv) + ' | مبيعات ' + tgtF(r.amt) + '</title></g>';
+  });
+  s += '<text x="' + (W / 2) + '" y="' + (H - 2) + '" font-size="11" text-anchor="middle" fill="#475569" font-weight="700">UPT (قطع/فاتورة) ←→</text>';
+  s += '</svg><div class="tgt-legend"><span>المحور الرأسي: ATV</span><span>حجم الفقاعة = حجم المبيعات</span><span>الخطوط المتقطعة = متوسط الشركة</span></div>';
+  return s;
+}
+function btDailyBars(r, C){
+  const W = 640, H = 240, pl = 50, pr = 10, pt = 14, pb = 26, dim = C.dim;
+  const req = r.target > 0 ? r.target / dim : 0;
+  const maxY = Math.max(req, Math.max.apply(null, r.daily.slice(1, C.today + 1)), 1) * 1.12;
+  const bw = (W - pl - pr) / dim;
+  const Y = (v)=> H - pb - v / maxY * (H - pt - pb);
+  let s = '<svg viewBox="0 0 ' + W + ' ' + H + '" style="width:100%;height:auto;direction:ltr;font-family:inherit;">';
+  for(let i = 0; i <= 3; i++){ const v = maxY * i / 3; s += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + Y(v) + '" y2="' + Y(v) + '" stroke="#eef0f3"/><text x="' + (pl - 5) + '" y="' + (Y(v) + 4) + '" font-size="10" text-anchor="end" fill="#64748b">' + (v >= 1e6 ? tgtF(v / 1e6, 1) + 'M' : tgtF(v / 1e3, 0) + 'k') + '</text>'; }
+  for(let d = 1; d <= dim; d++){
+    const v = d <= C.today ? r.daily[d] : 0;
+    const x = pl + (d - 1) * bw;
+    const col = d > C.today ? '#e2e8f0' : (req > 0 ? (v >= req ? '#16a34a' : (v >= req * 0.6 ? '#f59e0b' : '#ef4444')) : '#059669');
+    if(d <= C.today) s += '<rect x="' + (x + 1.5) + '" y="' + Y(Math.max(0, v)) + '" width="' + Math.max(2, bw - 3) + '" height="' + Math.max(0, (H - pb) - Y(Math.max(0, v))) + '" rx="2" fill="' + col + '"><title>يوم ' + d + ': ' + tgtF(v) + '</title></rect>';
+    if(dim <= 31 && (d % 2 === 1 || dim <= 16)) s += '<text x="' + (x + bw / 2) + '" y="' + (H - 9) + '" font-size="9.5" text-anchor="middle" fill="#64748b">' + d + '</text>';
+  }
+  if(req > 0) s += '<line x1="' + pl + '" x2="' + (W - pr) + '" y1="' + Y(req) + '" y2="' + Y(req) + '" stroke="#7c3aed" stroke-width="2" stroke-dasharray="6 4"/><text x="' + (W - pr) + '" y="' + (Y(req) - 5) + '" font-size="10.5" text-anchor="end" fill="#7c3aed" font-weight="700">المعدل اليومي للتارجت ' + tgtF(req) + '</text>';
+  s += '</svg>';
+  return s;
+}
+function btWeekdayBars(wd, wdN, color){
+  const avg = wd.map((v, i)=> wdN[i] ? v / wdN[i] : 0);
+  const mx = Math.max.apply(null, avg) || 1;
+  let h = '<div class="bt-wd">';
+  [6, 0, 1, 2, 3, 4, 5].forEach(i=>{
+    h += '<div class="bt-wdrow"><span class="nm">' + BT_DAYS_AR[i] + '</span><span class="trk"><i style="width:' + (avg[i] / mx * 100) + '%;background:' + (color || '#0f766e') + '"></i></span><span class="val">' + tgtF(avg[i]) + '</span></div>';
+  });
+  return h + '</div><div class="tgt-note">متوسط مبيعات اليوم لكل يوم في الأسبوع (بعدد الأسابيع اللي فيها بيانات).</div>';
+}
+
+/* ---------- العرض ---------- */
+function btKpi(l, v, sub){ return '<div class="bt-kpi"><span>' + l + '</span><b>' + v + '</b>' + (sub ? '<em>' + sub + '</em>' : '') + '</div>'; }
+function btStatusTxt(r){ return r.status === 'g' ? (r.pct >= 100 ? '✅ محقق' : '🟢 ماشي كويس') : (r.status === 'y' ? '🟡 قريب' : (r.status === 'r' ? '🔴 متأخر' : '—')); }
+function btRenderOverview(C){
+  let h = '';
+  const pill = (p, k)=> tgtPill(p, k);
+  h += '<div class="bt-kpis">' +
+    btKpi('تارجت الشركة', tgtF(C.target), C.tracked.length + ' فرع') +
+    btKpi('المحقق', tgtF(C.amt), 'لحد يوم ' + C.today + ' من ' + C.dim) +
+    btKpi('نسبة التحقيق', C.pct == null ? '—' : tgtF(C.pct, 1) + '%', 'المفروض ' + tgtF(C.expPct * 100, 1) + '%') +
+    btKpi('المفروض لحد اليوم', tgtF(C.exp), 'السرعة ' + (C.pace == null ? '—' : tgtF(C.pace, 1) + '%')) +
+    btKpi('التوقع آخر الشهر', tgtF(C.proj), C.projPct == null ? '' : tgtF(C.projPct, 1) + '% من التارجت') +
+    btKpi('المتبقي', tgtF(C.remaining), 'مطلوب يوميًا ' + tgtF(C.reqDaily)) +
+    btKpi('ATV', tgtF(C.atv), 'متوسط الفاتورة') +
+    btKpi('UPT', tgtF(C.upt, 2), 'قطع/فاتورة') +
+    btKpi('الفواتير', tgtF(C.rc), tgtF(C.qty) + ' قطعة') +
+    btKpi('حالة الفروع', '✅' + C.nHit + ' 🟢' + (C.nG - C.nHit) + ' 🟡' + C.nY + ' 🔴' + C.nR, 'محقق / ماشي / قريب / متأخر') +
+    '</div>';
+  let warn = '';
+  if(C.unmatchedT.length) warn += '<div class="tgt-warn">اختصارات فيها تارجت ومالقيتش لها فرع في الشيت: <b>' + C.unmatchedT.map(t=> btE(t.abbr)).join('، ') + '</b> — اربطها من تاب "ربط الفروع".</div>';
+  if(C.untracked.length) warn += '<div class="tgt-warn">فروع في الشيت من غير تارجت (مش داخلة في إجمالي الشركة): <b>' + C.untracked.map(r=> btE(r.name)).join('، ') + '</b>.</div>';
+  h += warn;
+  const sorted = C.tracked.slice().sort((p, q)=> (q.pct || 0) - (p.pct || 0));
+  h += '<div class="tgt-dash-title">🏁 ترتيب الفروع على التارجت (اضغط على فرع لتحليله)</div><div class="tgt-card wide">' + btBars(sorted, C) + '</div>';
+  const best = C.tracked.slice().sort((p, q)=> (q.pace || 0) - (p.pace || 0)).slice(0, 3), worst = C.tracked.slice().sort((p, q)=> (p.pace || 0) - (q.pace || 0)).slice(0, 3);
+  const mini = (arr)=> arr.map(r=> '<div class="bt-mini" data-bk="' + escapeAttr(r.bk) + '"><b>' + btE(r.label) + '</b><span>' + btE(r.name) + '</span>' + pill(r.pace, 'd') + '<em>' + tgtF(r.amt) + ' / ' + tgtF(r.exp) + '</em></div>').join('');
+  h += '<div class="tgt-grid" style="margin-top:12px;"><div class="tgt-card"><h4>🚀 أفضل 3 فروع في السرعة (المحقق ÷ المفروض)</h4>' + mini(best) + '</div><div class="tgt-card"><h4>⚠️ أضعف 3 فروع في السرعة</h4>' + mini(worst) + '</div></div>';
+  h += '<div class="tgt-dash-title">🎯 نسب التحقيق لكل فرع من تارجته — شرائح التحقيق</div>' + btTierCounts(C) + '<div id="btOvTiers"></div>';
+  h += '<div class="tgt-dash-title">🎁 تحليل الأوفرات لإجمالي كل فرع <small style="font-size:12px;color:#6b7280;">(التفاصيل الكاملة في تاب "تحليل الأوفرات")</small></div>' + btOffersSummary(C);
+  h += '<div class="tgt-grid" style="margin-top:12px;"><div class="tgt-card"><h4>🎯 جودة البيع للفروع: UPT مقابل ATV</h4>' + btBubble(C) + '</div><div class="tgt-card"><h4>📅 أقوى أيام الأسبوع على مستوى الشركة</h4>' + btWeekdayBars(C.wdC, C.wdCn) + '</div></div>';
+  return h;
+}
+function btRenderBranches(C){
+  const cols = [
+    ['label', 'الفرع'], ['target', 'التارجت'], ['amt', 'المحقق'], ['pct', 'النسبة %'], ['exp', 'المفروض لحد اليوم'], ['pace', 'السرعة %'], ['projPct', 'التوقع آخر الشهر %'],
+    ['remaining', 'المتبقي'], ['reqDaily', 'مطلوب يوميًا'], ['curDaily', 'المتوسط اليومي'], ['atv', 'ATV'], ['upt', 'UPT'], ['rc', 'الفواتير'], ['sellersN', 'عدد البائعين'], ['status', 'الحالة']
+  ];
+  const val = (r, k)=> k === 'label' ? r.label : (k === 'sellersN' ? r.active.length : (k === 'status' ? ({ g:3, y:2, r:1, n:0 })[r.status] : r[k]));
+  const rows = C.rows.slice().sort((p, q)=>{
+    const a = val(p, btSort.key), b = val(q, btSort.key);
+    if(typeof a === 'string' || typeof b === 'string') return String(a).localeCompare(String(b)) * btSort.dir * -1;
+    return ((a == null ? -Infinity : a) - (b == null ? -Infinity : b)) * btSort.dir;
+  });
+  let h = '<div class="tgt-note">اضغط على عنوان أي عمود للترتيب، وعلى الفرع لفتح تحليله.</div><div class="tgt-wrap"><table class="tgt-table" style="min-width:1250px;"><thead><tr><th>#</th>';
+  cols.forEach(c=> { h += '<th class="bt-sort" data-sort="' + c[0] + '">' + c[1] + (btSort.key === c[0] ? (btSort.dir < 0 ? ' ▼' : ' ▲') : '') + '</th>'; });
+  h += '</tr></thead><tbody>';
+  rows.forEach((r, i)=>{
+    h += '<tr class="bt-row" data-bk="' + escapeAttr(r.bk) + '"><td>' + (i + 1) + '</td><td class="nm"><b>' + btE(r.label) + '</b><div style="font-size:11px;color:#6b7280;font-weight:600;">' + btE(r.name) + '</div></td>' +
+      '<td class="num">' + (r.target ? tgtF(r.target) : '—') + '</td><td class="num"><b>' + tgtF(r.amt) + '</b></td><td>' + tgtPill(r.pct, 'm') + '</td><td class="num">' + (r.target ? tgtF(r.exp) : '—') + '</td><td>' + tgtPill(r.pace, 'd') + '</td><td>' + tgtPill(r.projPct, 'm') + '</td>' +
+      '<td class="num">' + (r.target ? tgtF(r.remaining) : '—') + '</td><td class="num">' + (r.target ? tgtF(r.reqDaily) : '—') + '</td><td class="num">' + tgtF(r.curDaily) + '</td><td class="num">' + tgtF(r.atv) + '</td><td class="num">' + tgtF(r.upt, 2) + '</td><td class="num">' + tgtF(r.rc) + '</td><td class="num">' + r.active.length + '</td><td>' + btStatusTxt(r) + '</td></tr>';
+  });
+  const t = C;
+  h += '</tbody><tfoot><tr><td></td><td class="nm">🏢 إجمالي الشركة (الفروع اللي ليها تارجت)</td><td class="num">' + tgtF(t.target) + '</td><td class="num">' + tgtF(t.amt) + '</td><td>' + tgtPill(t.pct, 'm') + '</td><td class="num">' + tgtF(t.exp) + '</td><td>' + tgtPill(t.pace, 'd') + '</td><td>' + tgtPill(t.projPct, 'm') + '</td><td class="num">' + tgtF(t.remaining) + '</td><td class="num">' + tgtF(t.reqDaily) + '</td><td class="num">' + tgtF(t.amt / t.today) + '</td><td class="num">' + tgtF(t.atv) + '</td><td class="num">' + tgtF(t.upt, 2) + '</td><td class="num">' + tgtF(t.rc) + '</td><td class="num">' + C.sellersAll.length + '</td><td></td></tr></tfoot></table></div>';
+  return h;
+}
+function btRenderBranch(C){
+  if(!C.rows.length) return '';
+  const rows = C.rows.slice().sort((p, q)=> String(p.label).localeCompare(String(q.label)));
+  if(!btSel || !C.rows.find(r=> r.bk === btSel)) btSel = (rows.find(r=> r.tracked) || rows[0]).bk;
+  const r = C.rows.find(x=> x.bk === btSel);
+  let h = '<div class="bt-pick"><label>اختار الفرع: <select id="btBranchSel">' + rows.map(x=> '<option value="' + escapeAttr(x.bk) + '"' + (x.bk === btSel ? ' selected' : '') + '>' + btE(x.label) + (x.tracked ? '' : ' (من غير تارجت)') + ' — ' + btE(x.name) + '</option>').join('') + '</select></label></div>';
+  h += '<div class="bt-kpis">' +
+    btKpi('التارجت', r.target ? tgtF(r.target) : '—', r.rank ? 'ترتيبه ' + r.rank + ' من ' + C.tracked.length : '') +
+    btKpi('المحقق', tgtF(r.amt), r.pct == null ? '' : tgtF(r.pct, 1) + '% من التارجت') +
+    btKpi('المفروض لحد اليوم', r.target ? tgtF(r.exp) : '—', 'السرعة ' + (r.pace == null ? '—' : tgtF(r.pace, 1) + '%')) +
+    btKpi('التوقع آخر الشهر', tgtF(r.proj), r.projPct == null ? '' : tgtF(r.projPct, 1) + '%') +
+    btKpi('المتبقي', r.target ? tgtF(r.remaining) : '—', 'مطلوب يوميًا ' + (r.target ? tgtF(r.reqDaily) : '—')) +
+    btKpi('المتوسط اليومي', tgtF(r.curDaily), 'حاليًا') +
+    btKpi('ATV', tgtF(r.atv), 'الشركة ' + tgtF(C.atv)) +
+    btKpi('UPT', tgtF(r.upt, 2), 'الشركة ' + tgtF(C.upt, 2)) +
+    btKpi('الفواتير', tgtF(r.rc), tgtF(r.qty) + ' قطعة') +
+    btKpi('الحالة', btStatusTxt(r), '') + '</div>';
+  h += '<div class="tgt-dash-title">🧠 تحليل الأداء</div><div class="tgt-card wide"><ul class="bt-ins">' + btInsights(r, C).map(x=> '<li class="' + x.c + '">' + btE(x.t) + '</li>').join('') + '</ul></div>';
+  h += '<div class="tgt-grid" style="margin-top:12px;"><div class="tgt-card wide"><h4>📊 المبيعات يوم بيوم مقابل المعدل اليومي للتارجت</h4>' + btDailyBars(r, C) + '<div class="tgt-legend"><span><i style="background:#16a34a"></i>فوق المعدل</span><span><i style="background:#f59e0b"></i>60%+ من المعدل</span><span><i style="background:#ef4444"></i>أقل</span></div></div>' +
+    '<div class="tgt-card"><h4>📅 أيام الأسبوع في الفرع</h4>' + btWeekdayBars(r.wd, r.wdN) + '</div></div>';
+  h += '<div class="tgt-dash-title">👥 بائعين الفرع <small style="font-size:12px;color:#6b7280;">تارجت البائع = تارجت الفرع ÷ عدد البائعين المحسوبين (' + r.active.length + ')</small></div>';
+  const mine = r.sellers.filter(s=> s.home), out = r.sellers.filter(s=> !s.home);
+  h += '<div class="tgt-wrap"><table class="tgt-table" style="min-width:900px;"><thead><tr><th>#</th><th>البائع</th><th>التارجت</th><th>المحقق</th><th>النسبة %</th><th>ATV</th><th>UPT</th><th>الفواتير</th><th>مرتجعات</th><th>ملاحظة</th></tr></thead><tbody>';
+  mine.forEach((s, i)=>{
+    h += '<tr><td>' + (i + 1) + '</td><td class="nm">' + btE(s.name) + '</td><td class="num">' + (s.active ? tgtF(s.target) : '—') + '</td><td class="num"><b>' + tgtF(s.amt) + '</b></td><td>' + tgtPill(s.pct, 'm') + '</td><td class="num">' + tgtF(s.atv) + '</td><td class="num">' + tgtF(s.upt, 2) + '</td><td class="num">' + tgtF(s.rc) + '</td><td class="num">' + (s.ret < 0 ? tgtF(-s.ret) : '—') + '</td><td>' + (s.active ? '' : '<span style="color:#92400e;">خارج التوزيع (فواتير أقل من ' + bt.minRc + ' أو مبيعات سالبة)</span>') + '</td></tr>';
+  });
+  if(!mine.length) h += '<tr><td colspan="10" style="padding:16px;color:#6b7280;">مفيش بائعين.</td></tr>';
+  h += '</tbody></table></div>';
+  if(out.length){
+    h += '<div class="tgt-dash-title" style="font-size:15px;">↩️ أسماء بائعين من فروع تانية ظهرت هنا (مرتجعات)</div><div class="tgt-wrap"><table class="tgt-table" style="min-width:700px;"><thead><tr><th>البائع</th><th>فرعه الأساسي</th><th>المبلغ في الفرع ده</th><th>الفواتير</th></tr></thead><tbody>';
+    out.forEach(s=>{ const hb = C.home[s.sk]; const hr = C.rows.find(x=> x.bk === hb); h += '<tr><td class="nm">' + btE(s.name) + '</td><td>' + btE(hr ? hr.label : '') + '</td><td class="num">' + tgtF(s.amt) + '</td><td class="num">' + tgtF(s.rc) + '</td></tr>'; });
+    h += '</tbody></table></div>';
+  }
+  return h;
+}
+function btRenderSellers(C){
+  const list = C.sellersAll.slice();
+  const key = btSellerMode === 'amt' ? 'amt' : 'pct';
+  list.sort((p, q)=> (q[key] || 0) - (p[key] || 0));
+  const top = list.slice(0, 10), bottom = list.slice(-10).reverse();
+  const tbl = (arr, from, title)=>{
+    let h = '<div class="tgt-dash-title">' + title + '</div><div class="tgt-wrap"><table class="tgt-table" style="min-width:860px;"><thead><tr><th>#</th><th>البائع</th><th>الفرع</th><th>تارجت البائع</th><th>المحقق</th><th>النسبة %</th><th>ATV</th><th>UPT</th><th>الفواتير</th></tr></thead><tbody>';
+    arr.forEach((s, i)=>{
+      const medal = from === 0 ? (['🥇', '🥈', '🥉'][i] || (i + 1)) : (list.length - i);
+      h += '<tr class="bt-row" data-bk="' + escapeAttr(s.bk) + '"><td>' + medal + '</td><td class="nm">' + btE(s.name) + '</td><td>' + btE((C.rows.find(x=> x.bk === s.bk) || {}).label || s.branchName) + '</td><td class="num">' + tgtF(s.target) + '</td><td class="num"><b>' + tgtF(s.amt) + '</b></td><td>' + tgtPill(s.pct, 'm') + '</td><td class="num">' + tgtF(s.atv) + '</td><td class="num">' + tgtF(s.upt, 2) + '</td><td class="num">' + tgtF(s.rc) + '</td></tr>';
+    });
+    if(!arr.length) h += '<tr><td colspan="9" style="padding:16px;color:#6b7280;">مفيش بيانات.</td></tr>';
+    return h + '</tbody></table></div>';
+  };
+  let h = '<div class="bt-pick"><div class="tgt-seg"><button type="button" data-smode="pct" class="' + (key === 'pct' ? 'on' : '') + '">الترتيب بنسبة التحقيق من تارجته</button><button type="button" data-smode="amt" class="' + (key === 'amt' ? 'on' : '') + '">الترتيب بقيمة المبيعات</button></div></div>';
+  h += '<p class="tgt-note">تارجت البائع = تارجت فرعه ÷ عدد البائعين المحسوبين في الفرع (بالتساوي). البائع بيتحسب على الفرع اللي ليه فيه أكتر فواتير، وظهوره في فروع تانية بيتعامل كمرتجعات ومش بيدخل في ترتيبه. البائع اللي فواتيره أقل من ' + bt.minRc + ' أو مبيعاته سالبة بيتشال من التوزيع. إجمالي البائعين في الترتيب: ' + list.length + '.</p>';
+  h += tbl(top, 0, '🏆 أعلى 10 بائعين على مستوى الشركة');
+  h += tbl(bottom, 1, '📉 أقل 10 بائعين على مستوى الشركة');
+  return h;
+}
+function btRenderHeat(C){
+  const rows = C.tracked.length ? C.tracked : C.rows;
+  let h = '<p class="tgt-note">كل خانة = مبيعات اليوم ÷ المتوسط اليومي للفرع نفسه. الأخضر الغامق = يوم أقوى من المعتاد، الأحمر = يوم ضعيف. الخانة الفاضية = مفيش مبيعات.</p><div class="tgt-wrap"><table class="tgt-table bt-heat" style="min-width:' + (140 + C.today * 36) + 'px;"><thead><tr><th>الفرع</th>';
+  for(let d = 1; d <= C.today; d++) h += '<th>' + d + '</th>';
+  h += '</tr></thead><tbody>';
+  rows.slice().sort((p, q)=> String(p.label).localeCompare(String(q.label))).forEach(r=>{
+    const avg = r.amt / C.today;
+    h += '<tr class="bt-row" data-bk="' + escapeAttr(r.bk) + '"><td class="nm"><b>' + btE(r.label) + '</b></td>';
+    for(let d = 1; d <= C.today; d++){
+      const v = r.daily[d], k = avg > 0 ? v / avg : 0;
+      let bg = '#f8fafc', fg = '#94a3b8';
+      if(v > 0){
+        if(k >= 1.5) { bg = '#14532d'; fg = '#fff'; } else if(k >= 1.15) { bg = '#22c55e'; fg = '#052e16'; } else if(k >= 0.85) { bg = '#bbf7d0'; fg = '#14532d'; }
+        else if(k >= 0.5) { bg = '#fde68a'; fg = '#78350f'; } else { bg = '#fca5a5'; fg = '#7f1d1d'; }
+      }
+      h += '<td style="background:' + bg + ';color:' + fg + ';font-size:11px;padding:6px 2px;" title="' + escapeAttr(r.label + ' — يوم ' + d + ': ' + tgtF(v)) + '">' + (v > 0 ? tgtF(v / 1000, 0) + 'k' : '') + '</td>';
+    }
+    h += '</tr>';
+  });
+  return h + '</tbody></table></div>';
+}
+function btRenderReturns(C){
+  const rows = C.rows.slice().sort((p, q)=> p.ret - q.ret);
+  let h = '<div class="tgt-dash-title">↩️ المرتجعات على مستوى الفرع</div><div class="tgt-wrap"><table class="tgt-table" style="min-width:760px;"><thead><tr><th>الفرع</th><th>قيمة المرتجع</th><th>عدد سطور المرتجع</th><th>مبيعات قبل المرتجع</th><th>نسبة المرتجع %</th><th>صافي المبيعات</th></tr></thead><tbody>';
+  rows.forEach(r=>{
+    h += '<tr class="bt-row" data-bk="' + escapeAttr(r.bk) + '"><td class="nm"><b>' + btE(r.label) + '</b></td><td class="num">' + (r.ret < 0 ? tgtF(-r.ret) : '—') + '</td><td class="num">' + tgtF(r.retN) + '</td><td class="num">' + tgtF(r.gross) + '</td><td>' + (r.retRate == null ? '<span class="tgt-pill n">—</span>' : '<span class="tgt-pill ' + (r.retRate >= 10 ? 'r' : (r.retRate >= 5 ? 'y' : 'g')) + '">' + tgtF(r.retRate, 1) + '%</span>') + '</td><td class="num"><b>' + tgtF(r.amt) + '</b></td></tr>';
+  });
+  h += '</tbody></table></div>';
+  const cross = C.cross.slice().sort((p, q)=> Math.abs(q.amt) - Math.abs(p.amt)).slice(0, 80);
+  h += '<div class="tgt-dash-title">🔁 بائعين ظهروا في فرع غير فرعهم الأساسي (بيتحسبوا مرتجعات)</div>';
+  h += '<p class="tgt-note">الفرع الأساسي للبائع = الفرع اللي ليه فيه أكتر عدد فواتير. أي ظهور ليه في فرع تاني بيظهر هنا ومش بيتحسب في أداءه. المبالغ السالبة غالبًا مرتجعات.</p>';
+  h += '<div class="tgt-wrap"><table class="tgt-table" style="min-width:760px;"><thead><tr><th>البائع</th><th>فرعه الأساسي</th><th>ظهر في فرع</th><th>المبلغ</th><th>الفواتير</th></tr></thead><tbody>';
+  cross.forEach(c=>{ h += '<tr><td class="nm">' + btE(c.name) + '</td><td>' + btE(c.homeLabel || '') + '</td><td>' + btE((C.rows.find(x=> x.bk === c.bk) || {}).label || c.branchName) + '</td><td class="num">' + tgtF(c.amt) + '</td><td class="num">' + tgtF(c.rc) + '</td></tr>'; });
+  if(!cross.length) h += '<tr><td colspan="5" style="padding:16px;color:#6b7280;">مفيش حالات.</td></tr>';
+  return h + '</tbody></table></div>';
+}
+function btRenderMap(C){
+  const bks = Object.keys(bt.branches).sort((a, b)=> String(bt.branches[a].name).localeCompare(String(bt.branches[b].name)));
+  const usedB = {}; Object.keys(C.map).forEach(k=>{ if(C.map[k]) usedB[C.map[k]] = k; });
+  let h = '<p class="tgt-note">النظام بيقرا اسم الفرع من التاب الأول (مثلًا BRANCHES - Alexandria 2) ويربطه باختصاره من التاب التاني (ALX2) تلقائي. لو ربط غلط غيّره من القايمة وهيتحفظ. تقدر كمان تعدّل التارجت من هنا.</p>';
+  h += '<div class="tgt-wrap"><table class="tgt-table" style="min-width:760px;"><thead><tr><th>#</th><th>الاختصار</th><th>التارجت</th><th>الفرع في الشيت</th></tr></thead><tbody>';
+  bt.targets.forEach((t, i)=>{
+    const k = btAKey(t.abbr), cur = C.map[k] || '';
+    h += '<tr><td>' + (i + 1) + '</td><td class="nm"><b>' + btE(t.abbr) + '</b></td><td><input class="tgt-in wide" style="width:120px;" data-tidx="' + i + '" inputmode="decimal" value="' + tgtF(t.target) + '"></td><td style="text-align:right;"><select data-map="' + escapeAttr(k) + '" style="max-width:340px;padding:6px;border-radius:8px;border:1px solid ' + (cur ? '#cdd3db' : '#f59e0b') + ';font-family:inherit;font-weight:700;"><option value="">— بدون فرع —</option>' +
+      bks.map(bk=> '<option value="' + escapeAttr(bk) + '"' + (bk === cur ? ' selected' : '') + '>' + btE(bt.branches[bk].name) + (usedB[bk] && usedB[bk] !== k ? ' (مربوط بـ ' + btE(usedB[bk].toUpperCase()) + ')' : '') + '</option>').join('') + '</select></td></tr>';
+  });
+  if(!bt.targets.length) h += '<tr><td colspan="4" style="padding:16px;color:#6b7280;">مفيش اختصارات — التاب التاني في الملف لازم يكون فيه أول عمود اختصار الفرع وجنبه التارجت.</td></tr>';
+  h += '</tbody></table></div>';
+  const free = bks.filter(bk=> !usedB[bk]);
+  if(free.length) h += '<div class="tgt-warn">فروع في الشيت من غير تارجت: <b>' + free.map(bk=> btE(bt.branches[bk].name)).join('، ') + '</b></div>';
+  return h;
+}
+
+function btTierCounts(C){
+  const list = C.tracked;
+  if(!list.length) return '<div class="tgt-warn">مفيش فروع ليها تارجت.</div>';
+  return '<div class="bt-kpis">' + TGT_TIERS.map(t=> {
+    const n = list.filter(r=> r.pct >= t).length;
+    return btKpi('وصلوا ' + t + '%', n + ' من ' + list.length, tgtF(n / list.length * 100, 0) + '% من الفروع');
+  }).join('') + '</div>';
+}
+function btRenderTiers(C){
+  if(!C.tracked.length) return '<div class="tgt-warn">مفيش فروع ليها تارجت.</div>';
+  const list = C.tracked.slice().sort((p, q)=> (q.pct || 0) - (p.pct || 0));
+  const remD = Math.max(0, C.dim - C.today);
+  let h = btTierCounts(C);
+  h += '<div id="btTiersBox"></div>';
+  h += '<div class="tgt-dash-title" style="font-size:15px;">📌 أقرب فروع للشريحة الجاية</div>';
+  const nxt = list.filter(r=> r.pct < 120).map(r=>{
+    const t = TGT_TIERS.find(x=> r.pct < x); const need = r.target * t / 100 - r.amt;
+    return { r, t, need, gap: t - r.pct };
+  }).sort((a, b)=> a.gap - b.gap).slice(0, 8);
+  h += '<div class="tgt-wrap"><table class="tgt-table" style="min-width:640px;"><thead><tr><th>الفرع</th><th>النسبة الحالية</th><th>الشريحة الجاية</th><th>الفرق (نقطة)</th><th>المتبقي ليها</th><th>مطلوب يوميًا</th></tr></thead><tbody>' +
+    nxt.map(x=> '<tr class="bt-row" data-bk="' + escapeAttr(x.r.bk) + '"><td class="nm"><b>' + btE(x.r.label) + '</b></td><td>' + tgtPill(x.r.pct, 'm') + '</td><td><b>' + x.t + '%</b></td><td class="num">' + tgtF(x.gap, 1) + '</td><td class="num">' + tgtF(x.need) + '</td><td class="num">' + (remD > 0 ? tgtF(x.need / remD) : 'انتهت الأيام') + '</td></tr>').join('') +
+    (nxt.length ? '' : '<tr><td colspan="6" style="padding:16px;color:#6b7280;">كل الفروع عدّت 120%.</td></tr>') + '</tbody></table></div>';
+  return h;
+}
+function btAfterTiers(C, elId){
+  const id = elId || 'btTiersBox';
+  const box = $(id); if(!box) return;
+  const list = C.tracked.slice().sort((p, q)=> (q.pct || 0) - (p.pct || 0));
+  const remD = Math.max(0, C.dim - C.today);
+  const rows = list.map(r=> ({ s:{ name: r.label + ' — ' + r.name }, left:false, target:r.target, amt:r.amt, days:C.dim, el:C.today, rem:remD }));
+  tgtRenderTiers({ rows, active: rows, br:{ target:C.target, amt:C.amt, remDays:remD } },
+    { elId:id, noGauge:true, nmLabel:'الفرع', tLabel:'تارجت الفرع', brName:'إجمالي الشركة',
+      note:'كل خانة: (1) المبيعات المطلوبة للوصول للنسبة = تارجت الفرع × النسبة، (2) المتبقي عن المحقق، (3) المطلوب يوميًا في الأيام المتبقية من الشهر (' + remD + ' يوم). "أقرب نسبة" = أقرب شريحة من 90 / 95 / 100 / 110 / 120% لنسبة الفرع الحالية. لو الشهر خلص بيظهر "انتهت الأيام".' });
+}
+function btHBars(items, fmt, color){
+  const mx = Math.max.apply(null, items.map(x=> x.v)) || 1;
+  return '<div class="bt-hb">' + items.map(x=> '<div class="r"' + (x.bk ? ' data-bk="' + escapeAttr(x.bk) + '"' : '') + '><span class="nm">' + btE(x.n) + '</span><span class="trk"><i style="width:' + Math.max(1, x.v / mx * 100) + '%;background:' + (x.col || color || '#4f46e5') + '"></i></span><span class="val">' + fmt(x) + '</span></div>').join('') + '</div>';
+}
+function btOffersSummary(C){
+  if(!bt.meta.hasOff) return '<div class="tgt-warn">الشيت مفيهوش عمود Order Lines/Offer Name أو Order Lines/Discount (%) — أو اترفع قبل التحديث، ارفعه تاني.</div>';
+  if(!C.offCols.length) return '<div class="tgt-note">مفيش أوفرات أو خصومات في الشيت.</div>';
+  let offVal = 0, offInv = 0;
+  C.offCols.forEach(c=>{ offVal += C.offTot[c].a; offInv += C.offTot[c].n; });
+  const offPct = C.offSales > 0 ? offVal / C.offSales * 100 : null;
+  const topOffer = C.offCols.slice().sort((a, b)=> C.offTot[b].a - C.offTot[a].a)[0];
+  const byPct = C.rows.filter(r=> r.offPct != null && r.offN > 0).sort((p, q)=> q.offPct - p.offPct);
+  return '<div class="bt-kpis">' +
+    btKpi('إجمالي قيمة الأوفرات', tgtF(offVal), 'كل الفروع') +
+    btKpi('فواتير الأوفرات', tgtF(offInv), '') +
+    btKpi('نسبتها من المبيعات', offPct == null ? '—' : tgtF(offPct, 1) + '%', 'من ' + tgtF(C.offSales)) +
+    btKpi('أقوى أوفر (بالقيمة)', btE(topOffer), tgtF(C.offTot[topOffer].a) + ' / ' + tgtF(C.offTot[topOffer].n) + ' فاتورة') +
+    btKpi('أكتر فرع اعتمادًا', byPct[0] ? btE(byPct[0].label) : '—', byPct[0] ? tgtF(byPct[0].offPct, 1) + '% من مبيعاته' : '') + '</div>' +
+    '<div class="tgt-grid"><div class="tgt-card"><h4>🎁 ترتيب الأوفرات بالقيمة (كل الفروع)</h4>' +
+    btHBars(C.offCols.slice().sort((a, b)=> C.offTot[b].a - C.offTot[a].a).slice(0, 10).map(c=> ({ n:c, v:C.offTot[c].a, a:C.offTot[c].a, c:C.offTot[c].n })), x=> tgtF(x.a) + ' • ' + tgtF(x.c) + ' فاتورة', '#4f46e5') + '</div>' +
+    '<div class="tgt-card"><h4>🏢 اعتماد كل فرع على الأوفرات (% من مبيعاته)</h4>' +
+    btHBars(byPct.slice(0, 10).map(r=> ({ n:r.label, bk:r.bk, v:r.offPct, p:r.offPct, a:r.offA })), x=> tgtF(x.p, 1) + '% • ' + tgtF(x.a), '#0ea5e9') + '</div></div>';
+}
+function btRenderOffers(C){
+  if(!bt.meta.hasOff) return '<div class="tgt-warn">الشيت مفيهوش عمود Order Lines/Offer Name أو Order Lines/Discount (%) — أو اترفع قبل التحديث ده، ارفعه تاني.</div>';
+  if(!C.offCols.length) return '<div class="tgt-note">مفيش أوفرات أو خصومات في الشيت.</div>';
+  const rows = C.rows.slice().sort((p, q)=> String(p.label).localeCompare(String(q.label)));
+  let offVal = 0, offInv = 0;
+  C.offCols.forEach(c=>{ offVal += C.offTot[c].a; offInv += C.offTot[c].n; });
+  const offPct = C.offSales > 0 ? offVal / C.offSales * 100 : null;
+  const topOffer = C.offCols.slice().sort((a, b)=> C.offTot[b].a - C.offTot[a].a)[0];
+  const byPct = C.rows.filter(r=> r.offPct != null && r.offN > 0).sort((p, q)=> q.offPct - p.offPct);
+  let h = '<div class="bt-kpis">' +
+    btKpi('إجمالي قيمة الأوفرات', tgtF(offVal), 'كل الفروع') +
+    btKpi('فواتير الأوفرات', tgtF(offInv), '') +
+    btKpi('نسبتها من المبيعات', offPct == null ? '—' : tgtF(offPct, 1) + '%', 'من ' + tgtF(C.offSales)) +
+    btKpi('عدد الأوفرات', C.offCols.length, '') +
+    btKpi('أقوى أوفر (بالقيمة)', btE(topOffer), tgtF(C.offTot[topOffer].a) + ' / ' + tgtF(C.offTot[topOffer].n) + ' فاتورة') +
+    btKpi('أكتر فرع اعتمادًا', byPct[0] ? btE(byPct[0].label) : '—', byPct[0] ? tgtF(byPct[0].offPct, 1) + '% من مبيعاته' : '') + '</div>';
+  h += '<div class="tgt-grid"><div class="tgt-card"><h4>🎁 ترتيب الأوفرات بالقيمة (كل الفروع)</h4>' +
+    btHBars(C.offCols.slice().sort((a, b)=> C.offTot[b].a - C.offTot[a].a).slice(0, 12).map(c=> ({ n:c, v:C.offTot[c].a, a:C.offTot[c].a, c:C.offTot[c].n })), x=> tgtF(x.a) + ' • ' + tgtF(x.c) + ' فاتورة', '#4f46e5') + '</div>' +
+    '<div class="tgt-card"><h4>🏢 اعتماد كل فرع على الأوفرات (% من مبيعاته)</h4>' +
+    btHBars(byPct.slice(0, 12).map(r=> ({ n:r.label, bk:r.bk, v:r.offPct, p:r.offPct, a:r.offA })), x=> tgtF(x.p, 1) + '% • ' + tgtF(x.a), '#0ea5e9') + '</div></div>';
+  h += '<div class="tgt-dash-title">🎁 تقرير الأوفرات لكل فرع (إجمالي الفرع)</div>';
+  const colMax = {};
+  C.offCols.forEach(c=>{ colMax[c] = Math.max(1, ...rows.map(r=> tgtOfferGet(r.off, c).n)); });
+  h += '<div class="tgt-wrap"><table class="tgt-table tgt-off"><thead><tr><th>#</th><th>الفرع</th>' + C.offCols.map(c=> '<th>' + btE(c) + '</th>').join('') + '<th>الإجمالي</th><th>مبيعات الفرع</th></tr></thead><tbody>';
+  rows.forEach((r, i)=>{
+    let tn = 0, ta = 0;
+    h += '<tr class="bt-row" data-bk="' + escapeAttr(r.bk) + '"><td>' + (i + 1) + '</td><td class="nm"><b>' + btE(r.label) + '</b><div style="font-size:11px;color:#6b7280;font-weight:600;">' + btE(r.name) + '</div></td>';
+    C.offCols.forEach(c=>{
+      const g = tgtOfferGet(r.off, c); tn += g.n; ta += g.a;
+      h += g.n ? tgtOfferCell(g.n, g.a, r.amt, 'rgba(79,70,229,' + (0.10 + 0.42 * g.n / colMax[c]).toFixed(2) + ')') : '<td class="z">—</td>';
+    });
+    h += tgtOfferCell(tn, ta, r.amt, '#e0e7ff') + '<td class="num"><b>' + tgtF(r.amt) + '</b></td></tr>';
+  });
+  let gn = 0, ga = 0;
+  h += '</tbody><tfoot><tr><td></td><td class="nm">إجمالي الشركة</td>' + C.offCols.map(c=>{ const t = C.offTot[c]; gn += t.n; ga += t.a; return tgtOfferCell(t.n, t.a, C.offSales, ''); }).join('') + tgtOfferCell(gn, ga, C.offSales, '') + '<td class="num"><b>' + tgtF(C.offSales) + '</b></td></tr></tfoot></table></div>';
+  h += '<p class="tgt-note">في كل خانة: (1) عدد الفواتير اللي فيها الأوفر، (2) إجمالي Total للفواتير دي، (3) نسبتها % من إجمالي مبيعات الفرع (مش من مبيعات كل بائع). الفاتورة كلها بتتحسب على الأوفر لو أي سطر فيها له اسم أوفر، ولو مفيش اسم أوفر بتتحسب على نسبة الخصم. الأرقام لحد يوم ' + C.today + '، واضغط على أي فرع لتحليله.</p>';
+  return h;
+}
+
+function btRender(){
+  const body = $('btBody'); if(!body) return;
+  const tabs = $('btTabs'); const has = bt.meta && Object.keys(bt.branches).length;
+  if(tabs) tabs.style.display = has ? '' : 'none';
+  const bar = $('btSettings'); if(bar) bar.style.display = has ? '' : 'none';
+  if(!has){
+    body.innerHTML = '<div class="tgt-warn">ارفع ملف الإكسيل: التاب الأول مبيعات كل الفروع (وآخر عمود فيه اسم الفرع)، والتاني اختصارات الفروع وجنبها التارجت.</div>';
+    return;
+  }
+  const C = btC = btCompute();
+  const setv = (id, v)=>{ const el = $(id); if(el && document.activeElement !== el) el.value = v; };
+  setv('btToday', bt.today > 0 ? String(bt.today) : ''); setv('btMinRc', String(bt.minRc));
+  const ti = $('btToday'); if(ti) ti.placeholder = String((bt.meta && bt.meta.maxDay) || new Date().getDate());
+  const info = $('btInfo');
+  if(info) info.textContent = (bt.meta.fileName || '') + ' — ' + Object.keys(bt.branches).length + ' فرع، شهر ' + C.m + '/' + C.y + '، لحد يوم ' + C.today + ' من ' + C.dim;
+  document.querySelectorAll('#btTabs button[data-bt-tab]').forEach(b=> b.classList.toggle('on', b.getAttribute('data-bt-tab') === btTab));
+  let h = '';
+  if(btTab === 'overview') h = btRenderOverview(C);
+  else if(btTab === 'branches') h = btRenderBranches(C);
+  else if(btTab === 'tiers') h = btRenderTiers(C);
+  else if(btTab === 'offers') h = btRenderOffers(C);
+  else if(btTab === 'branch') h = btRenderBranch(C);
+  else if(btTab === 'sellers') h = btRenderSellers(C);
+  else if(btTab === 'heat') h = btRenderHeat(C);
+  else if(btTab === 'returns') h = btRenderReturns(C);
+  else if(btTab === 'map') h = btRenderMap(C);
+  body.innerHTML = h;
+  if(btTab === 'tiers') btAfterTiers(C);
+  if(btTab === 'overview') btAfterTiers(C, 'btOvTiers');
+}
+function btSetTab(t, bk){
+  btTab = t; if(bk) btSel = bk;
+  btRender();
+  const el = $('screen-btarget'); if(el && el.scrollIntoView) { try{ window.scrollTo({ top: 0, behavior: 'smooth' }); }catch(e){} }
+}
+function btExport(){
+  if(!btC) return;
+  const C = btC;
+  const wb = XLSX.utils.book_new();
+  const r1 = [['الفرع','الاسم','التارجت','المحقق','النسبة %','المفروض لحد اليوم ' + C.today,'السرعة %','التوقع آخر الشهر','التوقع %','المتبقي','مطلوب يوميًا','المتوسط اليومي','ATV','UPT','الفواتير','القطع','عدد البائعين','قيمة المرتجع','الحالة']];
+  C.rows.forEach(r=> r1.push([r.label, r.name, Math.round(r.target), Math.round(r.amt), r.pct == null ? '' : Math.round(r.pct * 10) / 10, Math.round(r.exp), r.pace == null ? '' : Math.round(r.pace * 10) / 10, Math.round(r.proj), r.projPct == null ? '' : Math.round(r.projPct * 10) / 10, Math.round(r.remaining), Math.round(r.reqDaily), Math.round(r.curDaily), r.atv == null ? '' : Math.round(r.atv), r.upt == null ? '' : Math.round(r.upt * 100) / 100, r.rc, r.qty, r.active.length, Math.round(-r.ret), btStatusTxt(r)]));
+  r1.push([]); r1.push(['إجمالي الشركة', '', Math.round(C.target), Math.round(C.amt), C.pct == null ? '' : Math.round(C.pct * 10) / 10, Math.round(C.exp), C.pace == null ? '' : Math.round(C.pace * 10) / 10, Math.round(C.proj), C.projPct == null ? '' : Math.round(C.projPct * 10) / 10, Math.round(C.remaining), Math.round(C.reqDaily), Math.round(C.amt / C.today), C.atv == null ? '' : Math.round(C.atv), C.upt == null ? '' : Math.round(C.upt * 100) / 100, C.rc, C.qty]);
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(r1), 'Branches');
+  {
+    const remD = Math.max(0, C.dim - C.today);
+    const th = ['الفرع', 'الاسم', 'التارجت', 'المحقق', 'النسبة %', 'أقرب نسبة %', 'الشريحة الحالية'];
+    TGT_TIERS.forEach(t=> th.push(t + '% (المطلوب)', t + '% (المتبقي)', t + '% (يومي مطلوب)'));
+    const td = [th];
+    C.tracked.slice().sort((p, q)=> (q.pct || 0) - (p.pct || 0)).forEach(r=>{
+      const x = tgtTierCalc(r.target, r.amt, remD);
+      const line = [r.label, r.name, Math.round(r.target), Math.round(r.amt), Math.round(x.pct * 10) / 10, x.near, x.reached == null ? 'أقل من 90%' : x.reached + '%'];
+      x.cells.forEach(c=> line.push(Math.round(c.need), c.ok ? 'تحقق' : Math.round(c.rem), c.ok ? '' : (c.daily == null ? '' : Math.round(c.daily))));
+      td.push(line);
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(td), 'Tiers');
+  }
+  if(bt.meta.hasOff && C.offCols.length){
+    const hd = ['الفرع', 'الاسم'];
+    C.offCols.forEach(c=>{ hd.push(c + ' (عدد)', c + ' (قيمة)', c + ' (% من مبيعات الفرع)'); });
+    hd.push('الإجمالي (عدد)', 'الإجمالي (قيمة)', 'الإجمالي (%)', 'مبيعات الفرع');
+    const od = [hd];
+    C.rows.slice().sort((p, q)=> String(p.label).localeCompare(String(q.label))).forEach(r=>{
+      const line = [r.label, r.name]; let tn = 0, ta = 0;
+      C.offCols.forEach(c=>{ const g = tgtOfferGet(r.off, c); tn += g.n; ta += g.a; line.push(g.n || '', g.n ? Math.round(g.a) : '', g.n && r.amt > 0 ? Math.round(g.a / r.amt * 1000) / 10 : ''); });
+      line.push(tn, Math.round(ta), r.amt > 0 ? Math.round(ta / r.amt * 1000) / 10 : '', Math.round(r.amt));
+      od.push(line);
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(od), 'Offers');
+  }
+  const r2 = [['#','البائع','الفرع','تارجت البائع','المحقق','النسبة %','ATV','UPT','الفواتير']];
+  C.sellersAll.slice().sort((p, q)=> (q.pct || 0) - (p.pct || 0)).forEach((s, i)=> r2.push([i + 1, s.name, (C.rows.find(x=> x.bk === s.bk) || {}).label || s.branchName, Math.round(s.target), Math.round(s.amt), s.pct == null ? '' : Math.round(s.pct * 10) / 10, s.atv == null ? '' : Math.round(s.atv), s.upt == null ? '' : Math.round(s.upt * 100) / 100, s.rc]));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(r2), 'Sellers');
+  const r3 = [['الفرع'].concat(Array.from({ length: C.today }, (_, i)=> 'يوم ' + (i + 1)))];
+  C.rows.forEach(r=> r3.push([r.label].concat(Array.from({ length: C.today }, (_, i)=> Math.round(r.daily[i + 1] || 0)))));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(r3), 'Daily');
+  const r4 = [['البائع','فرعه الأساسي','ظهر في فرع','المبلغ','الفواتير']];
+  C.cross.forEach(c=> r4.push([c.name, c.homeLabel || '', (C.rows.find(x=> x.bk === c.bk) || {}).label || c.branchName, Math.round(c.amt), c.rc]));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(r4), 'Returns');
+  XLSX.writeFile(wb, 'BRANCHES_TARGET_' + C.y + '-' + String(C.m).padStart(2, '0') + '_day' + C.today + '.xlsx');
+}
+async function btExportPdf(){
+  if(!bt.meta || !Object.keys(bt.branches).length){ showToast('مفيش بيانات تتحول PDF.'); return; }
+  const prevTab = btTab;
+  const C0 = btCompute();
+  const fname = 'BRANCHES_TARGET_' + C0.y + '-' + String(C0.m).padStart(2, '0') + '_day' + C0.today + '.pdf';
+  try{
+    await tgtPdfRun(async ()=>{
+      const C = btC = btCompute();
+      const secs = [['📊 نظرة عامة', btRenderOverview], ['🏢 الفروع', btRenderBranches], ['🎯 شرائح التحقيق', btRenderTiers], ['🎁 تحليل الأوفرات', btRenderOffers], ['🏆 أعلى 10 بائعين', btRenderSellers], ['🔥 خريطة حرارية', btRenderHeat], ['↩️ المرتجعات', btRenderReturns]];
+      $('btBody').innerHTML = secs.map(x=> '<div class="tgt-dash-title bt-sec">' + x[0] + '</div>' + x[1](C)).join('');
+      btAfterTiers(C, 'btOvTiers'); btAfterTiers(C, 'btTiersBox');
+      const info = ($('btInfo') && $('btInfo').textContent) || '';
+      return await tgtBuildHolder('screen-btarget', (clone)=>{
+        ['#btTabs', '#btSettings', '.upload-card'].forEach(sel=> clone.querySelectorAll(sel).forEach(el=> el.remove()));
+        const ph = clone.querySelector('.panel-head > div'); if(ph) ph.remove();
+        const intro = clone.querySelector('.panel-head + .tgt-note'); if(intro) intro.remove();
+        clone.querySelectorAll('[data-smode]').forEach(el=> el.remove());
+        const head = clone.querySelector('.panel-head');
+        if(head){ const d = document.createElement('div'); d.className = 'tgt-note'; d.style.cssText = 'font-size:14px;font-weight:800;color:#312e81;'; d.textContent = info; head.insertAdjacentElement('afterend', d); }
+      });
+    }, fname);
+  }finally{
+    btTab = prevTab; btRender();
+  }
+}
+async function btOpen(){
+  if(!btAllowed()){ showToast('الأيقونة دي متاحة لحسابات area managers و CST بس.'); return; }
+  switchScreen('screen-btarget');
+  btRaw = null;
+  setStatus($('btStatus'), 'جاري تحميل البيانات...', '');
+  await btLoad();
+  setStatus($('btStatus'), bt.meta ? ('الملف محفوظ ✓ (' + (bt.meta.fileName || '') + ')') : 'ارفع ملف التارجت.', bt.meta ? 'ok' : '');
+  btRender();
+}
+function btWire(){
+  const on = (id, ev, fn)=>{ const el = $(id); if(el) el.addEventListener(ev, fn); };
+  on('openBTBtn', 'click', btOpen);
+  on('btBackBtn', 'click', ()=> switchScreen('screen-dashboard'));
+  on('btExportBtn', 'click', btExport);
+  on('btPdfBtn', 'click', btExportPdf);
+  on('btFileInput', 'change', (e)=>{ const f = e.target.files && e.target.files[0]; if(f) btHandleFile(f); });
+  on('btClearBtn', 'click', ()=>{
+    if(!confirm('تمسح بيانات BRANCHES TARGET كلها (الشيت والتارجت وروابط الفروع)؟')) return;
+    bt = btNew(); btRaw = null; btPersist(); btRender(); setStatus($('btStatus'), 'تم مسح البيانات.', '');
+  });
+  on('btToday', 'change', ()=>{ const n = Math.round(tgtNum($('btToday').value)); bt.today = (n >= 1 && n <= 31) ? n : 0; btPersist(); btRender(); });
+  on('btMinRc', 'change', ()=>{ const n = Math.round(tgtNum($('btMinRc').value)); bt.minRc = n >= 0 ? Math.min(500, n) : 3; btPersist(); btRender(); });
+  on('btTabs', 'click', (e)=>{ const b = e.target.closest('button[data-bt-tab]'); if(b) btSetTab(b.getAttribute('data-bt-tab')); });
+  const body = $('btBody');
+  if(body){
+    body.addEventListener('click', (e)=>{
+      const sm = e.target.closest('button[data-smode]');
+      if(sm){ btSellerMode = sm.getAttribute('data-smode'); btRender(); return; }
+      const th = e.target.closest('th[data-sort]');
+      if(th){ const k = th.getAttribute('data-sort'); if(btSort.key === k) btSort.dir *= -1; else { btSort.key = k; btSort.dir = (k === 'label') ? 1 : -1; } btRender(); return; }
+      const el = e.target.closest('[data-bk]');
+      if(el && !e.target.closest('select') && !e.target.closest('input')) btSetTab('branch', el.getAttribute('data-bk'));
+    });
+    body.addEventListener('change', (e)=>{
+      const t = e.target;
+      if(t.id === 'btBranchSel'){ btSel = t.value; btRender(); return; }
+      if(t.hasAttribute && t.hasAttribute('data-map')){ bt.override[t.getAttribute('data-map')] = t.value; btPersist(); btRender(); return; }
+      if(t.hasAttribute && t.hasAttribute('data-tidx')){
+        const i = +t.getAttribute('data-tidx'), n = tgtNum(t.value);
+        if(bt.targets[i] && n > 0){ bt.targets[i].target = n; btPersist(); }
+        btRender();
+      }
+    });
+  }
+}
+btWire();
+
 async function tgtOpen(){
   if(!currentBranch){ showToast('اختار الفرع الأول.'); return; }
   switchScreen('screen-target');
@@ -7952,8 +9016,8 @@ async function tgtNativeCanvas(holder, W, H, bg, scale){
     return cv;
   }finally{ /* data URL — لا يحتاج تحرير */ }
 }
-async function tgtBuildHolder(){
-  const src = $('screen-target');
+async function tgtBuildHolder(srcId, mutate){
+  const src = $(srcId || 'screen-target');
   const tw = Array.from(src.querySelectorAll('.tgt-table')).map(t=> t.scrollWidth);
   const W = Math.max(1200, Math.ceil(Math.max(0, ...tw) + 60), src.clientWidth);
   const clone = src.cloneNode(true);
@@ -7962,7 +9026,7 @@ async function tgtBuildHolder(){
   clone.style.cssText += ';display:block;max-width:none;width:' + W + 'px;margin:0;box-sizing:border-box;direction:ltr;text-align:left;';
   clone.setAttribute('dir', 'ltr');
   const ltrCss = document.createElement('style');
-  ltrCss.textContent = '.tgt-table td.nm{text-align:left !important;} .tgt-table th,.tgt-kpi span{unicode-bidi:plaintext;} .tgt-note,.tgt-warn{text-align:left;unicode-bidi:plaintext;} .tgt-bar-row .val{text-align:right;} .tgt-bar-row .nm,.tgt-dn-leg span{text-align:left;} .tgt-card h4,.tgt-dash-title{text-align:left;}';
+  ltrCss.textContent = '.tgt-table td.nm{text-align:left !important;} .tgt-table th,.tgt-kpi span{unicode-bidi:plaintext;} .tgt-note,.tgt-warn{text-align:left;unicode-bidi:plaintext;} .tgt-bar-row .val{text-align:right;} .tgt-bar-row .nm,.tgt-dn-leg span{text-align:left;} .tgt-card h4,.tgt-dash-title{text-align:left;} .bt-brow .val,.bt-hb .val,.bt-wdrow .val{text-align:right;} .bt-hb .nm,.bt-brow .nm,.bt-mini span{text-align:left;unicode-bidi:plaintext;} .bt-ins li,.bt-kpi span,.bt-kpi em{unicode-bidi:plaintext;} .bt-ins li{text-align:left;}';
   clone.appendChild(ltrCss);
   const a = src.querySelectorAll('input,select,textarea'), b2 = clone.querySelectorAll('input,select,textarea');
   a.forEach((el, i)=>{
@@ -7971,6 +9035,7 @@ async function tgtBuildHolder(){
     else if(el.tagName === 'TEXTAREA'){ d.textContent = el.value; }
     else { d.value = el.value; d.setAttribute('value', el.value); }
   });
+  if(mutate) mutate(clone);
   const tb = clone.querySelector('#tgtTopBox'); if(tb){ tb.style.position = 'static'; }
   const tbw = clone.querySelector('#tgtWkTopBox'); if(tbw){ tbw.style.position = 'static'; }
   clone.querySelectorAll('.tgt-wrap').forEach(w=>{ w.style.overflow = 'visible'; });
@@ -7988,12 +9053,14 @@ async function tgtBuildHolder(){
 }
 async function tgtExportPdf(){
   if(!tgt.sellers.length && !tgt.meta){ showToast('مفيش بيانات تتحول PDF.'); return; }
+  await tgtPdfRun(async ()=>{ tgtRender(); return await tgtBuildHolder(); }, branchFname('Target') + '.pdf');
+}
+async function tgtPdfRun(buildFn, fileName){
   if(!window.jspdf || !window.jspdf.jsPDF){ alert('مكتبة PDF مش متاحة — تحقق من الإنترنت وأعد فتح الصفحة.'); return; }
   showLoading('جاري تجهيز PDF...');
   let hb = null;
   try{
-    tgtRender();
-    hb = await tgtBuildHolder();
+    hb = await buildFn();
     const { holder, W, H, bg } = hb;
     const scale = Math.max(1, Math.min(1.5, 14000 / Math.max(W, H)));   // 1.5x كفاية للوضوح وبيقلل الحجم كتير
     let canvas = null;
@@ -8033,7 +9100,7 @@ async function tgtExportPdf(){
       if(p > 0) pdf.addPage([wMm, pageH], orient);
       pdf.addImage(d, 'JPEG', 0, 0, wMm, parts[p].height / canvas.height * hMm, undefined, 'FAST');
     });
-    pdf.save(branchFname('Target') + '.pdf');
+    pdf.save(fileName);
   }catch(err){
     console.error('target pdf:', err);
     alert('تعذر إنشاء PDF: ' + ((err && err.message) || ''));
