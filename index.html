@@ -1455,6 +1455,9 @@ service cloud.firestore {
     .bt-hb .r[data-bk]{cursor:pointer;}
     .bt-hb .nm{white-space:normal;line-height:1.3;} .bt-hb .trk{height:14px;background:#f1f5f9;border-radius:7px;overflow:hidden;direction:ltr;} .bt-hb .trk i{display:block;height:100%;border-radius:7px;} .bt-hb .val{direction:ltr;font-size:11.5px;color:#334155;font-variant-numeric:tabular-nums;}
     .bt-sec{font-size:22px;border-bottom:2px solid #c7d2fe;padding-bottom:6px;margin-top:34px;color:#312e81;}
+    .bt-stack{display:flex;height:26px;border-radius:9px;overflow:hidden;direction:ltr;background:#f1f5f9;min-width:200px;}
+    .bt-stack i{display:flex;align-items:center;justify-content:center;color:#fff;font-size:11.5px;font-weight:900;font-style:normal;white-space:nowrap;overflow:hidden;}
+    .bt-gl{font-size:12.5px;margin:8px 0 4px;color:#334155;} .bt-gline{font-size:12.5px;margin:6px 0 4px;color:#334155;font-weight:700;line-height:1.9;}
     .bt-pick{margin:6px 0 12px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;font-weight:800;}
     .bt-pick select{padding:8px 10px;border-radius:10px;border:1px solid #cdd3db;font-family:inherit;font-weight:800;font-size:15px;max-width:100%;}
     .tgt-table th.bt-sort{cursor:pointer;} .tgt-table tr.bt-row{cursor:pointer;} .tgt-table tr.bt-row:hover td{background:#eef2ff;}
@@ -7113,7 +7116,9 @@ function tgtDetect(rows){
     rc:     find([/receipt\s*number/, /receipt/, /رقم الفاتورة|فاتورة/]),
     date:   find([/date/, /تاريخ/]),
     offer:  find([/order lines\/offer name/, /offer\s*name/, /offer/, /عرض|اوفر|أوفر/]),
-    disc:   find([/order lines\/discount/, /discount/, /خصم/])
+    disc:   find([/order lines\/discount/, /discount/, /خصم/]),
+    prod:   find([/order lines\/product\/name/, /product\/name/, /product\s*name/, /product/, /المنتج|الصنف/]),
+    gender: find([/order lines\/product\/gender/, /product\/gender/, /gender/, /الجنس/])
   }};
 }
 function tgtParseDate(v){
@@ -7924,7 +7929,7 @@ const BT_LS = 'branchesTarget_v1';
 const BT_COMPANY_ID = '__company__';
 const BT_ALIAS = { cst:'city stars', alx2:'alexandria 2' };
 const BT_DAYS_AR = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
-function btNew(){ return { branches:{}, targets:[], override:{}, today:0, minRc:3, colIdx:-1, meta:null, updatedAt:'' }; }
+function btNew(){ return { branches:{}, targets:[], override:{}, today:0, minRc:3, colIdx:-1, menPfx:'M', womPfx:'W', catGender:{}, meta:null, updatedAt:'' }; }
 let bt = btNew(), btRaw = null, btTab = 'overview', btSel = '', btSort = { key:'pct', dir:-1 }, btSaveTimer = null, btC = null, btSellerMode = 'pct';
 const btE = (s)=> escapeHtml(s == null ? '' : String(s));
 function btAKey(a){ return String(a == null ? '' : a).toLowerCase().replace(/[^a-z0-9\u0600-\u06FF]/g, ''); }
@@ -7942,6 +7947,9 @@ function btNormalize(p){
   if(p.today > 0) o.today = Math.min(31, Math.round(p.today));
   if(p.minRc >= 0) o.minRc = Math.min(500, Math.round(p.minRc));
   if(p.colIdx >= 0) o.colIdx = Math.round(p.colIdx);
+  if(typeof p.menPfx === 'string') o.menPfx = p.menPfx;
+  if(typeof p.womPfx === 'string') o.womPfx = p.womPfx;
+  o.catGender = (p.catGender && typeof p.catGender === 'object') ? p.catGender : {};
   o.meta = p.meta || null;
   o.updatedAt = typeof p.updatedAt === 'string' ? p.updatedAt : '';
   return o;
@@ -8111,6 +8119,35 @@ function btFindBranchCol(rows, hi){
   }
   return last;
 }
+
+/* ---------- الكاتيجري: أول 3 حروف من الكود اللي بين () في اسم المنتج ---------- */
+function btCategoryOf(v){
+  const t = String(v == null ? '' : v);
+  const scan = (re)=>{
+    let m;
+    while((m = re.exec(t))){
+      const c = m[1].trim();
+      if(/^[A-Za-z\u0600-\u06FF]/.test(c) && c.replace(/[^A-Za-z\u0600-\u06FF]/g, '').length >= 2) return c.slice(0, 3).toUpperCase();
+    }
+    return '';
+  };
+  return scan(/\(([^()]*)\)/g) || scan(/\[([^\[\]]*)\]/g);
+}
+function btPfxList(v){ return String(v == null ? '' : v).toUpperCase().split(/[,،\s]+/).filter(Boolean); }
+function btGenderLabel(v){
+  const t = String(v == null ? '' : v).toLowerCase().replace(/\s+/g, ' ').trim();
+  if(!t || /^(0|false|nan|null|undefined|-)$/.test(t)) return 'oth';
+  if(/wom(a|e)n|^wom|female|ladies|lady|نساء|حريمي|سيدات|حريم|بنات/.test(t)) return 'wom';
+  if(/^men|\bmen\b|^male|^man\b|رجال|رجالي|شباب/.test(t)) return 'men';
+  return 'oth';
+}
+function btGender(code){
+  if(bt.catGender && bt.catGender[code]) return bt.catGender[code];
+  let bm = 0, bw = 0;
+  btPfxList(bt.menPfx).forEach(p=>{ if(code.indexOf(p) === 0 && p.length > bm) bm = p.length; });
+  btPfxList(bt.womPfx).forEach(p=>{ if(code.indexOf(p) === 0 && p.length > bw) bw = p.length; });
+  return bm > bw ? 'men' : (bw > bm ? 'wom' : 'oth');
+}
 function btAggregate(rows, det, map, bc){
   const start = det.hi + 1;
   let maxYM = 0;
@@ -8123,6 +8160,9 @@ function btAggregate(rows, det, map, bc){
   }
   const branches = {}, rcSets = {}, recOff = {};
   const hasOff = map.offer >= 0 || map.disc >= 0;
+  const hasCat = map.prod >= 0;
+  const hasGen = map.gender >= 0;
+  const votes = {};
   let hasDates = false, used = 0, maxDay = 0;
   for(let i = start; i < rows.length; i++){
     const r = rows[i]; if(!r || !r.length) continue;
@@ -8151,6 +8191,18 @@ function btAggregate(rows, det, map, bc){
       if(day && !ro.day) ro.day = day;
       if(offer){ if(ro.of.indexOf(offer) < 0) ro.of.push(offer); }
       else if(disc > 0){ const lb = tgtDiscLabel(disc); if(ro.dc.indexOf(lb) < 0) ro.dc.push(lb); }
+    }
+    let gl = '';
+    if(hasGen){
+      gl = btGenderLabel(r[map.gender]);
+      const gdd = b.gd || (b.gd = {}), gdv = gdd[day] || (gdd[day] = {}), gv = gdv[gl] || (gdv[gl] = [0, 0]);
+      gv[0] += amt; gv[1] += qty;
+    }
+    if(hasCat){
+      const ck = btCategoryOf(r[map.prod]) || '—';
+      const cdd = b.cd || (b.cd = {}), cdv = cdd[day] || (cdd[day] = {}), cv = cdv[ck] || (cdv[ck] = [0, 0]);
+      cv[0] += amt; cv[1] += qty;
+      if(hasGen && ck !== '—'){ const vt = votes[ck] || (votes[ck] = { men:0, wom:0, oth:0 }); vt[gl] += Math.abs(amt) + 0.01; }
     }
     const dv = b.d[day] || (b.d[day] = [0, 0, 0, 0, 0]);
     dv[0] += amt; dv[1] += qty;
@@ -8182,13 +8234,17 @@ function btAggregate(rows, det, map, bc){
   Object.keys(branches).forEach(bk=>{
     const b = branches[bk];
     if(b.od) Object.keys(b.od).forEach(d=> Object.keys(b.od[d]).forEach(l=>{ b.od[d][l][1] = Math.round(b.od[d][l][1] * 100) / 100; }));
+    if(b.cd) Object.keys(b.cd).forEach(d=> Object.keys(b.cd[d]).forEach(c=>{ const v = b.cd[d][c]; v[0] = Math.round(v[0]); v[1] = Math.round(v[1]); }));
+    if(b.gd) Object.keys(b.gd).forEach(d=> Object.keys(b.gd[d]).forEach(g=>{ const v = b.gd[d][g]; v[0] = Math.round(v[0]); v[1] = Math.round(v[1]); }));
     Object.keys(b.d).forEach(d=>{ const v = b.d[d]; v[0] = Math.round(v[0] * 100) / 100; v[1] = Math.round(v[1] * 100) / 100; v[3] = Math.round(v[3] * 100) / 100; });
     Object.keys(b.s).forEach(sk=>{
       const s = b.s[sk]; s.ret = Math.round(s.ret * 100) / 100;
       Object.keys(s.d).forEach(d=>{ const v = s.d[d]; v[0] = Math.round(v[0] * 100) / 100; v[1] = Math.round(v[1] * 100) / 100; });
     });
   });
-  return { branches, hasDates, ym:maxYM, maxDay, used, hasOff };
+  const catGender = {};
+  Object.keys(votes).forEach(c=>{ const v = votes[c]; catGender[c] = (v.wom >= v.men && v.wom >= v.oth) ? 'wom' : (v.men >= v.oth ? 'men' : 'oth'); });
+  return { branches, hasDates, ym:maxYM, maxDay, used, hasOff, hasCat, hasGen, catGender };
 }
 function btBuildFromRaw(colIdx){
   const det = tgtDetect(btRaw.rows1);
@@ -8196,10 +8252,11 @@ function btBuildFromRaw(colIdx){
   if(bc < 0) return { err:'مش لاقي عمود الفرع في التاب الأول.' };
   const res = btAggregate(btRaw.rows1, det, det.map, bc);
   bt.branches = res.branches;
+  bt.catGender = res.catGender || {};
   bt.colIdx = colIdx >= 0 ? colIdx : -1;
   bt.meta = { fileName:btRaw.fileName, uploadedAt:new Date().toISOString(), ym:res.ym, maxDay:res.maxDay, hasDates:res.hasDates, rows:res.used, branchCol:bc,
-    hasOff: res.hasOff,
-    cols:{ seller:det.headers[det.map.seller] || '', amt:det.headers[det.map.amt] || '', qty:det.headers[det.map.qty] || '', rc:det.headers[det.map.rc] || '', date:det.headers[det.map.date] || '' } };
+    hasOff: res.hasOff, hasCat: res.hasCat, hasGen: res.hasGen,
+    cols:{ gender:det.headers[det.map.gender] || '', prod:det.headers[det.map.prod] || '', seller:det.headers[det.map.seller] || '', amt:det.headers[det.map.amt] || '', qty:det.headers[det.map.qty] || '', rc:det.headers[det.map.rc] || '', date:det.headers[det.map.date] || '' } };
   return { det, res, bc };
 }
 async function btHandleFile(file){
@@ -8278,6 +8335,22 @@ function btCompute(){
       if(!inRange(+k)) return;
       Object.keys(b.od[k]).forEach(l=>{ const v = b.od[k][l], t = off[l] || (off[l] = [0, 0]); t[0] += v[0]; t[1] += v[1]; offN += v[0]; offA += v[1]; });
     });
+    const cat = {}, gen = { men:[0, 0], wom:[0, 0], oth:[0, 0] };
+    const useGd = !!(bt.meta && bt.meta.hasGen && b.gd);
+    let catA = 0, catQ = 0, uncA = 0;
+    if(b.cd) Object.keys(b.cd).forEach(k=>{
+      if(!inRange(+k)) return;
+      Object.keys(b.cd[k]).forEach(code=>{
+        const v = b.cd[k][code];
+        if(code === '—'){ uncA += v[0]; return; }
+        const t = cat[code] || (cat[code] = [0, 0]); t[0] += v[0]; t[1] += v[1]; catA += v[0]; catQ += v[1];
+        if(!useGd){ const g = gen[btGender(code)]; g[0] += v[0]; g[1] += v[1]; }
+      });
+    });
+    if(useGd) Object.keys(b.gd).forEach(k=>{
+      if(!inRange(+k)) return;
+      Object.keys(b.gd[k]).forEach(g=>{ if(gen[g]){ gen[g][0] += b.gd[k][g][0]; gen[g][1] += b.gd[k][g][1]; } });
+    });
     const sellers = [];
     Object.keys(b.s).forEach(sk=>{
       const s = b.s[sk]; let a = 0, q = 0, r = 0;
@@ -8321,7 +8394,7 @@ function btCompute(){
     const actAmt = active.reduce((t, s)=> t + s.amt, 0);
     const r = { bk, name:b.name, target, tracked: !!tg, abbr: tg ? tg.abbr : '', label: tg ? tg.abbr.toUpperCase() : b.name,
       amt, qty, rc, ret, retN, gross: amt - ret, daily, dRc, exp, pct, pace, proj, projPct, remaining, reqDaily, curDaily, dl,
-      atv: rc > 0 ? amt / rc : null, upt: rc > 0 ? qty / rc : null, status, sellers, active, sellerTarget:sT, off, offN, offA, offPct: amt > 0 ? offA / amt * 100 : null,
+      atv: rc > 0 ? amt / rc : null, upt: rc > 0 ? qty / rc : null, status, sellers, active, sellerTarget:sT, cat, catA, catQ, uncA, gen, off, offN, offA, offPct: amt > 0 ? offA / amt * 100 : null,
       wd, wdN, bestDay, worstDay, weak, topShare: actAmt > 0 ? topS / actAmt * 100 : null,
       perSeller: active.length ? actAmt / active.length : null, retRate: (amt - ret) > 0 ? -ret / (amt - ret) * 100 : null };
     rows.push(r);
@@ -8331,6 +8404,25 @@ function btCompute(){
   const offTot = {}; let offSales = 0;
   rows.forEach(r=>{ offSales += r.amt; Object.keys(r.off).forEach(l=>{ const t = offTot[l] || (offTot[l] = { n:0, a:0 }); t.n += r.off[l][0]; t.a += r.off[l][1]; }); });
   const offCols = Object.keys(offTot).sort((a, b)=> offTot[b].n - offTot[a].n || a.localeCompare(b));
+  const catTot = {}; let catTotal = 0, uncTot = 0;
+  const genTot = { men:[0, 0], wom:[0, 0], oth:[0, 0] };
+  rows.forEach(r=>{
+    uncTot += r.uncA;
+    Object.keys(r.cat).forEach(code=>{
+      const t = catTot[code] || (catTot[code] = { a:0, q:0, nb:0, bestBk:'', bestA:-Infinity });
+      t.a += r.cat[code][0]; t.q += r.cat[code][1]; catTotal += r.cat[code][0];
+      if(r.cat[code][0] > 0) t.nb += 1;
+      if(r.cat[code][0] > t.bestA){ t.bestA = r.cat[code][0]; t.bestBk = r.bk; }
+    });
+    ['men', 'wom', 'oth'].forEach(g=>{ genTot[g][0] += r.gen[g][0]; genTot[g][1] += r.gen[g][1]; });
+  });
+  const catList = Object.keys(catTot).map(code=> ({ code, a:catTot[code].a, q:catTot[code].q, nb:catTot[code].nb, bestBk:catTot[code].bestBk, bestA:catTot[code].bestA, gender:btGender(code), share: catTotal > 0 ? catTot[code].a / catTotal * 100 : 0 })).sort((p, q)=> q.a - p.a);
+  const catRank = {};
+  catList.forEach(c=>{
+    const arr = rows.filter(r=> r.cat[c.code] && r.cat[c.code][0] > 0).sort((p, q)=> q.cat[c.code][0] - p.cat[c.code][0]);
+    catRank[c.code] = { n:arr.length, pos:{} };
+    arr.forEach((r, i)=>{ catRank[c.code].pos[r.bk] = i + 1; });
+  });
   const tracked = rows.filter(r=> r.tracked);
   const sum = (arr, f)=> arr.reduce((t, x)=> t + f(x), 0);
   const tTot = sum(tracked, r=> r.target), aTot = sum(tracked, r=> r.amt), qTot = sum(tracked, r=> r.qty), rcTot = sum(tracked, r=> r.rc);
@@ -8340,7 +8432,7 @@ function btCompute(){
   for(let d = 1; d <= today; d++){ const w = new Date(y, m - 1, d).getDay(); wdC[w] += cumDaily[d]; wdCn[w] += 1; }
   const expT = tTot * expPct;
   const remT = Math.max(0, tTot - aTot);
-  const C = { offTot, offCols, offSales, y, m, dim, today, expPct, rows, tracked, untracked: rows.filter(r=> !r.tracked), sellersAll, cross, map, home, cumDaily, wdC, wdCn,
+  const C = { catTot, catList, catTotal, catRank, genTot, uncTot, offTot, offCols, offSales, y, m, dim, today, expPct, rows, tracked, untracked: rows.filter(r=> !r.tracked), sellersAll, cross, map, home, cumDaily, wdC, wdCn,
     target:tTot, amt:aTot, qty:qTot, rc:rcTot, exp:expT, pct: tTot > 0 ? aTot / tTot * 100 : null, pace: expT > 0 ? aTot / expT * 100 : null,
     proj: aTot / today * dim, projPct: tTot > 0 ? (aTot / today * dim) / tTot * 100 : null, remaining: remT, reqDaily: dim - today > 0 ? remT / (dim - today) : remT,
     atv: rcTot > 0 ? aTot / rcTot : null, upt: rcTot > 0 ? qTot / rcTot : null,
@@ -8387,6 +8479,29 @@ function btInsights(r, C){
   if(r.active.length){
     add('n', 'عدد البائعين المحسوبين ' + r.active.length + '، متوسط مبيعات البائع ' + tgtF(r.perSeller) + (C.perSeller > 0 ? ' (متوسط الشركة ' + tgtF(C.perSeller) + ')' : '') + '، وتارجت كل بائع ' + tgtF(r.sellerTarget) + '.');
     if(r.topShare != null && r.topShare >= 40 && r.active.length > 2) add('y', '⚠️ اعتماد عالي على بائع واحد: أعلى بائع بيجيب ' + tgtF(r.topShare, 0) + '% من مبيعات السيلز.');
+  }
+  if(bt.meta.hasCat && Object.keys(r.cat).length){
+    const L = Object.keys(r.cat).map(code=> ({ code, a:r.cat[code][0] })).sort((p, q)=> q.a - p.a);
+    const hi = L[0], lo = L[L.length - 1];
+    const shr = (v)=> r.catA > 0 ? v / r.catA * 100 : 0;
+    add('n', '🏷️ أكتر كاتيجري بيتباع في الفرع هو ' + hi.code + ' (مبيعاته ' + tgtF(hi.a) + ' يعني ' + tgtF(shr(hi.a), 1) + '% من مبيعات الفرع)');
+    let loTxt;
+    if(lo.a < 0) loTxt = '(صافي مبيعاته ' + tgtF(lo.a) + '، يعني المرتجعات فيه أكبر من المبيعات)';
+    else if(shr(lo.a) < 0.1) loTxt = '(مبيعاته ' + tgtF(lo.a) + '، أقل من 0.1% من مبيعات الفرع)';
+    else loTxt = '(مبيعاته ' + tgtF(lo.a) + ' يعني ' + tgtF(shr(lo.a), 1) + '% من مبيعات الفرع)';
+    add('n', '🔻 أقل كاتيجري بيتباع في الفرع هو ' + lo.code + ' ' + loTxt);
+    const gt = r.gen.men[0] + r.gen.wom[0] + r.gen.oth[0], cg = C.genTot.men[0] + C.genTot.wom[0] + C.genTot.oth[0];
+    if(gt > 0 && cg > 0){
+      const pm = r.gen.men[0] / gt * 100, pw = r.gen.wom[0] / gt * 100, cm = C.genTot.men[0] / cg * 100, cw = C.genTot.wom[0] / cg * 100;
+      const dm = pm - cm, dw = pw - cw;
+      add('n', '👔 الرجالي (MEN) ' + tgtF(pm, 1) + '% من مبيعات الفرع');
+      add('n', '👗 الحريمي (WOM) ' + tgtF(pw, 1) + '% من مبيعات الفرع');
+      if(Math.abs(dm) < 1 && Math.abs(dw) < 1) add('n', 'توزيع الفرع قريب جدًا من متوسط الشركة (الرجالي ' + tgtF(cm, 1) + '% والحريمي ' + tgtF(cw, 1) + '%)');
+      else {
+        add('n', 'الرجالي ' + (dm >= 0 ? 'أعلى' : 'أقل') + ' من متوسط الشركة (' + tgtF(cm, 1) + '%) بـ ' + tgtF(Math.abs(dm), 1) + ' نقطة');
+        add('n', 'الحريمي ' + (dw >= 0 ? 'أعلى' : 'أقل') + ' من متوسط الشركة (' + tgtF(cw, 1) + '%) بـ ' + tgtF(Math.abs(dw), 1) + ' نقطة');
+      }
+    }
   }
   if(r.retRate != null && r.ret < 0){
     add(r.retRate >= 8 ? 'r' : 'n', 'المرتجعات ' + tgtF(-r.ret) + ' (' + tgtF(r.retRate, 1) + '% من المبيعات قبل المرتجع) على ' + tgtF(r.retN) + ' سطر.');
@@ -8492,8 +8607,8 @@ function btRenderOverview(C){
   const best = C.tracked.slice().sort((p, q)=> (q.pace || 0) - (p.pace || 0)).slice(0, 3), worst = C.tracked.slice().sort((p, q)=> (p.pace || 0) - (q.pace || 0)).slice(0, 3);
   const mini = (arr)=> arr.map(r=> '<div class="bt-mini" data-bk="' + escapeAttr(r.bk) + '"><b>' + btE(r.label) + '</b><span>' + btE(r.name) + '</span>' + pill(r.pace, 'd') + '<em>' + tgtF(r.amt) + ' / ' + tgtF(r.exp) + '</em></div>').join('');
   h += '<div class="tgt-grid" style="margin-top:12px;"><div class="tgt-card"><h4>🚀 أفضل 3 فروع في السرعة (المحقق ÷ المفروض)</h4>' + mini(best) + '</div><div class="tgt-card"><h4>⚠️ أضعف 3 فروع في السرعة</h4>' + mini(worst) + '</div></div>';
-  h += '<div class="tgt-dash-title">🎯 نسب التحقيق لكل فرع من تارجته — شرائح التحقيق</div>' + btTierCounts(C) + '<div id="btOvTiers"></div>';
   h += '<div class="tgt-dash-title">🎁 تحليل الأوفرات لإجمالي كل فرع <small style="font-size:12px;color:#6b7280;">(التفاصيل الكاملة في تاب "تحليل الأوفرات")</small></div>' + btOffersSummary(C);
+  h += '<div class="tgt-dash-title">🏷️ الكاتيجري — أعلى وأقل مبيعًا + نسبة MEN / WOM <small style="font-size:12px;color:#6b7280;">(على مستوى الشركة)</small></div>' + btRenderCatCompany(C);
   h += '<div class="tgt-grid" style="margin-top:12px;"><div class="tgt-card"><h4>🎯 جودة البيع للفروع: UPT مقابل ATV</h4>' + btBubble(C) + '</div><div class="tgt-card"><h4>📅 أقوى أيام الأسبوع على مستوى الشركة</h4>' + btWeekdayBars(C.wdC, C.wdCn) + '</div></div>';
   return h;
 }
@@ -8538,6 +8653,7 @@ function btRenderBranch(C){
     btKpi('الفواتير', tgtF(r.rc), tgtF(r.qty) + ' قطعة') +
     btKpi('الحالة', btStatusTxt(r), '') + '</div>';
   h += '<div class="tgt-dash-title">🧠 تحليل الأداء</div><div class="tgt-card wide"><ul class="bt-ins">' + btInsights(r, C).map(x=> '<li class="' + x.c + '">' + btE(x.t) + '</li>').join('') + '</ul></div>';
+  h += '<div class="tgt-dash-title">🏷️ الكاتيجري و MEN / WOM في الفرع</div>' + btRenderCatBranch(r, C);
   h += '<div class="tgt-grid" style="margin-top:12px;"><div class="tgt-card wide"><h4>📊 المبيعات يوم بيوم مقابل المعدل اليومي للتارجت</h4>' + btDailyBars(r, C) + '<div class="tgt-legend"><span><i style="background:#16a34a"></i>فوق المعدل</span><span><i style="background:#f59e0b"></i>60%+ من المعدل</span><span><i style="background:#ef4444"></i>أقل</span></div></div>' +
     '<div class="tgt-card"><h4>📅 أيام الأسبوع في الفرع</h4>' + btWeekdayBars(r.wd, r.wdN) + '</div></div>';
   h += '<div class="tgt-dash-title">👥 بائعين الفرع <small style="font-size:12px;color:#6b7280;">تارجت البائع = تارجت الفرع ÷ عدد البائعين المحسوبين (' + r.active.length + ')</small></div>';
@@ -8673,17 +8789,14 @@ function btOffersSummary(C){
   C.offCols.forEach(c=>{ offVal += C.offTot[c].a; offInv += C.offTot[c].n; });
   const offPct = C.offSales > 0 ? offVal / C.offSales * 100 : null;
   const topOffer = C.offCols.slice().sort((a, b)=> C.offTot[b].a - C.offTot[a].a)[0];
-  const byPct = C.rows.filter(r=> r.offPct != null && r.offN > 0).sort((p, q)=> q.offPct - p.offPct);
   return '<div class="bt-kpis">' +
     btKpi('إجمالي قيمة الأوفرات', tgtF(offVal), 'كل الفروع') +
     btKpi('فواتير الأوفرات', tgtF(offInv), '') +
     btKpi('نسبتها من المبيعات', offPct == null ? '—' : tgtF(offPct, 1) + '%', 'من ' + tgtF(C.offSales)) +
-    btKpi('أقوى أوفر (بالقيمة)', btE(topOffer), tgtF(C.offTot[topOffer].a) + ' / ' + tgtF(C.offTot[topOffer].n) + ' فاتورة') +
-    btKpi('أكتر فرع اعتمادًا', byPct[0] ? btE(byPct[0].label) : '—', byPct[0] ? tgtF(byPct[0].offPct, 1) + '% من مبيعاته' : '') + '</div>' +
+    btKpi('أقوى أوفر (بالقيمة)', btE(topOffer), tgtF(C.offTot[topOffer].a) + ' / ' + tgtF(C.offTot[topOffer].n) + ' فاتورة') + '</div>' +
     '<div class="tgt-grid"><div class="tgt-card"><h4>🎁 ترتيب الأوفرات بالقيمة (كل الفروع)</h4>' +
     btHBars(C.offCols.slice().sort((a, b)=> C.offTot[b].a - C.offTot[a].a).slice(0, 10).map(c=> ({ n:c, v:C.offTot[c].a, a:C.offTot[c].a, c:C.offTot[c].n })), x=> tgtF(x.a) + ' • ' + tgtF(x.c) + ' فاتورة', '#4f46e5') + '</div>' +
-    '<div class="tgt-card"><h4>🏢 اعتماد كل فرع على الأوفرات (% من مبيعاته)</h4>' +
-    btHBars(byPct.slice(0, 10).map(r=> ({ n:r.label, bk:r.bk, v:r.offPct, p:r.offPct, a:r.offA })), x=> tgtF(x.p, 1) + '% • ' + tgtF(x.a), '#0ea5e9') + '</div></div>';
+    '</div>';
 }
 function btRenderOffers(C){
   if(!bt.meta.hasOff) return '<div class="tgt-warn">الشيت مفيهوش عمود Order Lines/Offer Name أو Order Lines/Discount (%) — أو اترفع قبل التحديث ده، ارفعه تاني.</div>';
@@ -8693,18 +8806,16 @@ function btRenderOffers(C){
   C.offCols.forEach(c=>{ offVal += C.offTot[c].a; offInv += C.offTot[c].n; });
   const offPct = C.offSales > 0 ? offVal / C.offSales * 100 : null;
   const topOffer = C.offCols.slice().sort((a, b)=> C.offTot[b].a - C.offTot[a].a)[0];
-  const byPct = C.rows.filter(r=> r.offPct != null && r.offN > 0).sort((p, q)=> q.offPct - p.offPct);
   let h = '<div class="bt-kpis">' +
     btKpi('إجمالي قيمة الأوفرات', tgtF(offVal), 'كل الفروع') +
     btKpi('فواتير الأوفرات', tgtF(offInv), '') +
     btKpi('نسبتها من المبيعات', offPct == null ? '—' : tgtF(offPct, 1) + '%', 'من ' + tgtF(C.offSales)) +
     btKpi('عدد الأوفرات', C.offCols.length, '') +
     btKpi('أقوى أوفر (بالقيمة)', btE(topOffer), tgtF(C.offTot[topOffer].a) + ' / ' + tgtF(C.offTot[topOffer].n) + ' فاتورة') +
-    btKpi('أكتر فرع اعتمادًا', byPct[0] ? btE(byPct[0].label) : '—', byPct[0] ? tgtF(byPct[0].offPct, 1) + '% من مبيعاته' : '') + '</div>';
+    '</div>';
   h += '<div class="tgt-grid"><div class="tgt-card"><h4>🎁 ترتيب الأوفرات بالقيمة (كل الفروع)</h4>' +
     btHBars(C.offCols.slice().sort((a, b)=> C.offTot[b].a - C.offTot[a].a).slice(0, 12).map(c=> ({ n:c, v:C.offTot[c].a, a:C.offTot[c].a, c:C.offTot[c].n })), x=> tgtF(x.a) + ' • ' + tgtF(x.c) + ' فاتورة', '#4f46e5') + '</div>' +
-    '<div class="tgt-card"><h4>🏢 اعتماد كل فرع على الأوفرات (% من مبيعاته)</h4>' +
-    btHBars(byPct.slice(0, 12).map(r=> ({ n:r.label, bk:r.bk, v:r.offPct, p:r.offPct, a:r.offA })), x=> tgtF(x.p, 1) + '% • ' + tgtF(x.a), '#0ea5e9') + '</div></div>';
+    '</div>';
   h += '<div class="tgt-dash-title">🎁 تقرير الأوفرات لكل فرع (إجمالي الفرع)</div>';
   const colMax = {};
   C.offCols.forEach(c=>{ colMax[c] = Math.max(1, ...rows.map(r=> tgtOfferGet(r.off, c).n)); });
@@ -8724,6 +8835,97 @@ function btRenderOffers(C){
   return h;
 }
 
+
+const BT_GEN = { men:{ n:'MEN', c:'#2563eb' }, wom:{ n:'WOM', c:'#db2777' }, oth:{ n:'أخرى', c:'#94a3b8' } };
+function btGenBar(g, label){
+  const tot = g.men[0] + g.wom[0] + g.oth[0];
+  if(!(tot > 0)) return '';
+  const seg = (k)=>{ const p = Math.max(0, g[k][0]) / tot * 100; return p > 0 ? '<i style="width:' + p + '%;background:' + BT_GEN[k].c + '" title="' + BT_GEN[k].n + ' ' + tgtF(g[k][0]) + '">' + (p >= 9 ? BT_GEN[k].n + ' ' + tgtF(p, 0) + '%' : '') + '</i>' : ''; };
+  return (label ? '<div class="bt-gl">' + label + '</div>' : '') + '<div class="bt-stack">' + seg('men') + seg('wom') + seg('oth') + '</div>';
+}
+function btGenLine(g){
+  const tot = g.men[0] + g.wom[0] + g.oth[0];
+  return ['men', 'wom', 'oth'].map(k=> '<span style="color:' + BT_GEN[k].c + ';font-weight:900;">' + BT_GEN[k].n + '</span> ' + tgtF(g[k][0]) + ' (' + (tot > 0 ? tgtF(g[k][0] / tot * 100, 1) : '0') + '%) • ' + tgtF(g[k][1]) + ' قطعة').join(' &nbsp;|&nbsp; ');
+}
+function btGenSettings(){
+  if(bt.meta && bt.meta.hasGen) return '<p class="tgt-note" style="margin:4px 0 10px;">نوع كل كاتيجري (MEN / WOM / أخرى) متاخد من عمود <b>Order Lines/Product/Gender</b> في الشيت.</p>';
+  return '<div class="bt-pick" style="font-size:13px;">تصنيف الكاتيجري: <label>MEN بتبدأ بـ <input id="btMenPfx" class="tgt-in wide" style="width:90px;" value="' + btE(bt.menPfx) + '"></label><label>WOM بتبدأ بـ <input id="btWomPfx" class="tgt-in wide" style="width:90px;" value="' + btE(bt.womPfx) + '"></label><span style="color:#6b7280;font-weight:600;">(الشيت مفيهوش عمود Order Lines/Product/Gender فبيتصنف من أول حرف في كود الكاتيجري — افصل بفاصلة — الباقي "أخرى")</span></div>';
+}
+function btCatNoData(){
+  return '<div class="tgt-warn">الشيت مفيهوش عمود Order Lines/Product/Name — أو اترفع قبل التحديث ده، ارفعه تاني عشان تحليل الكاتيجري يظهر.</div>';
+}
+function btCatBars(list, color, C){
+  return btHBars(list.map(c=> ({ n:c.code, v:Math.max(0.5, Math.abs(c.a)), a:c.a, q:c.q, p:c.share, col: c.a < 0 ? '#ef4444' : color })), x=> tgtF(x.a) + ' • ' + tgtF(x.p, 1) + '% • ' + tgtF(x.q) + ' قطعة', color);
+}
+function btRenderCatCompany(C){
+  if(!bt.meta.hasCat) return btCatNoData();
+  if(!C.catList.length) return '<div class="tgt-note">مفيش كاتيجري اتقرت من أسماء المنتجات (لازم الكود يكون بين قوسين، مثلًا (MSWB)).</div>';
+  const L = C.catList, top = L[0], low = L[L.length - 1];
+  const top3 = L.slice(0, 3).reduce((t, c)=> t + c.share, 0);
+  const gt = C.genTot.men[0] + C.genTot.wom[0] + C.genTot.oth[0];
+  let h = btGenSettings();
+  h += '<div class="bt-kpis">' +
+    btKpi('عدد الكاتيجري', L.length, 'من أول 3 حروف') +
+    btKpi('🥇 أعلى كاتيجري', btE(top.code), tgtF(top.a) + ' • ' + tgtF(top.share, 1) + '%') +
+    btKpi('🔻 أقل كاتيجري', btE(low.code), tgtF(low.a) + ' • ' + tgtF(low.share, 1) + '%') +
+    btKpi('أعلى 3 كاتيجري', tgtF(top3, 1) + '%', 'من مبيعات الكاتيجري') +
+    btKpi('MEN', gt > 0 ? tgtF(C.genTot.men[0] / gt * 100, 1) + '%' : '—', tgtF(C.genTot.men[0])) +
+    btKpi('WOM', gt > 0 ? tgtF(C.genTot.wom[0] / gt * 100, 1) + '%' : '—', tgtF(C.genTot.wom[0])) +
+    btKpi('أخرى', gt > 0 ? tgtF(C.genTot.oth[0] / gt * 100, 1) + '%' : '—', tgtF(C.genTot.oth[0])) + '</div>';
+  h += '<div class="tgt-grid"><div class="tgt-card"><h4>🔝 أعلى 10 كاتيجري مبيعًا (الشركة)</h4>' + btCatBars(L.slice(0, 10), '#16a34a', C) + '</div>' +
+    '<div class="tgt-card"><h4>🔻 أقل 10 كاتيجري مبيعًا (الشركة)</h4>' + btCatBars(L.slice(-10).reverse(), '#f59e0b', C) + '</div></div>';
+  h += '<div class="tgt-card wide" style="margin-top:12px;"><h4>👔👗 نسبة مبيعات MEN و WOM — الشركة</h4>' + btGenBar(C.genTot, '') + '<div class="bt-gline">' + btGenLine(C.genTot) + '</div></div>';
+  // MEN/WOM لكل فرع
+  const rows = C.rows.slice().sort((p, q)=> String(p.label).localeCompare(String(q.label)));
+  h += '<div class="tgt-dash-title" style="font-size:15px;">👔👗 MEN / WOM لكل فرع</div><div class="tgt-wrap"><table class="tgt-table" style="min-width:760px;"><thead><tr><th>الفرع</th><th style="min-width:260px;">التوزيع</th><th>MEN %</th><th>WOM %</th><th>أخرى %</th><th>أعلى كاتيجري</th><th>أقل كاتيجري</th></tr></thead><tbody>';
+  rows.forEach(r=>{
+    const t = r.gen.men[0] + r.gen.wom[0] + r.gen.oth[0];
+    const cl = Object.keys(r.cat).map(code=> ({ code, a:r.cat[code][0] })).sort((p, q)=> q.a - p.a);
+    h += '<tr class="bt-row" data-bk="' + escapeAttr(r.bk) + '"><td class="nm"><b>' + btE(r.label) + '</b></td><td>' + btGenBar(r.gen, '') + '</td>' +
+      ['men', 'wom', 'oth'].map(k=> '<td class="num">' + (t > 0 ? tgtF(r.gen[k][0] / t * 100, 1) + '%' : '—') + '</td>').join('') +
+      '<td>' + (cl[0] ? btE(cl[0].code) + ' <span style="color:#6b7280;">' + tgtF(cl[0].a) + '</span>' : '—') + '</td><td>' + (cl.length ? btE(cl[cl.length - 1].code) + ' <span style="color:#6b7280;">' + tgtF(cl[cl.length - 1].a) + '</span>' : '—') + '</td></tr>';
+  });
+  h += '</tbody></table></div>';
+  // جدول كل الكاتيجري
+  let cum = 0;
+  h += '<div class="tgt-dash-title" style="font-size:15px;">📋 كل الكاتيجري (من الأعلى للأقل)</div><div class="tgt-wrap"><table class="tgt-table" style="min-width:820px;"><thead><tr><th>#</th><th>الكاتيجري</th><th>النوع</th><th>المبيعات</th><th>القطع</th><th>النسبة %</th><th>التراكمي %</th><th>عدد الفروع اللي بتبيعه</th><th>أقوى فرع</th></tr></thead><tbody>';
+  L.forEach((c, i)=>{
+    cum += c.share;
+    const bb = C.rows.find(r=> r.bk === c.bestBk);
+    h += '<tr><td>' + (i + 1) + '</td><td class="nm"><b>' + btE(c.code) + '</b></td><td><span style="color:' + BT_GEN[c.gender].c + ';font-weight:900;">' + BT_GEN[c.gender].n + '</span></td><td class="num"><b>' + tgtF(c.a) + '</b></td><td class="num">' + tgtF(c.q) + '</td><td class="num">' + tgtF(c.share, 1) + '%</td><td class="num">' + tgtF(cum, 1) + '%</td><td class="num">' + c.nb + '</td><td>' + (bb ? btE(bb.label) + ' <span style="color:#6b7280;">' + tgtF(c.bestA) + '</span>' : '—') + '</td></tr>';
+  });
+  h += '</tbody></table></div>';
+  if(C.uncTot) h += '<p class="tgt-note">مبيعات بدون كاتيجري (اسم المنتج من غير كود بين قوسين): ' + tgtF(C.uncTot) + ' — مش داخلة في النسب. الكاتيجري = أول 3 حروف من الكود اللي بين () في Order Lines/Product/Name (مثلًا MSWB و MSWG بيتجمعوا في MSW).</p>';
+  else h += '<p class="tgt-note">الكاتيجري = أول 3 حروف من الكود اللي بين () في Order Lines/Product/Name (مثلًا MSWB و MSWG بيتجمعوا في MSW). الأرقام لحد يوم ' + C.today + '.</p>';
+  return h;
+}
+function btRenderCatBranch(r, C){
+  if(!bt.meta.hasCat) return btCatNoData();
+  const keys = Object.keys(r.cat);
+  if(!keys.length) return '<div class="tgt-note">مفيش مبيعات كاتيجري للفرع ده.</div>';
+  const L = keys.map(code=> ({ code, a:r.cat[code][0], q:r.cat[code][1], share: r.catA > 0 ? r.cat[code][0] / r.catA * 100 : 0, cShare: (C.catTot[code] && C.catTotal > 0) ? C.catTot[code].a / C.catTotal * 100 : 0, gender:btGender(code) })).sort((p, q)=> q.a - p.a);
+  const top = L[0], low = L[L.length - 1];
+  const gt = r.gen.men[0] + r.gen.wom[0] + r.gen.oth[0], cg = C.genTot.men[0] + C.genTot.wom[0] + C.genTot.oth[0];
+  const dm = (gt > 0 && cg > 0) ? (r.gen.men[0] / gt - C.genTot.men[0] / cg) * 100 : null, dw = (gt > 0 && cg > 0) ? (r.gen.wom[0] / gt - C.genTot.wom[0] / cg) * 100 : null;
+  const dlt = (d)=> d == null ? '' : (d >= 0 ? '▲ ' : '▼ ') + tgtF(Math.abs(d), 1) + ' نقطة عن الشركة';
+  let h = '<div class="bt-kpis">' +
+    btKpi('عدد الكاتيجري', L.length, '') +
+    btKpi('🥇 أعلى كاتيجري', btE(top.code), tgtF(top.a) + ' • ' + tgtF(top.share, 1) + '%') +
+    btKpi('🔻 أقل كاتيجري', btE(low.code), tgtF(low.a) + ' • ' + tgtF(low.share, 1) + '%') +
+    btKpi('MEN', gt > 0 ? tgtF(r.gen.men[0] / gt * 100, 1) + '%' : '—', dlt(dm)) +
+    btKpi('WOM', gt > 0 ? tgtF(r.gen.wom[0] / gt * 100, 1) + '%' : '—', dlt(dw)) +
+    btKpi('أخرى', gt > 0 ? tgtF(r.gen.oth[0] / gt * 100, 1) + '%' : '—', '') + '</div>';
+  h += '<div class="tgt-grid"><div class="tgt-card"><h4>🔝 أعلى 5 كاتيجري في ' + btE(r.label) + '</h4>' + btCatBars(L.slice(0, 5), '#16a34a', C) + '</div>' +
+    '<div class="tgt-card"><h4>🔻 أقل 5 كاتيجري في ' + btE(r.label) + '</h4>' + btCatBars(L.slice(-5).reverse(), '#f59e0b', C) + '</div></div>';
+  h += '<div class="tgt-card wide" style="margin-top:12px;"><h4>👔👗 MEN و WOM — الفرع مقابل الشركة</h4>' + btGenBar(r.gen, '<b>' + btE(r.label) + '</b>') + '<div class="bt-gline">' + btGenLine(r.gen) + '</div>' + btGenBar(C.genTot, '<b>الشركة</b>') + '<div class="bt-gline">' + btGenLine(C.genTot) + '</div></div>';
+  h += '<div class="tgt-dash-title" style="font-size:15px;">📋 كل كاتيجري الفرع مقارنة بالشركة</div><div class="tgt-wrap"><table class="tgt-table" style="min-width:860px;"><thead><tr><th>#</th><th>الكاتيجري</th><th>النوع</th><th>مبيعات الفرع</th><th>القطع</th><th>نسبتها في الفرع</th><th>نسبتها في الشركة</th><th>الفرق (نقطة)</th><th>ترتيب الفرع فيها</th></tr></thead><tbody>';
+  L.forEach((c, i)=>{
+    const d = c.share - c.cShare, rk = C.catRank[c.code], pos = rk && rk.pos[r.bk];
+    h += '<tr><td>' + (i + 1) + '</td><td class="nm"><b>' + btE(c.code) + '</b></td><td><span style="color:' + BT_GEN[c.gender].c + ';font-weight:900;">' + BT_GEN[c.gender].n + '</span></td><td class="num"><b>' + tgtF(c.a) + '</b></td><td class="num">' + tgtF(c.q) + '</td><td class="num">' + tgtF(c.share, 1) + '%</td><td class="num">' + tgtF(c.cShare, 1) + '%</td><td><span class="tgt-pill ' + (d >= 1 ? 'g' : (d <= -1 ? 'r' : 'y')) + '">' + (d >= 0 ? '▲ ' : '▼ ') + tgtF(Math.abs(d), 1) + '</span></td><td class="num">' + (pos ? pos + ' من ' + rk.n : '—') + '</td></tr>';
+  });
+  h += '</tbody></table></div><p class="tgt-note">الفرق = نسبة الكاتيجري في الفرع − نسبتها على مستوى الشركة (بالنقط): ▲ يعني الفرع بيبيع منها أكتر من متوسط الشركة، ▼ أقل. الأرقام لحد يوم ' + C.today + '.</p>';
+  return h;
+}
 function btRender(){
   const body = $('btBody'); if(!body) return;
   const tabs = $('btTabs'); const has = bt.meta && Object.keys(bt.branches).length;
@@ -8752,7 +8954,6 @@ function btRender(){
   else if(btTab === 'map') h = btRenderMap(C);
   body.innerHTML = h;
   if(btTab === 'tiers') btAfterTiers(C);
-  if(btTab === 'overview') btAfterTiers(C, 'btOvTiers');
 }
 function btSetTab(t, bk){
   btTab = t; if(bk) btSel = bk;
@@ -8767,6 +8968,18 @@ function btExport(){
   C.rows.forEach(r=> r1.push([r.label, r.name, Math.round(r.target), Math.round(r.amt), r.pct == null ? '' : Math.round(r.pct * 10) / 10, Math.round(r.exp), r.pace == null ? '' : Math.round(r.pace * 10) / 10, Math.round(r.proj), r.projPct == null ? '' : Math.round(r.projPct * 10) / 10, Math.round(r.remaining), Math.round(r.reqDaily), Math.round(r.curDaily), r.atv == null ? '' : Math.round(r.atv), r.upt == null ? '' : Math.round(r.upt * 100) / 100, r.rc, r.qty, r.active.length, Math.round(-r.ret), btStatusTxt(r)]));
   r1.push([]); r1.push(['إجمالي الشركة', '', Math.round(C.target), Math.round(C.amt), C.pct == null ? '' : Math.round(C.pct * 10) / 10, Math.round(C.exp), C.pace == null ? '' : Math.round(C.pace * 10) / 10, Math.round(C.proj), C.projPct == null ? '' : Math.round(C.projPct * 10) / 10, Math.round(C.remaining), Math.round(C.reqDaily), Math.round(C.amt / C.today), C.atv == null ? '' : Math.round(C.atv), C.upt == null ? '' : Math.round(C.upt * 100) / 100, C.rc, C.qty]);
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(r1), 'Branches');
+  if(bt.meta.hasCat && C.catList.length){
+    const cd = [['الكاتيجري', 'النوع', 'المبيعات', 'القطع', 'النسبة %', 'عدد الفروع', 'أقوى فرع', 'مبيعات أقوى فرع']];
+    C.catList.forEach(c=>{ const bb = C.rows.find(r=> r.bk === c.bestBk); cd.push([c.code, BT_GEN[c.gender].n, Math.round(c.a), Math.round(c.q), Math.round(c.share * 10) / 10, c.nb, bb ? bb.label : '', Math.round(c.bestA)]); });
+    cd.push([]); cd.push(['MEN', '', Math.round(C.genTot.men[0]), Math.round(C.genTot.men[1])]); cd.push(['WOM', '', Math.round(C.genTot.wom[0]), Math.round(C.genTot.wom[1])]); cd.push(['أخرى', '', Math.round(C.genTot.oth[0]), Math.round(C.genTot.oth[1])]);
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(cd), 'Categories');
+    const bd = [['الفرع', 'MEN %', 'WOM %', 'أخرى %'].concat(C.catList.map(c=> c.code))];
+    C.rows.slice().sort((p, q)=> String(p.label).localeCompare(String(q.label))).forEach(r=>{
+      const t = r.gen.men[0] + r.gen.wom[0] + r.gen.oth[0];
+      bd.push([r.label, t > 0 ? Math.round(r.gen.men[0] / t * 1000) / 10 : '', t > 0 ? Math.round(r.gen.wom[0] / t * 1000) / 10 : '', t > 0 ? Math.round(r.gen.oth[0] / t * 1000) / 10 : ''].concat(C.catList.map(c=> r.cat[c.code] ? Math.round(r.cat[c.code][0]) : '')));
+    });
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(bd), 'BranchCategories');
+  }
   {
     const remD = Math.max(0, C.dim - C.today);
     const th = ['الفرع', 'الاسم', 'التارجت', 'المحقق', 'النسبة %', 'أقرب نسبة %', 'الشريحة الحالية'];
@@ -8814,7 +9027,7 @@ async function btExportPdf(){
       const C = btC = btCompute();
       const secs = [['📊 نظرة عامة', btRenderOverview], ['🏢 الفروع', btRenderBranches], ['🎯 شرائح التحقيق', btRenderTiers], ['🎁 تحليل الأوفرات', btRenderOffers], ['🏆 أعلى 10 بائعين', btRenderSellers], ['🔥 خريطة حرارية', btRenderHeat], ['↩️ المرتجعات', btRenderReturns]];
       $('btBody').innerHTML = secs.map(x=> '<div class="tgt-dash-title bt-sec">' + x[0] + '</div>' + x[1](C)).join('');
-      btAfterTiers(C, 'btOvTiers'); btAfterTiers(C, 'btTiersBox');
+      btAfterTiers(C, 'btTiersBox');
       const info = ($('btInfo') && $('btInfo').textContent) || '';
       return await tgtBuildHolder('screen-btarget', (clone)=>{
         ['#btTabs', '#btSettings', '.upload-card'].forEach(sel=> clone.querySelectorAll(sel).forEach(el=> el.remove()));
@@ -8865,6 +9078,8 @@ function btWire(){
     body.addEventListener('change', (e)=>{
       const t = e.target;
       if(t.id === 'btBranchSel'){ btSel = t.value; btRender(); return; }
+      if(t.id === 'btMenPfx'){ bt.menPfx = String(t.value || '').trim().toUpperCase(); btPersist(); btRender(); return; }
+      if(t.id === 'btWomPfx'){ bt.womPfx = String(t.value || '').trim().toUpperCase(); btPersist(); btRender(); return; }
       if(t.hasAttribute && t.hasAttribute('data-map')){ bt.override[t.getAttribute('data-map')] = t.value; btPersist(); btRender(); return; }
       if(t.hasAttribute && t.hasAttribute('data-tidx')){
         const i = +t.getAttribute('data-tidx'), n = tgtNum(t.value);
