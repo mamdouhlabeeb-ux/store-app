@@ -9019,28 +9019,33 @@ function btExport(){
 }
 async function btExportPdf(){
   if(!bt.meta || !Object.keys(bt.branches).length){ showToast('مفيش بيانات تتحول PDF.'); return; }
-  const prevTab = btTab;
-  const C0 = btCompute();
-  const fname = 'BRANCHES_TARGET_' + C0.y + '-' + String(C0.m).padStart(2, '0') + '_day' + C0.today + '.pdf';
-  try{
-    await tgtPdfRun(async ()=>{
-      const C = btC = btCompute();
-      const secs = [['📊 نظرة عامة', btRenderOverview], ['🏢 الفروع', btRenderBranches], ['🎯 شرائح التحقيق', btRenderTiers], ['🎁 تحليل الأوفرات', btRenderOffers], ['🏆 أعلى 10 بائعين', btRenderSellers], ['🔥 خريطة حرارية', btRenderHeat], ['↩️ المرتجعات', btRenderReturns]];
-      $('btBody').innerHTML = secs.map(x=> '<div class="tgt-dash-title bt-sec">' + x[0] + '</div>' + x[1](C)).join('');
-      btAfterTiers(C, 'btTiersBox');
-      const info = ($('btInfo') && $('btInfo').textContent) || '';
-      return await tgtBuildHolder('screen-btarget', (clone)=>{
-        ['#btTabs', '#btSettings', '.upload-card'].forEach(sel=> clone.querySelectorAll(sel).forEach(el=> el.remove()));
-        const ph = clone.querySelector('.panel-head > div'); if(ph) ph.remove();
-        const intro = clone.querySelector('.panel-head + .tgt-note'); if(intro) intro.remove();
-        clone.querySelectorAll('[data-smode]').forEach(el=> el.remove());
-        const head = clone.querySelector('.panel-head');
-        if(head){ const d = document.createElement('div'); d.className = 'tgt-note'; d.style.cssText = 'font-size:14px;font-weight:800;color:#312e81;'; d.textContent = info; head.insertAdjacentElement('afterend', d); }
-      });
-    }, fname);
-  }finally{
-    btTab = prevTab; btRender();
-  }
+  // بينزّل الصفحة (التاب) اللي واقف عليها بس
+  const TAB_NAMES = { overview:'نظرة عامة', branches:'الفروع', tiers:'شرائح التحقيق', offers:'تحليل الأوفرات', branch:'تحليل فرع', sellers:'أعلى 10 بائعين', heat:'خريطة حرارية', returns:'المرتجعات', map:'ربط الفروع' };
+  const tab = btTab;
+  const C0 = btC || btCompute();
+  const br = tab === 'branch' ? C0.rows.find(x=> x.bk === btSel) : null;
+  const title = (TAB_NAMES[tab] || tab) + (br ? ' — ' + br.label + ' (' + br.name + ')' : '');
+  const suffix = tab + (br ? '_' + String(br.label).replace(/[^A-Za-z0-9\u0600-\u06FF]+/g, '_') : '');
+  const fname = 'BRANCHES_TARGET_' + suffix + '_' + C0.y + '-' + String(C0.m).padStart(2, '0') + '_day' + C0.today + '.pdf';
+  await tgtPdfRun(async ()=>{
+    btRender();
+    const info = ($('btInfo') && $('btInfo').textContent) || '';
+    return await tgtBuildHolder('screen-btarget', (clone)=>{
+      ['#btTabs', '#btSettings', '.upload-card'].forEach(sel=> clone.querySelectorAll(sel).forEach(el=> el.remove()));
+      const ph = clone.querySelector('.panel-head > div'); if(ph) ph.remove();
+      const intro = clone.querySelector('.panel-head + .tgt-note'); if(intro) intro.remove();
+      clone.querySelectorAll('[data-smode]').forEach(el=> el.remove());
+      clone.querySelectorAll('.bt-pick').forEach(el=>{ if(el.querySelector('select')) el.remove(); });
+      const head = clone.querySelector('.panel-head');
+      if(head){
+        const d = document.createElement('div');
+        d.className = 'tgt-note';
+        d.style.cssText = 'font-size:15px;font-weight:900;color:#312e81;margin:4px 0 10px;';
+        d.textContent = title + (info ? '  |  ' + info : '');
+        head.insertAdjacentElement('afterend', d);
+      }
+    });
+  }, fname);
 }
 async function btOpen(){
   if(!btAllowed()){ showToast('الأيقونة دي متاحة لحسابات area managers و CST بس.'); return; }
